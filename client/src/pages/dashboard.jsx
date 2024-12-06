@@ -5,6 +5,8 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import fetchUserData from "../component/util";
 
+import "../styles/home.css"
+
 const Dashboard = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [error, setError] = useState(null);

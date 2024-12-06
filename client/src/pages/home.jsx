@@ -1,17 +1,16 @@
 import React from "react";
+import Navbar from "../component/navbar";
+import "../styles/home.css";
 
-export default function Home() {
+const Home = () => {
   return (
-    <div>
-      <h1>This is the main home page...</h1>
-
-      <a href="/login">
-        <button type="submit">Login</button>
-      </a>
-
-      <a href="/signup">
-        <button type="submit">Singup</button>
-      </a>
-    </div>
+    <>
+      <Navbar />
+      <div>
+        <h2>This is the main home page....</h2>
+      </div>
+    </>
   );
-}
+};
+
+export default Home;

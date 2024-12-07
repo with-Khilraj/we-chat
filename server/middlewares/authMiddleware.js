@@ -12,7 +12,8 @@ const verifyAccessToken = (req, res, next) => {
     req.user = decoded; // attach user info to request by decoding
     next();
   } catch (error) {
-    return res.status(401).json({ error: "Token expired or invalid" });
+    console.error("Token verification failed:", error.message);
+    res.status(401).json({ error: "Unauthorized" });
   }
 };
 

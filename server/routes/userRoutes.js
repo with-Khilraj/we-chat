@@ -28,8 +28,8 @@ const generateToken = (user) => {
 router.post("/signup", async (req, res) => {
   const { email, username, phone, password } = req.body;
 
-  if( !email || !username || !phone || !password) {
-    res.status(400).json({ message: "Please enter all the fields"});
+  if (!email || !username || !phone || !password) {
+    res.status(400).json({ message: "Please enter all the fields" });
   }
 
   try {
@@ -122,8 +122,10 @@ router.post("/refresh", async (req, res) => {
     const tokenEntry = await RefreshToken.findOne({ token: refreshToken });
 
     if (!tokenEntry || tokenEntry.revoked || tokenEntry.expiry < new Date()) {
-      return res.status(403).json({ error: "Invalid or expired refresh token" });
-    };
+      return res
+        .status(403)
+        .json({ error: "Invalid or expired refresh token" });
+    }
 
     // verify the token
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
@@ -148,27 +150,29 @@ router.post("/logout", async (req, res) => {
 
   try {
     // mark the token as revoked
-    await RefreshToken.findOneAndUpdate({ token: refreshToken }, { revoked: true});
+    await RefreshToken.findOneAndUpdate(
+      { token: refreshToken },
+      { revoked: true }
+    );
 
     // clear the refresh token cookie
     res.clearCookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE.ENV === 'production',
+      secure: process.env.NODE.ENV === "production",
       sameSite: "strict",
     });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     console.error("Error during logout:", error);
-    res.status(500).json({ error: "Internal server error"})
+    res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 // // Fetch single user details via id (protected route)
 // router.get("/:id", verifyAccessToken, async (req, res) => {
 //   try {
-//     // In the backend route (userRoutes.js), you're fetching the user by req.user.id. 
-//     // This implies that you expect the id to come from the verifyAccessToken middleware, 
+//     // In the backend route (userRoutes.js), you're fetching the user by req.user.id.
+//     // This implies that you expect the id to come from the verifyAccessToken middleware,
 //     // not the request parameter (req.params.id).
 //     // const user = await User.findById(req.user.id).select("-password"); // Exclude password
 
@@ -185,19 +189,45 @@ router.post("/logout", async (req, res) => {
 // });
 
 // fetch logged-in user profile
-router.get('/profile', verifyAccessToken, async (req, res) => {
+router.get("/profile", verifyAccessToken, async (req, res) => {
   // console.log("USER ID::::: ", req.user.id);
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    if(!user) {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) {
       return res.status(404).json({ message: "User not found" });
-    };
+    }
     res.status(200).json({ user });
   } catch (error) {
     console.error("Error fetching user profile:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-})
+});
+
+// Route to get the list of users except the logged in user
+router.get("/all", verifyAccessToken, async (req, res) => {
+
+  try {
+    const loggedInUser = req.user.id;
+
+    console.log("Logged in user ID:", loggedInUser);
+
+    if (!loggedInUser) {
+      console.log("Logged in user is undefined or null");
+      return res.status(400).json({ error: "Logged in user not found" });
+    }
+
+    // Fetch all user except the logged-in user, excluding passwords
+    const users = await User.find({ _id: { $ne: loggedInUser } }).select(
+      "-password"
+    );
+    console.log("Users fetched::::", users);
+
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Another Protected
 router.put("/update", verifyAccessToken, async (req, res) => {

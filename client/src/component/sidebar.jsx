@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import fetchUserExceptCurrent from "./fetchUsersExpectLoggedIn";
-import "../styles/sidebar.css"
+import "../styles/sidebar.css";
+import { fetchUserExceptCurrent } from "./userStore";
 
-const Sidebar = () => {
+const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
 
@@ -18,25 +18,6 @@ const Sidebar = () => {
     };
     getUserExceptCurrent();
   }, []);
-
-  // Fetch users from API
-  // useEffect(() => {        
-  //   const fetchUsers = async () => {
-  //     try {
-  //       const accessToken = localStorage.getItem("accessToken");
-  //       const response = await api.get("/api/users/all", {}, { withCredentials: true }, {
-  //         headers: {
-  //           "Authorization": `Bearer ${accessToken}`,
-  //         },  
-  //       });
-  //       setUsers(response.data.users);
-  //     } catch (error) {
-  //       console.error("Error fetching users:", error);
-  //     }
-  //   };
-
-  //   fetchUsers();
-  // }, []);
 
   // Filter users based on the search input
   const filteredUsers = users.filter((user) =>
@@ -58,8 +39,12 @@ const Sidebar = () => {
 
       {/* Users List */}
       <div className="user-list">
-        {filteredUsers.map((user, index) => (
-          <div key={user._id} className="user-item">
+        {filteredUsers.map((user) => (
+          <div
+            key={user._id}
+            className= {`user-item ${onUserSelect?._id === user._id ? "selected" : "" }`}
+            onClick={() => setOnUserSelected(user)} // passing selected user
+          >
             <div className="user-avatar">
               {/* Display initials or profile image */}
               {user.avatar ? (
@@ -72,14 +57,14 @@ const Sidebar = () => {
               <h4 className="user-name">{user.username}</h4>
               <p className="user-message">Recent message or status...</p>
             </div>
-            <div className="user-meta">
+            {/* <div className="user-meta">
               <span className="time">20m</span>
               {index % 3 === 0 ? (
                 <span className="notification-count">3</span>
               ) : (
                 <span className="message-status">✔✔</span>
               )}
-            </div>
+            </div> */}
           </div>
         ))}
       </div>

@@ -3,15 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "../component/logout";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
-import fetchUserData from "../component/util";
+import { fetchUserData } from "../component/userStore";
 import Sidebar from "../component/sidebar";
-import Navbar from "../component/navbar";
 
-import "../styles/home.css";
+import "../styles/dashboard.css";
+import ChatContainer from "../component/chatContainer";
 
 const Dashboard = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [error, setError] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,8 +20,8 @@ const Dashboard = () => {
 
     const getUserData = async () => {
       try {
-        const { username } = await fetchUserData(accessToken);
-        setUserInfo({ username });
+        const { username, _id } = await fetchUserData(accessToken);
+        setUserInfo({ username, _id });
       } catch (error) {
         console.log("Error fetching username:", error);
         setError(error.message); // Set error state here
@@ -59,16 +60,26 @@ const Dashboard = () => {
     <>
       {/* <Navbar /> */}
 
-      <div className="main-body">
-        <Sidebar />
-        <div>
+      <div className="dashboard-container">
+        <div className="menu">
+
+        </div>
+        <Sidebar onUserSelect={selectedUser} setOnUserSelected={setSelectedUser} />
+        <ChatContainer selectedUser={selectedUser} currentUser={userInfo} />
+        {/* <div> */}
           {/* <h1>Welcome to Your Dashboard {userInfo.username}</h1>
         <button onClick={handleLogout}>Logout</button> */}
-          <button onClick={handleProfile}>Profile</button>
+          {/* Profile Info Container */}
+          <div className="profile-info">
+            <h3>Profile Info</h3>
+            {/* Profile content goes here */}
+            <p>Additional details about the current user...</p>
+          </div>
+          {/* <button onClick={handleProfile}>Profile</button> */}
 
           <ToastContainer />
         </div>
-      </div>
+      {/* </div> */}
     </>
   );
 };

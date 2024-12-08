@@ -20,6 +20,8 @@ const Login = () => {
       );
       localStorage.setItem("accessToken", response.data.accessToken);
 
+      console.log("Access Token while login:::", response.data.accessToken);
+
       // sucess message using toastify
       toast.success("Welcome to test", {
         position: "top-right",

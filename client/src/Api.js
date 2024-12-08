@@ -17,6 +17,7 @@ api.interceptors.response.use(
       try {
         const refreshResponse = await axios.post('http://localhost:5000/api/refresh', {}, { withCredentials: true });
         const newAccessToken  = refreshResponse.data.accessToken;
+        console.log(newAccessToken);
 
         // Retry the original request with the new access token
         error.config.headers['Authorization'] = `Bearer ${newAccessToken}`;

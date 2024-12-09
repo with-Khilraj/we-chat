@@ -3,7 +3,6 @@ import { io } from "socket.io-client";
 import api from "../Api";
 
 import "../styles/chatContainer.css";
-import { getAllChats } from "./chatStore";
 
 const socket = io("http://localhost:5000"); // this is basically backend url
 
@@ -12,7 +11,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const [newMessage, setNewMessage] = useState("");
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("accessToken");
 
     if (selectedUser) {
       // Join a chat room

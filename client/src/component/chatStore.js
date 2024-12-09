@@ -1,14 +1,15 @@
 import api from "../Api";
 
-export const getAllChats = async (accessToken, selectedUser) => {
+export const getRecentMessages = async (accessToken) => {
   try {
-    const response = await api.get(`/api/message/${selectedUser._id}`, {
+    const response = await api.get('/api/messages/recent-messages', {
       headers: {
         "Authorization": `Bearer ${accessToken}`
-      }
+      },
     });
-    return response.data.messages;
+    return response.data.recentMessages;
   } catch (error) {
-    console.error("Error fetching chat history:", error);
+    console.error("Error fetching recent messages:", error);
+    throw error;
   }
 }

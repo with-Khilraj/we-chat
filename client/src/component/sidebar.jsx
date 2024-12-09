@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from "react";
 import "../styles/sidebar.css";
 import { fetchUserExceptCurrent } from "./userStore";
+import api from "../Api";
 
 const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const [recentMessages, setRecentMessages] = useState({});
 
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");
+
     const getUserExceptCurrent = async () => {
       try {
         const response = await fetchUserExceptCurrent(accessToken);
@@ -18,6 +21,33 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     };
     getUserExceptCurrent();
   }, []);
+
+  useEffect(() => {
+    // Fetch recent messages for each user
+    const fetchRecentMessages = async () => {
+      try {
+        const accessToken = localStorage.getItem("accessToken");
+        const response = await api.get('/api/messages/recent-messages', {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`
+          }
+        });
+
+        // store the recent messages for each user
+        const messages = response.data.recentMessages.reduce((acc, message) => {
+          const userId = message._id.toString(); // converting objectId into string
+          acc[userId] = message.message; // store the message content for the user
+          return acc;
+        }, {});
+
+        setRecentMessages(messages);
+      } catch (error) {
+        console.error("Error fetching recent messages:", error)
+      }
+    };
+    fetchRecentMessages();
+  }, [users]);
+
 
   // Filter users based on the search input
   const filteredUsers = users.filter((user) =>
@@ -42,7 +72,9 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
         {filteredUsers.map((user) => (
           <div
             key={user._id}
-            className= {`user-item ${onUserSelect?._id === user._id ? "selected" : "" }`}
+            className={`user-item ${
+              onUserSelect?._id === user._id ? "selected" : ""
+            }`}
             onClick={() => setOnUserSelected(user)} // passing selected user
           >
             <div className="user-avatar">
@@ -55,7 +87,9 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
             </div>
             <div className="user-info">
               <h4 className="user-name">{user.username}</h4>
-              <p className="user-message">Recent message or status...</p>
+              <p className="user-message">
+                {recentMessages[user._id] || "No messages yet"}
+              </p>
             </div>
             {/* <div className="user-meta">
               <span className="time">20m</span>

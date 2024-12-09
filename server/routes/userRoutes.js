@@ -129,6 +129,7 @@ router.post("/refresh", async (req, res) => {
 
     // verify the token
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    console.log("Decoded token:::", decoded);
 
     const accessToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
       expiresIn: "20m",

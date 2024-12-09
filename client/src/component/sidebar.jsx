@@ -97,6 +97,12 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     }
   }, [loggedInUser]);
 
+    // Helper: turncate the message content
+    const truncateMessage = (content = "", maxLength = 20) => {
+      return content.length > maxLength ? `${content.substring(0, maxLength)}...` : content;
+    };
+  
+
   if (loading) {
     return <div className="sidebar">Loading...</div>;
   }
@@ -140,7 +146,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
             <div className="user-info">
               <h4 className="user-name">{user.username}</h4>
               <p className="user-message">
-                {recentMessages[user._id] || "No messages yet"}
+                { truncateMessage(recentMessages[user._id] ) || "No messages yet"}
               </p>
             </div>
           </div>

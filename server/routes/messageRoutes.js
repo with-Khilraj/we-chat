@@ -40,7 +40,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
   try {
     // Ensure that the logged-in user ID is converted to ObjectId
     const loggedInUserId = new mongoose.Types.ObjectId(req.user.id);
-    console.log("LoggeInUser ID:::", typeof loggedInUserId);
+    // console.log("LoggedInUser ID:::", typeof loggedInUserId);
 
     const recentMessages = await Messaage.aggregate([
       {
@@ -92,7 +92,6 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
     ]);
 
     res.status(200).json({ recentMessages });
-    console.log("RecentMessages::::", recentMessages);
   } catch (error) {
     console.error("Error fetching recent messages:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -154,7 +153,7 @@ router.get("/:receiverId", verifyAccessToken, async (req, res) => {
       ],
     }).sort({ createdAt: 1 }); // sort messages in ascending order
     res.status(200).json({ messages });
-    console.log("Messages fetched::::", messages);
+    // console.log("Messages fetched::::", messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
     res.status(500).json({ error: "Internal server error" });

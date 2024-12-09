@@ -107,6 +107,8 @@ router.post("/login", async (req, res) => {
 
 
 // Token Refresh Route with "token rotation" strategy
+
+// "Token rotation" ensures that stolen refresh tokens cannot be reused after rotation.
 router.post("/refresh", async (req, res) => {
   const refreshToken = req.cookies.refreshToken; // Retrieve refresh token from cookies
 

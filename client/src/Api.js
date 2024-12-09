@@ -8,7 +8,7 @@ const api = axios.create({
 // Function to clear storage and redirect to login
 
 // Intercept requests to refresh token if access token expires
-api.interceptors.request.use(async, (config) => {
+api.interceptors.request.use( async (config) => {
   const accessToken = localStorage.getItem("accessToken");
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;

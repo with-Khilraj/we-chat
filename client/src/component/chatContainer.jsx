@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import api from "../Api";
+import moment from 'moment';
 
 import "../styles/chatContainer.css";
 
@@ -9,6 +10,7 @@ const socket = io("http://localhost:5000"); // this is basically backend url
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const messageEndRef = useRef(null);
 
   useEffect(() => {
 
@@ -32,14 +34,29 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       };
       fetchChatHistory();
 
-      // listen for new messages
-      socket.on("receive-message", (data) => {
-        // only add the message if it's not already in the state
-        if(!messages.find((msg) => msg._id === data._id)) {
-        setMessages((prevMessages) => [...prevMessages, data]);
-        };
-        // setMessages((prevMessages) => [...prevMessages, data]);
-      });
+      const handleReceiveMessage = (data) => {
+        setMessages((prevMessages) => {
+          if(!prevMessages.find((msg) => msg._id === data._id)) {
+            return [...prevMessages, data];
+          }
+          return prevMessages;
+        });
+      };
+
+      socket.on("receive-message", handleReceiveMessage);
+
+      return () => {
+        socket.off('receive-message', handleReceiveMessage);
+      };
+
+      // // listen for new messages
+      // socket.on("receive-message", (data) => {
+      //   // only add the message if it's not already in the state
+      //   if(!messages.find((msg) => msg._id === data._id)) {
+      //   setMessages((prevMessages) => [...prevMessages, data]);
+      //   };
+      //   // setMessages((prevMessages) => [...prevMessages, data]);
+      // });
     }
   }, [selectedUser, currentUser]);
 
@@ -67,14 +84,30 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       });
 
       // Add the message locally iif it's not already present
-      if (!messages.find((msg) => msg._id === response.data._id)) {
-        setMessages((prevMessages) => [...prevMessages, response.data]);
-      }
+      setMessages((prevMessages) => {
+        if(!prevMessages.find((msg) => msg._id === response.data._id)) {
+          return [...prevMessages, response.data];
+        };
+        return prevMessages;
+      });
       // setMessages((prevMessages) => [...prevMessages, messageData]);
       setNewMessage("");
     } catch (error) {
       console.error("Errro while sending message:", error);
     }
+  };
+
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Helper: check if there's a 30 minute or more gap between two messages
+  const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
+    if(!previousMessage) return true;
+
+    const currentTime = moment(currentMessage.createdAt);
+    const previousTime = moment(previousMessage.createdAt);
+    return currentTime.diff(previousTime, "minutes") >= 30;
   };
 
   if (!selectedUser) {
@@ -97,9 +130,35 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       </div>
 
       <div className="chat-messages">
+        {messages.map((message, index) => {
+          const previousMessage = message[index - 1];
+          const showTimeStamp = shouldDisplayTimeStamp(message, previousMessage);
+
+          return (
+            <div key={index}>
+              {/* show timestamp if necessary */}
+              {showTimeStamp && (
+                <div className="message-timestamp">
+                  {moment(message.createAt).format("D MMM YYYY, HH:mm")}
+                </div>
+              )}
+              {/* Message bubble */}
+              <div
+                className = {`message ${
+                  message.senderId === currentUser._id ? "sent" : "received"
+                }`}
+              >
+                <p>{ message.content }</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* <div className="chat-messages">
         {messages.map((message, index) => (
           <div
-            key={index}
+            key={message._id}
             className={`message ${
               message.senderId === currentUser._id ? "sent" : "received"
             }`}
@@ -107,7 +166,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             <p>{message.content}</p>
           </div>
         ))}
-      </div>
+      </div> */}
 
       {/* message input */}
       <div className="chat-input">

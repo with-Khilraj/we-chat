@@ -8,6 +8,7 @@ const RefreshToken = require("../models/refreshTokens");
 const router = express.Router();
 
 // Generate Access and Refresh Token
+
 const generateToken = (user) => {
   const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "20m",
@@ -21,8 +22,6 @@ const generateToken = (user) => {
   return { accessToken, refreshToken };
 };
 
-// Refresh Token store (in memory for demo, use a database for production)
-// let refreshTokens = [];
 
 // Signup Route
 router.post("/signup", async (req, res) => {
@@ -83,7 +82,6 @@ router.post("/login", async (req, res) => {
     // Logic to generate Aceess or Refresh Token
     const { accessToken, refreshToken } = generateToken(user);
 
-    // refreshTokens.push(refreshToken); // save refresh token in database in real web app
 
     // save refresh token to database
     const refreshTokenEntry = new RefreshToken({
@@ -107,39 +105,99 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Token Refresh Route
+
+// Token Refresh Route with "token rotation" strategy
 router.post("/refresh", async (req, res) => {
-  const refreshToken = req.cookies.refreshToken; // Retrieving refresh token from cookies
+  const refreshToken = req.cookies.refreshToken; // Retrieve refresh token from cookies
 
   if (!refreshToken) {
-    return res
-      .status(401)
-      .json({ error: "Unauthorized. Refresh token not found!" });
+    return res.status(401).json({ error: "Unauthorized. Refresh token not found!" });
   }
 
   try {
-    // finding the refresh token in the database
+    
+    // Verify the refresh token
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+    // Find the refresh token in the database
     const tokenEntry = await RefreshToken.findOne({ token: refreshToken });
 
-    if (!tokenEntry || tokenEntry.revoked || tokenEntry.expiry < new Date()) {
-      return res
-        .status(403)
-        .json({ error: "Invalid or expired refresh token" });
+    if (!tokenEntry || tokenEntry.revoked) {
+      return res.status(403).json({ error: "Invalid or expired refresh token" });
     }
 
-    // verify the token
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    console.log("Decoded token:::", decoded);
+    if(tokenEntry.expiry < new Date()) {
+      return res.status(403).json({ error: "Refresh token expired. Please login again."})
+    }
 
-    const accessToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
-      expiresIn: "20m",
+    // Generate a new refresh token and access token
+    const { accessToken, refreshToken: newRefreshToken } = generateToken({ _id: decoded.id });
+
+    
+    // Revoke the old refresh token and save the new one
+    tokenEntry.revoked = true;
+    await tokenEntry.save();
+
+    // Save the new refresh token in the database
+    await RefreshToken.create({
+      token: newRefreshToken,
+      expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
     });
+
+    // // Generate a new access token
+    // const accessToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
+    //   expiresIn: "20m", // Short lifespan for access token
+    // });
+
+    // Set the new refresh token as an HTTP-only secure cookie
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+    });
+
+    // Send the new access token
     res.status(200).json({ accessToken });
   } catch (error) {
-    console.error("Error in refresh token route:", error);
-    return res.status(403).json({ error: "Internal server error" });
+    console.error("Error in refresh token route:", error.message);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+// Token Refresh Route without "token rotation" strategy
+// router.post("/refresh", async (req, res) => {
+//   const refreshToken = req.cookies.refreshToken; // Retrieving refresh token from cookies
+
+//   if (!refreshToken) {
+//     return res
+//       .status(401)
+//       .json({ error: "Unauthorized. Refresh token not found!" });
+//   }
+
+//   try {
+//     // finding the refresh token in the database (RefreshTOken model)
+//     const tokenEntry = await RefreshToken.findOne({ token: refreshToken });
+
+//     if (!tokenEntry || tokenEntry.revoked || tokenEntry.expiry < new Date()) {
+//       return res
+//         .status(403)
+//         .json({ error: "Invalid or expired refresh token" });
+//     }
+
+//     // verify the token
+//     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+//     console.log("Decoded token:::", decoded);
+
+//     const accessToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
+//       expiresIn: "20m",
+//     });
+//     res.status(200).json({ accessToken });
+//   } catch (error) {
+//     console.error("Error in refresh token route:", error);
+//     return res.status(403).json({ error: "Internal server error" });
+//   }
+// });
 
 // Logout Route
 router.post("/logout", async (req, res) => {

@@ -60,6 +60,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
               "$senderId", // If receiver, group by senderId
             ],
           },
+          senderId: { $first: "$senderId"},
           message: { $first: "$content" }, // Get the most recent message
           createdAt: { $first: "$createdAt" }, // Get the most recent timestamp
         },
@@ -79,6 +80,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
         $project: {
           _id: 0, // Exclude default MongoDB ID
           userId: "$_id",
+          senderId: 1,
           username: "$userInfo.username",
           message: 1,
           createdAt: 1,

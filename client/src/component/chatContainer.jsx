@@ -34,10 +34,14 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
       // listen for new messages
       socket.on("receive-message", (data) => {
+        // only add the message if it's not already in the state
+        if(!messages.find((msg) => msg._id === data._id)) {
         setMessages((prevMessages) => [...prevMessages, data]);
+        };
+        // setMessages((prevMessages) => [...prevMessages, data]);
       });
     }
-  }, [selectedUser]);
+  }, [selectedUser, currentUser]);
 
   // Handle send message button
   const handleSendMessage = async () => {
@@ -56,14 +60,17 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
       // save the message to the database
       const accessToken = localStorage.getItem("accessToken");
-      await api.post("/api/messages/", messageData, {
+      const response = await api.post("/api/messages/", messageData, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
 
-      // Add the message locally
-      setMessages((prevMessages) => [...prevMessages, messageData]);
+      // Add the message locally iif it's not already present
+      if (!messages.find((msg) => msg._id === response.data._id)) {
+        setMessages((prevMessages) => [...prevMessages, response.data]);
+      }
+      // setMessages((prevMessages) => [...prevMessages, messageData]);
       setNewMessage("");
     } catch (error) {
       console.error("Errro while sending message:", error);

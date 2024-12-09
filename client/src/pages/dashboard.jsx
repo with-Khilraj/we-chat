@@ -75,7 +75,7 @@ const Dashboard = () => {
             {/* Profile content goes here */}
             <p>Additional details about the current user...</p>
           </div>
-          {/* <button onClick={handleProfile}>Profile</button> */}
+          <button onClick={handleProfile}>Profile</button>
 
           <ToastContainer />
         </div>

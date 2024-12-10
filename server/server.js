@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const cors = require("cors");
 const express = require("express");
+const cookiePaser = require('cookie-parser');
 const http = require('http');
 const { Server } = require("socket.io");
 const userRoutes = require("./routes/userRoutes");
@@ -34,7 +35,9 @@ app.use (
 );
 
 // Middelware
+app.use(cookiePaser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Sample routes
 app.get("/api", (req, res) => {

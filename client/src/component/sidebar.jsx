@@ -128,7 +128,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
       {/* Users List */}
       <div className="user-list">
         {filteredUsers.map((user) => (
-          console.log("Selected userId::::", onUserSelect?._id),
+          // console.log("Selected userId::::", onUserSelect?._id)
           <div
             key={user._id}
             className={`user-item ${

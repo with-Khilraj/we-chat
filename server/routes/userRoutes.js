@@ -11,7 +11,7 @@ const router = express.Router();
 
 const generateToken = (user) => {
   const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "20m",
+    expiresIn: "2d",
   });
   const refreshToken = jwt.sign(
     { id: user._id },
@@ -53,7 +53,7 @@ router.post("/signup", async (req, res) => {
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    res.status(500).json({ error: "User already exists" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -76,7 +76,7 @@ router.post("/login", async (req, res) => {
     // check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(404).json({ error: "Invalid password" });
+      return res.status(401).json({ error: "Invalid password" });
     }
 
     // Logic to generate Aceess or Refresh Token
@@ -128,7 +128,7 @@ router.post("/refresh", async (req, res) => {
       return res.status(403).json({ error: "Invalid or expired refresh token" });
     }
 
-    if(tokenEntry.expiry < new Date()) {
+    if(new Date(tokenEntry.expiry) <= new Date()) {
       return res.status(403).json({ error: "Refresh token expired. Please login again."})
     }
 
@@ -203,6 +203,7 @@ router.post("/refresh", async (req, res) => {
 
 // Logout Route
 router.post("/logout", async (req, res) => {
+  console.log("Cookkies:::::", req.cookies)
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
@@ -222,7 +223,8 @@ router.post("/logout", async (req, res) => {
       secure: process.env.NODE.ENV === "production",
       sameSite: "strict",
     });
-    res.status(200).json({ message: "Logged out successfully" });
+
+    res.status(200).json({ message: "Loggout successfully" });
   } catch (error) {
     console.error("Error during logout:", error);
     res.status(500).json({ error: "Internal server error" });

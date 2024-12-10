@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const api = axios.create({
   baseURL: "http://localhost:5000",
@@ -22,6 +23,7 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    const navigate = useNavigate();
     console.log("API Error:", error.response);
     if (
       error.response?.status === 403 &&
@@ -36,6 +38,8 @@ api.interceptors.response.use(
         const newAccessToken = refreshResponse.data.accessToken;
         console.log(newAccessToken);
 
+        localStorage.setItem('accessToken', newAccessToken);
+
         // store the new access token and retry the original request with the new access token
         error.config.headers["Authorization"] = `Bearer ${newAccessToken}`;
         // return api.request(error.config);
@@ -43,6 +47,8 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error("Failed to refresh token:",refreshError);
         // Handle logout or redirect to the login page
+        localStorage.removeItem('accessToken')
+        navigate('/login');
         return Promise.reject(refreshError);
       }
     }

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Messaage = require("../models/Message");
 const verifyAccessToken = require("../middlewares/authMiddleware");
+// const { v4: uuidv4 } = require('uuid')
 
 // send message
 router.post("/", verifyAccessToken, async (req, res) => {
@@ -15,11 +16,15 @@ router.post("/", verifyAccessToken, async (req, res) => {
   }
 
   try {
+    // const messageId = uuidv4();
+
     const newMessage = new Messaage({
+      // _id: messageId,
       roomId,
       senderId: req.user.id,
       receiverId,
       content,
+      createdAt: new Date()
     });
     const savedMessage = await newMessage.save();
     res.status(201).json({ message: savedMessage });

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import api from "../Api";
 import moment from "moment";
+import { v4 as uuidv4 } from 'uuid';
 
 import "../styles/chatContainer.css";
 
@@ -10,7 +11,7 @@ const socket = io("http://localhost:5000"); // this is basically backend url
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const messageEndRef = useRef(null);
+  // const messageEndRef = useRef(null);
 
   useEffect(() => {
     if (selectedUser) {
@@ -34,13 +35,35 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       fetchChatHistory();
 
       const handleReceiveMessage = (data) => {
+        console.log("New message received::", data);
+        
+        // setMessages((prevMessages) => {
+        // // check uniqueness based on the combination of the field
+        //   const isDuplicate = prevMessages.some((msg) => 
+        //     msg.roomId === data.roomId &&
+        //     msg.senderId === data.senderId &&
+        //     msg.content === data.content
+        //   );
+
+        //   if(isDuplicate) {
+        //     const updateMessages = [...prevMessages, data];
+        //     console.log("Updated new Messages:::", updateMessages);
+        //     return updateMessages;
+        //   }
+        //   return prevMessages;
+        // });
+
         setMessages((prevMessages) => {
-          if (!prevMessages.find((msg) => msg._id === data._id)) {
-            return [...prevMessages, data];
+          // console.log("Previous Message:::", prevMessages);
+          if (!prevMessages.some((msg) => msg._id === data._id)) {
+            const updateMessages =  [...prevMessages, data];
+            console.log('Updated messages:::', updateMessages);
+            return updateMessages;
           }
           return prevMessages;
         });
       };
+
 
       socket.on("receive-message", handleReceiveMessage);
 
@@ -59,22 +82,73 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     }
   }, [selectedUser, currentUser]);
 
+  
+
   // Handle send message button
+  // const handleSendMessage = async () => {
+  //   if (!newMessage.trim()) return;
+
+  //   const messageData = {
+  //     roomId: [currentUser._id, selectedUser._id].sort().join("-"),
+  //     senderId: currentUser._id,
+  //     receiverId: selectedUser._id,
+  //     content: newMessage,
+  //   };
+
+  //   try {
+  //     // Emit message via socket.io
+  //     socket.emit("send-message", messageData);
+
+  //     // save the message to the database
+  //     const accessToken = localStorage.getItem("accessToken");
+  //     const response = await api.post("/api/messages/", messageData, {
+  //       headers: {
+  //         Authorization: `Bearer ${accessToken}`,
+  //       },
+  //     });
+
+  //     // Add the message locally iif it's not already present
+  //     // setMessages((prevMessages) => {
+  //     //   const isDuplicate = prevMessages.some((msg) => msg._id === response.data._id);
+  //     //   if (!isDuplicate) {
+  //     //     return [...prevMessages, response.data];
+  //     //   }
+  //     //   return prevMessages;
+  //     // });
+      
+  //     // setMessages((prevMessages) => {
+  //     //   console.log("Previous messages (before sending)::::", prevMessages);
+  //     //   if (!prevMessages.find((msg) => msg._id === response.data._id)) {
+  //     //     const updateMessages = [...prevMessages, response.data];
+  //     //     console.log("updated messages after sending:::", updateMessages);
+  //     //     return updateMessages;
+  //     //   }
+  //     //   return prevMessages;
+  //     // });
+  //     setNewMessage("");
+  //   } catch (error) {
+  //     console.error("Errro while sending message:", error);
+  //   }
+  // };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-
+    
+    const messageId = uuidv4();
     const messageData = {
+      _id: messageId,
       roomId: [currentUser._id, selectedUser._id].sort().join("-"),
       senderId: currentUser._id,
       receiverId: selectedUser._id,
       content: newMessage,
     };
-
+  
     try {
-      // Emit message via socket.io
+      setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
+      setNewMessage("");
+  
       socket.emit("send-message", messageData);
-
-      // save the message to the database
+  
       const accessToken = localStorage.getItem("accessToken");
       const response = await api.post("/api/messages/", messageData, {
         headers: {
@@ -82,23 +156,23 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         },
       });
 
-      // Add the message locally iif it's not already present
-      setMessages((prevMessages) => {
-        if (!prevMessages.find((msg) => msg._id === response.data._id)) {
-          return [...prevMessages, response.data];
-        }
-        return prevMessages;
-      });
-      // setMessages((prevMessages) => [...prevMessages, messageData]);
-      setNewMessage("");
+      // Update message with actual ID from server response
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === Date.now() ? { ...msg, _id: response.data._id } : msg
+        )
+      );
     } catch (error) {
-      console.error("Errro while sending message:", error);
+      console.error("Error while sending message:", error);
     }
   };
 
-  useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  
+  // useEffect(() => {
+  //   if(messages.length) {
+  //     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  //   }
+  // }, [messages]);
 
   // Helper: check if there's a 30 minute or more gap between two messages
   const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
@@ -143,7 +217,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
               {/* show timestamp if necessary */}
               {showTimeStamp && (
                 <div className="message-timestamp">
-                  {moment(message.createdAt).format("D MMM YYYY, HH:mm")}
+                  {moment(message.createdAt || Date.now()).format("D MMM YYYY, HH:mm")}
                 </div>
               )}
 
@@ -170,7 +244,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                 >
                   <p>{message.content}</p>
                 </div>
-                <div ref={messageEndRef}></div>
+                {/* <div ref={messageEndRef}></div> */}
             </div>
           );
         })}

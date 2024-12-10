@@ -5,6 +5,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import { fetchUserData } from "../component/userStore";
 import Sidebar from "../component/sidebar";
+import api from "../Api";
 
 import "../styles/dashboard.css";
 import ChatContainer from "../component/chatContainer";
@@ -32,7 +33,11 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      // await logout();
+      await api.post('/api/users/logout');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userInfo');
+      setUserInfo(null);
       toast.success("Logout successful!", {
         position: "top-right",
         autoClose: 2000,
@@ -91,6 +96,10 @@ const Dashboard = () => {
           </div>
           {/* Profile content goes here */}
           <p>Additional details about the current user...</p>
+          <button 
+            className="logout-btn"
+            onClick={handleLogout}
+          >Logout</button>
         </div>
         <button onClick={handleProfile}>Profile</button>
 

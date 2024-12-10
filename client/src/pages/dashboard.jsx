@@ -61,25 +61,41 @@ const Dashboard = () => {
       {/* <Navbar /> */}
 
       <div className="dashboard-container">
-        <div className="menu">
-
-        </div>
-        <Sidebar onUserSelect={selectedUser} setOnUserSelected={setSelectedUser} />
+        <div className="menu">---</div>
+        <Sidebar
+          onUserSelect={selectedUser}
+          setOnUserSelected={setSelectedUser}
+        />
         <ChatContainer selectedUser={selectedUser} currentUser={userInfo} />
-        {/* <div> */}
-          {/* <h1>Welcome to Your Dashboard {userInfo.username}</h1>
-        <button onClick={handleLogout}>Logout</button> */}
-          {/* Profile Info Container */}
-          <div className="profile-info">
-            <h3>Profile Info</h3>
-            {/* Profile content goes here */}
-            <p>Additional details about the current user...</p>
-          </div>
-          <button onClick={handleProfile}>Profile</button>
 
-          <ToastContainer />
+        {/* Profile Info Container */}
+        <div className="profile-info">
+          <div className="profile-pic">
+            {selectedUser && (
+              <div className="user-profile-pic">
+                {selectedUser.avatar ? (
+                  <img src={selectedUser.avatar} alt="" />
+                ) : (
+                  <span className="user-initial-char">
+                    {selectedUser.username.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="profile-user-name">
+            { selectedUser && (
+              <h3>{selectedUser.username}</h3>
+            )}
+          </div>
+          {/* Profile content goes here */}
+          <p>Additional details about the current user...</p>
         </div>
-      {/* </div> */}
+        <button onClick={handleProfile}>Profile</button>
+
+        <ToastContainer />
+      </div>
     </>
   );
 };

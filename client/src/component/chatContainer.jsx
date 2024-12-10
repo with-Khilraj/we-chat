@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import api from "../Api";
-import moment from 'moment';
+import moment from "moment";
 
 import "../styles/chatContainer.css";
 
@@ -13,7 +13,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const messageEndRef = useRef(null);
 
   useEffect(() => {
-
     if (selectedUser) {
       // Join a chat room
       const roomId = [currentUser._id, selectedUser._id].sort().join("-");
@@ -36,7 +35,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
       const handleReceiveMessage = (data) => {
         setMessages((prevMessages) => {
-          if(!prevMessages.find((msg) => msg._id === data._id)) {
+          if (!prevMessages.find((msg) => msg._id === data._id)) {
             return [...prevMessages, data];
           }
           return prevMessages;
@@ -46,7 +45,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       socket.on("receive-message", handleReceiveMessage);
 
       return () => {
-        socket.off('receive-message', handleReceiveMessage);
+        socket.off("receive-message", handleReceiveMessage);
       };
 
       // // listen for new messages
@@ -85,9 +84,9 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
       // Add the message locally iif it's not already present
       setMessages((prevMessages) => {
-        if(!prevMessages.find((msg) => msg._id === response.data._id)) {
+        if (!prevMessages.find((msg) => msg._id === response.data._id)) {
           return [...prevMessages, response.data];
-        };
+        }
         return prevMessages;
       });
       // setMessages((prevMessages) => [...prevMessages, messageData]);
@@ -103,7 +102,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
   // Helper: check if there's a 30 minute or more gap between two messages
   const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
-    if(!previousMessage) return true;
+    if (!previousMessage) return true;
 
     const currentTime = moment(currentMessage.createdAt);
     const previousTime = moment(previousMessage.createdAt);
@@ -131,27 +130,49 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
       <div className="chat-messages">
         {messages.map((message, index) => {
-          const previousMessage = message[index - 1];
-          const showTimeStamp = shouldDisplayTimeStamp(message, previousMessage);
+          const isCurrentUser = message.senderId === currentUser._id;
+          const senderUser = isCurrentUser ? currentUser : selectedUser;
+          const previousMessage = messages[index - 1];
+          const showTimeStamp = shouldDisplayTimeStamp(
+            message,
+            previousMessage
+          );
 
           return (
             <div key={index}>
               {/* show timestamp if necessary */}
               {showTimeStamp && (
                 <div className="message-timestamp">
-                  {moment(message.createAt).format("D MMM YYYY, HH:mm")}
+                  {moment(message.createdAt).format("D MMM YYYY, HH:mm")}
                 </div>
               )}
-              {/* Message bubble */}
-              <div
-                className = {`message ${
-                  message.senderId === currentUser._id ? "sent" : "received"
-                }`}
-              >
-                <p>{ message.content }</p>
+
+              <div className="avatar-content">
+                {/* Avatar or Initial char of username */}
+                {!isCurrentUser && (
+                  <div className="message-avatar">
+                    {senderUser.avatar ? (
+                      <img src={senderUser.avatar} alt="" />
+                    ) : (
+                      <span className="message-initial">
+                        {senderUser.username.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
+              
+                {/* Message bubble */}
+                <div
+                  className={`message ${
+                    message.senderId === currentUser._id ? "sent" : "received"
+                  }`}
+                >
+                  <p>{message.content}</p>
+                </div>
+                <div ref={messageEndRef}></div>
             </div>
-          )
+          );
         })}
       </div>
 

@@ -98,7 +98,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   }, [loggedInUser]);
 
     // Helper: turncate the message content
-    const truncateMessage = (content = "", maxLength = 20) => {
+    const truncateMessage = (content = "", maxLength = 25) => {
       return content.length > maxLength ? `${content.substring(0, maxLength)}...` : content;
     };
   
@@ -128,6 +128,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
       {/* Users List */}
       <div className="user-list">
         {filteredUsers.map((user) => (
+          console.log("Selected userId::::", onUserSelect?._id),
           <div
             key={user._id}
             className={`user-item ${

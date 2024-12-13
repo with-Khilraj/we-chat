@@ -39,17 +39,21 @@ app.use(cookiePaser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Sample routes
-app.get("/api", (req, res) => {
-  res.send("API is working!");
-});
-
+// routes
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes)
+
+// using Map to store online users
+const onlineUsers = new Map();
 
 // setup socket.io
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
+
+  socket.on('user-online', (userId) => {
+    onlineUsers.set(userId, socket.id);
+    io.emit('online-users', Array.from(onlineUsers.keys()));  // notify the clients about online users
+  })
 
   // Join a room for real-time chat
   socket.on("join-room", (roomId) => {
@@ -63,7 +67,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log("A user disconnected:", socket.id)
+    console.log("A user disconnected:", socket.id);
+    const userId = [...onlineUsers.entries()].find(
+      ([, socketId]) => socketId === socket.id)?.[0];
+    if(userId){
+      onlineUsers.delete(userId);
+    }
+    io.emit('online-users', Array.from(onlineUsers.keys()));
   });
 });
 

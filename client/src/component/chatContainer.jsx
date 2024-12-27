@@ -1,12 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import api from "../Api";
 import moment from "moment";
 import { v4 as uuidv4 } from 'uuid';
 
 import "../styles/chatContainer.css";
-
-const socket = io("http://localhost:5000"); // this is basically backend url
+import socket from "./socket";
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
@@ -36,22 +34,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
       const handleReceiveMessage = (data) => {
         console.log("New message received::", data);
-        
-        // setMessages((prevMessages) => {
-        // // check uniqueness based on the combination of the field
-        //   const isDuplicate = prevMessages.some((msg) => 
-        //     msg.roomId === data.roomId &&
-        //     msg.senderId === data.senderId &&
-        //     msg.content === data.content
-        //   );
-
-        //   if(isDuplicate) {
-        //     const updateMessages = [...prevMessages, data];
-        //     console.log("Updated new Messages:::", updateMessages);
-        //     return updateMessages;
-        //   }
-        //   return prevMessages;
-        // });
 
         setMessages((prevMessages) => {
           // console.log("Previous Message:::", prevMessages);
@@ -175,6 +157,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   // }, [messages]);
 
   // Helper: check if there's a 30 minute or more gap between two messages
+  
   const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
     if (!previousMessage) return true;
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { logout } from "../component/logout";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import { fetchUserData } from "../component/userStore";

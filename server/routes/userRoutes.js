@@ -292,16 +292,16 @@ router.get("/all", verifyAccessToken, async (req, res) => {
   }
 });
 
-// track online status of users
-router.get('/online-status', async (req, res) => {
-  try {
-    const users = User.find({}, 'username isOnline lastActive');
-    res.json(users);
-  } catch (error) {
-    console.error("Error fetching online statu:", error);
-    res.status(500).json({ error: "Internal server error"});
-  }
-})
+// // track online status of users
+// router.get('/online-status', async (req, res) => {
+//   try {
+//     const users = await User.find({}, "username isOnline lastActive");
+//     res.json(users);
+//   } catch (error) {
+//     console.error("Error fetching online status:", error);
+//     res.status(500).json({ error: "Internal server error"});
+//   }
+// })
 
 // Another Protected
 router.put("/update", verifyAccessToken, async (req, res) => {

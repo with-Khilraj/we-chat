@@ -43,60 +43,82 @@ app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
 
 // using Map to store online users
-// const onlineUsers = new Map();
+const onlineUsers = new Map();
 
 // setup socket.io
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
-  socket.on("user-online", async (userId) => {
+  // Join a room for real-time chat
+  socket.on("join-room", (roomId) => {
     try {
-      await User.findByIdAndUpdate(userId, {
-        isOnline: true,
-        lastActive: new Date(),
-      });
-      const onlineUsers = await User.find({ isOnline: true }).select("_id");
-      io.emit(
-        "online-users",
-        onlineUsers.map((user) => user._id)
-      );
+    socket.join(roomId);
+    console.log(`User joined room: ${roomId}`);
     } catch (error) {
-      console.error("Error updating user status:", error);
+      console.error(`Error joining room ${roomId}:`, error);
     }
   });
 
-  // Join a room for real-time chat
-  socket.on("join-room", (roomId) => {
-    socket.join(roomId);
-    console.log(`User joined room: ${roomId}`);
+  // leave a room for real-time chat
+  socket.on("leave-room", (roomId) => {
+    socket.leave(roomId);
+    console.log(`User left room: ${roomId}`);
   });
 
   // send a message
   socket.on("send-message", (data) => {
-    io.to(data.roomId).emit("receive-message", data);
+    try {
+      io.to(data.roomId).emit("receive-message", data);
+    } catch (error) {
+      console.error(`Error sending message to room ${data.roomId}:`, error);
+    }
+  });
+
+  socket.on("online-user", async (userId) => {
+    try {
+      // Update the user status in the database
+      await User.findByIdAndUpdate(userId, {
+        isOnline: true,
+        lastActive: new Date(),
+        socketId: socket.id,
+      });
+      console.log(`User ${userId} is now online.`);
+
+      // Add the user to the onlineUsers Map
+      onlineUsers.set(userId, socket.id);
+      onlineUsers.set(socket.id, userId);
+
+      //Emit only the newly online user
+      socket.broadcast.emit("userStatusChanged", { userId, isOnline: true });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+    }
+
   });
 
   socket.on("disconnect", async () => {
-    console.log("A user disconnected:", socket.id);
     try {
-      const userId = [...onlineUsers.entries()].find(
-        ([, socketId]) => socketId === socket.id
-      )?.[0];
+      const userId = onlineUsers.get(socket.id);
       if (userId) {
+        // Mark the user as offline when they disconnect
         await User.findByIdAndUpdate(userId, {
           isOnline: false,
           lastActive: new Date(),
         });
-        const onlineUsers = await User.find({ isOnline: true }).select("_id");
-        io.emit(
-          "online-users",
-          onlineUsers.map((user) => user._id)
-        );
+        console.log(`User disconnected: ${userId}`);
+
+        // Remove the association from memory
+        onlineUsers.delete(socket.id);
+        onlineUsers.delete(userId);
+
+        // Emit only the newly offline user
+        io.emit("userStatusChanged", { userId, isOnline: false });
       }
     } catch (error) {
-      console.error("Errro handling user disconnect:", error);
+      console.error("Error updating user status on disconnect:", error);
     }
   });
+
 });
 
 // Connect to MongoDB

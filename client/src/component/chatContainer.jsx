@@ -2,14 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 import api from "../Api";
 import moment from "moment";
 import { v4 as uuidv4 } from 'uuid';
-
 import "../styles/chatContainer.css";
 import socket from "./socket";
+import { useOnlineUsers } from "./onlineUsersContext";
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   // const messageEndRef = useRef(null);
+  const onlineUsers  = useOnlineUsers();
 
   useEffect(() => {
     if (selectedUser) {
@@ -182,8 +183,17 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           ) : (
             <span>{selectedUser.username.charAt(0).toUpperCase()}</span>
           )}
+          {onlineUsers.includes(selectedUser._id) && (
+            <span className="online-indicator"></span>
+          )}
         </div>
-        <h3 className="chat-username">{selectedUser.username}</h3>
+        <h3 className="chat-username">
+          {selectedUser.username}
+          <br></br>
+          {onlineUsers.includes(selectedUser._id) && (
+            <span className="online-status">Active now</span>
+          )}
+          </h3>
       </div>
 
       <div className="chat-messages">

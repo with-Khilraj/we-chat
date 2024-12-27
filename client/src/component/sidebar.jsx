@@ -64,14 +64,9 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
           fetchUserData(accessToken),
           fetchUserExceptCurrent(accessToken),
         ]);
-        if (userData.status === "fulfilled") {
-          setLoggedInUser(userData.value);
-          socket.emit("online-user", userData.value._id);
-        }
-
-        if (userList.status === "fulfilled") {
-          setUsers(userList.value);
-        }
+        setLoggedInUser(userData);
+        setUsers(userList);
+        socket.emit("online-user", userData._id);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {

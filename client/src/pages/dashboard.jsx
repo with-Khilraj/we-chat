@@ -5,7 +5,7 @@ import "react-toastify/ReactToastify.css";
 import { fetchUserData } from "../component/userStore";
 import Sidebar from "../component/sidebar";
 import api from "../Api";
-
+import socket from "../component/socket";
 import "../styles/dashboard.css";
 import ChatContainer from "../component/chatContainer";
 
@@ -22,6 +22,9 @@ const Dashboard = () => {
       try {
         const { username, _id } = await fetchUserData(accessToken);
         setUserInfo({ username, _id });
+
+        // Emit online user to server
+        socket.emit("online-user", _id);
       } catch (error) {
         console.log("Error fetching username:", error);
         setError(error.message); // Set error state here

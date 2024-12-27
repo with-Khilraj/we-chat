@@ -52,8 +52,8 @@ io.on("connection", (socket) => {
   // Join a room for real-time chat
   socket.on("join-room", (roomId) => {
     try {
-    socket.join(roomId);
-    console.log(`User joined room: ${roomId}`);
+      socket.join(roomId);
+      console.log(`User joined room: ${roomId}`);
     } catch (error) {
       console.error(`Error joining room ${roomId}:`, error);
     }
@@ -89,11 +89,14 @@ io.on("connection", (socket) => {
       onlineUsers.set(socket.id, userId);
 
       //Emit only the newly online user
-      socket.broadcast.emit("userStatusChanged", { userId, isOnline: true });
+      // io.emit("userStatusChanged", { userId, isOnline: true });
+      io.emit(
+        "onlineUsers",
+        Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
+      );
     } catch (error) {
       console.error("Error updating user status:", error);
     }
-
   });
 
   socket.on("disconnect", async () => {
@@ -112,13 +115,22 @@ io.on("connection", (socket) => {
         onlineUsers.delete(userId);
 
         // Emit only the newly offline user
-        io.emit("userStatusChanged", { userId, isOnline: false });
+        // io.emit("userStatusChanged", { userId, isOnline: false });
+        io.emit(
+          "onlineUsers",
+          Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
+        );
       }
     } catch (error) {
       console.error("Error updating user status on disconnect:", error);
     }
   });
 
+  // Emit the list of online users to the newly connected user
+  socket.emit(
+    "onlineUsers",
+    Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
+  );
 });
 
 // Connect to MongoDB

@@ -7,22 +7,35 @@ export const OnlineUsersProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
-    const handleUserStatusChanged = ({ userId, isOnline }) => {
-      setOnlineUsers((prevOnlineUsers) => {
-        if (isOnline) {
-          return [...new Set([...prevOnlineUsers, userId])];
-        } else {
-          return prevOnlineUsers.filter((id) => id !== userId);
-        }
-      });
+    const handleOnlineUsers = (users) => {
+      setOnlineUsers(users);
     };
 
-    socket.on('userStatusChanged', handleUserStatusChanged);
+    socket.on('onlineUsers', handleOnlineUsers);
 
     return () => {
-      socket.off('userStatusChanged', handleUserStatusChanged);
+      socket.off('onlineUsers', handleOnlineUsers);
     };
   }, []);
+
+
+  // useEffect(() => {
+  //   const handleUserStatusChanged = ({ userId, isOnline }) => {
+  //     setOnlineUsers((prevOnlineUsers) => {
+  //       if (isOnline) {
+  //         return [...new Set([...prevOnlineUsers, userId])];
+  //       } else {
+  //         return prevOnlineUsers.filter((id) => id !== userId);
+  //       }
+  //     });
+  //   };
+
+  //   socket.on('userStatusChanged', handleUserStatusChanged);
+
+  //   return () => {
+  //     socket.off('userStatusChanged', handleUserStatusChanged);
+  //   };
+  // }, []);
 
   return (
     <OnlineUsersContext.Provider value={(onlineUsers)}>

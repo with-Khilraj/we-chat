@@ -3,7 +3,8 @@ import "../styles/sidebar.css";
 import { fetchUserData, fetchUserExceptCurrent } from "./userStore";
 import api from "../Api";
 import socket from "./socket";
-import { debounce } from 'lodash';
+import { debounce } from "lodash";
+import { useOnlineUsers } from "./onlineUsersContext";
 
 const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   const [users, setUsers] = useState([]);
@@ -11,7 +12,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   const [recentMessages, setRecentMessages] = useState({});
   const [loggedInUser, setLoggedInUser] = useState("");
   const [loading, setLoading] = useState(true);
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const onlineUsers = useOnlineUsers();
 
   // useEffect(() => {
   //   const accessToken = localStorage.getItem("accessToken");
@@ -41,7 +42,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   //   getUserExceptCurrent();
   // }, []);
 
-
   // useEffect(() => {
   //   socket.emit('user-online', userId); // notify the server that this user is online
 
@@ -55,7 +55,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   //   }
   // }, [userId]);
 
-
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");
 
@@ -65,12 +64,14 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
           fetchUserData(accessToken),
           fetchUserExceptCurrent(accessToken),
         ]);
-        setLoggedInUser(userData);
-        setUsers(userList);
+        if (userData.status === "fulfilled") {
+          setLoggedInUser(userData.value);
+          socket.emit("online-user", userData.value._id);
+        }
 
-        // Notify the server that the logged-in user is online
-        socket.emit('online-user', userData._id);
-        console.log("Current logged-in active user::::", userData._id);
+        if (userList.status === "fulfilled") {
+          setUsers(userList.value);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -78,26 +79,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
       }
     };
     fetchData();
-
-    // Listen for updates to the online users list
-    // const handleActiveUsers = (activeUsers) => {
-    //   setOnlineUsers(activeUsers);
-    // }
-
-    const handleUserStatusChanged = ({ userId, isOnline}) => {
-      setOnlineUsers(prevOnlineUsers => {
-        if (isOnline) {
-          return [...new Set([...prevOnlineUsers, userId])];
-        } else {
-          return prevOnlineUsers.filter(uId => uId!== userId);
-        }
-      });
-    }
-    socket.on('userStatusChanged', handleUserStatusChanged);
-
-    return () => {
-      socket.off('userStatusChanged', handleUserStatusChanged);
-    }
   }, []);
 
   useEffect(() => {
@@ -139,27 +120,32 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     }
   }, [loggedInUser]);
 
-
-    // Helper: turncate the message content
-    const truncateMessage = (content = "", maxLength = 25) => {
-      return content.length > maxLength ? `${content.substring(0, maxLength)}...` : content;
-    };
-  
+  // Helper: turncate the message content
+  const truncateMessage = (content = "", maxLength = 25) => {
+    return content.length > maxLength
+      ? `${content.substring(0, maxLength)}...`
+      : content;
+  };
 
   // Filter users based on the search input
-  const filteredUsers = useMemo( () => {
+  const filteredUsers = useMemo(() => {
     return users.filter((user) =>
       user.username.toLowerCase().includes(search.toLowerCase())
     );
   }, [users, search]);
 
   // adding debounce to the search input
-  const debounceSetSearch = useMemo (
+  const debounceSetSearch = useMemo(
     () => debounce((value) => setSearch(value), 300),
     []
   );
 
-  
+  useEffect(() => {
+    return () => {
+      debounceSetSearch.cancel();
+    };
+  }, [debounceSetSearch]);
+
   if (loading) {
     return <div className="sidebar">Loading...</div>;
   }
@@ -196,19 +182,15 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
                 <span>{user.username.charAt(0).toUpperCase() || "U"}</span>
               )}
               {/* Oline Indicator */}
-              { onlineUsers.includes(user._id) && (
+              {onlineUsers.includes(user._id) && (
                 <span className="online-indicator"></span>
               )}
             </div>
             <div className="user-info">
-              <h4 className="user-name">
-                {user.username}
-              </h4>
+              <h4 className="user-name">{user.username}</h4>
               <p className="user-message">
-                { truncateMessage(recentMessages[user._id] ) || "No messages yet"}
+                {truncateMessage(recentMessages[user._id]) || "No messages yet"}
               </p>
-              
-              
             </div>
           </div>
         ))}

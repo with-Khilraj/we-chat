@@ -156,8 +156,9 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   //   }
   // }, [messages]);
 
+
+
   // Helper: check if there's a 30 minute or more gap between two messages
-  
   const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
     if (!previousMessage) return true;
 

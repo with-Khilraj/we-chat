@@ -5,12 +5,12 @@ import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
 import Sidebar from "./component/sidebar";
+import { OnlineUsersProvider } from "./component/onlineUsersContext";
 
-import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 const App = () => {
   // const [message, setMessage] = useState("");
-  
 
   // useEffect(() => {
   //   fetch("/api")
@@ -25,19 +25,21 @@ const App = () => {
   // }, []);
 
   return (
-    <Router>
-      <main>
-        <Routes>
-          <Route path="/" element= { <Home /> } />
-          <Route path="/login" element= { <Login /> } />
-          <Route path="/signup" element= { <Signup /> } />
-          <Route path="/dashboard" element= { <Dashboard /> } />
-          <Route path="/profile" element= { <Profile />} />
-          <Route path="/sidebar" element= {<Sidebar /> } />
-        </Routes>
-      </main>
-    </Router>
+    <OnlineUsersProvider>
+      <Router>
+        <main>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/sidebar" element={<Sidebar />} />
+          </Routes>
+        </main>
+      </Router>
+    </OnlineUsersProvider>
   );
-}
+};
 
 export default App;

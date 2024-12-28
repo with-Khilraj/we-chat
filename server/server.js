@@ -33,6 +33,8 @@ app.use(
   })
 );
 
+app.set('io', io);
+
 // Middelware
 app.use(cookiePaser());
 app.use(express.json());
@@ -75,6 +77,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("online-user", async (userId) => {
+    socket.join(userId);
     try {
       // Update the user status in the database
       await User.findByIdAndUpdate(userId, {
@@ -88,8 +91,7 @@ io.on("connection", (socket) => {
       onlineUsers.set(userId, socket.id);
       onlineUsers.set(socket.id, userId);
 
-      //Emit only the newly online user
-      // io.emit("userStatusChanged", { userId, isOnline: true });
+      //Emit the updated online users list to all the connected users
       io.emit(
         "onlineUsers",
         Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
@@ -116,6 +118,8 @@ io.on("connection", (socket) => {
 
         // Emit only the newly offline user
         // io.emit("userStatusChanged", { userId, isOnline: false });
+
+      //Emit the updated online users list to all the connected users
         io.emit(
           "onlineUsers",
           Array.from(onlineUsers.keys()).filter((key) => key.length === 24)

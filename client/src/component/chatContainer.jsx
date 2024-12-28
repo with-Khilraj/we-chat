@@ -4,12 +4,12 @@ import moment from "moment";
 import { v4 as uuidv4 } from 'uuid';
 import "../styles/chatContainer.css";
 import socket from "./socket";
-import { useOnlineUsers } from "./onlineUsersContext";
+import { useOnlineUsers } from "../context/onlineUsersContext";
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  // const messageEndRef = useRef(null);
+  const messageEndRef = useRef(null);
   const onlineUsers  = useOnlineUsers();
 
   useEffect(() => {
@@ -151,11 +151,11 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   };
 
   
-  // useEffect(() => {
-  //   if(messages.length) {
-  //     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  //   }
-  // }, [messages]);
+  useEffect(() => {
+    if(messages.length) {
+      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
 
 
@@ -238,7 +238,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                 >
                   <p>{message.content}</p>
                 </div>
-                {/* <div ref={messageEndRef}></div> */}
+                <div ref={messageEndRef}></div>
             </div>
           );
         })}

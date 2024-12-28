@@ -5,7 +5,7 @@ import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
 import Sidebar from "./component/sidebar";
-import { OnlineUsersProvider } from "./component/onlineUsersContext";
+import { OnlineUsersProvider } from ".//context/onlineUsersContext";
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 

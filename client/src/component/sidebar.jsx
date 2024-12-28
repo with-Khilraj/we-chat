@@ -4,7 +4,7 @@ import { fetchUserData, fetchUserExceptCurrent } from "./userStore";
 import api from "../Api";
 import socket from "./socket";
 import { debounce } from "lodash";
-import { useOnlineUsers } from "./onlineUsersContext";
+import { useOnlineUsers } from "../context/onlineUsersContext";
 
 const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   const [users, setUsers] = useState([]);
@@ -76,46 +76,94 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     fetchData();
   }, []);
 
+  // function to update the recent messages
+  const updateRecentMessages = (newMessages) => {
+    setRecentMessages((prevMessages) => {
+      const updateMessages = { ...prevMessages };
+      newMessages.forEach((message) => {
+        const senderID = message.senderId.toString();
+        const displayMessage =
+          senderID === loggedInUser._id.toString()
+            ? `You: ${message.message}`
+            : message.message;
+          updateMessages[message.userId] = displayMessage;
+      });
+      return updateMessages;
+    });
+  };
+
   useEffect(() => {
-    if (loggedInUser) {
-      // Fetch recent messages for each user
+    if(loggedInUser) {
       const fetchRecentMessages = async () => {
         try {
-          const accessToken = localStorage.getItem("accessToken");
+          const accessToken = localStorage.getItem('accessToken');
           const response = await api.get("/api/messages/recent-messages", {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
+              'Authorization': `Bearer ${accessToken}`,
+            }
           });
 
-          console.log("API Response:::", response.data);
-
-          // store the recent messages for each user
-          const messages = response.data.recentMessages.reduce(
-            (acc, message) => {
-              // console.log("Messages Structure:::", message);
-              const senderID = message.senderId.toString(); // converting objectId into string
-
-              const displayMessage =
-                senderID === loggedInUser._id.toString()
-                  ? `You: ${message.message}`
-                  : message.message;
-              acc[message.userId] = displayMessage; // store the formatte message content for the user
-              return acc;
-            },
-            {}
-          );
-
-          setRecentMessages(messages);
+          updateRecentMessages(response.data.recentMessages);
         } catch (error) {
-          console.error("Error fetching recent messages:", error);
+          console.error(`Error fetching recent messages: ${error}`)
         }
       };
       fetchRecentMessages();
+
+      // listen for new messages
+      socket.on("new_message", (message) => {
+        updateRecentMessages([message]);
+      });
+
+      // clean up the socket listener whe the component unmounts
+      return () => {
+        socket.off("new_message");
+      }
     }
   }, [loggedInUser]);
 
+  // useEffect(() => {
+  //   if (loggedInUser) {
+  //     // Fetch recent messages for each user
+  //     const fetchRecentMessages = async () => {
+  //       try {
+  //         const accessToken = localStorage.getItem("accessToken");
+  //         const response = await api.get("/api/messages/recent-messages", {
+  //           headers: {
+  //             Authorization: `Bearer ${accessToken}`,
+  //           },
+  //         });
+
+  //         console.log("API Response:::", response.data);
+
+  //         // store the recent messages for each user
+  //         const messages = response.data.recentMessages.reduce(
+  //           (acc, message) => {
+  //             // console.log("Messages Structure:::", message);
+  //             const senderID = message.senderId.toString(); // converting objectId into string
+
+  //             const displayMessage =
+  //               senderID === loggedInUser._id.toString()
+  //                 ? `You: ${message.message}`
+  //                 : message.message;
+  //             acc[message.userId] = displayMessage; // store the formatte message content for the user
+  //             return acc;
+  //           },
+  //           {}
+  //         );
+
+  //         setRecentMessages(messages);
+  //       } catch (error) {
+  //         console.error("Error fetching recent messages:", error);
+  //       }
+  //     };
+  //     fetchRecentMessages();
+  //   }
+  // }, [loggedInUser]);
+
   // Helper: turncate the message content
+  
+  
   const truncateMessage = (content = "", maxLength = 25) => {
     return content.length > maxLength
       ? `${content.substring(0, maxLength)}...`

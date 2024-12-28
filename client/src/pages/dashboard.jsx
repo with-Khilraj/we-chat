@@ -23,7 +23,7 @@ const Dashboard = () => {
         const { username, _id } = await fetchUserData(accessToken);
         setUserInfo({ username, _id });
 
-        // Emit online user to server
+        // Emit online status to server
         socket.emit("online-user", _id);
       } catch (error) {
         console.log("Error fetching username:", error);

@@ -15,28 +15,37 @@ router.post("/", verifyAccessToken, async (req, res) => {
   }
 
   try {
-
     const newMessage = new Messaage({
       roomId,
       senderId: req.user.id,
       receiverId,
       content,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
     const savedMessage = await newMessage.save();
     res.status(201).json({ message: savedMessage });
+
+    //emit 'new_message' event whenever a new message is sent
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("new_message", {
+        userId: receiverId,
+        senderId: req.user.id,
+        message: content,
+      });
+    } else {
+      console.warn("Socket.IO instance not found");
+    }
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-
 const mongoose = require("mongoose");
 
 router.get("/recent-messages", verifyAccessToken, async (req, res) => {
-
-  //  IDs are stored as ObjectId in the database, we need to ensure that the loggedInUserId 
+  //  IDs are stored as ObjectId in the database, we need to ensure that the loggedInUserId
   // is passed as ObjectId (not a string) in the aggregation pipeline for matching.
 
   try {
@@ -62,7 +71,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
               "$senderId", // If receiver, group by senderId
             ],
           },
-          senderId: { $first: "$senderId"},
+          senderId: { $first: "$senderId" },
           message: { $first: "$content" }, // Get the most recent message
           createdAt: { $first: "$createdAt" }, // Get the most recent timestamp
         },

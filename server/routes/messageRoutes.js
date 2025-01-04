@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Messaage = require("../models/Message");
+const mongoose = require("mongoose");
 const verifyAccessToken = require("../middlewares/authMiddleware");
 
 // send message
@@ -20,10 +21,10 @@ router.post("/", verifyAccessToken, async (req, res) => {
       senderId: req.user.id,
       receiverId,
       content,
+      lastMessageTimestamp: new Date(),
       createdAt: new Date(),
     });
     const savedMessage = await newMessage.save();
-    res.status(201).json({ message: savedMessage });
 
     //emit 'new_message' event whenever a new message is sent
     const io = req.app.get("io");
@@ -32,17 +33,18 @@ router.post("/", verifyAccessToken, async (req, res) => {
         userId: receiverId,
         senderId: req.user.id,
         message: content,
+        lastMessageTimestamp: savedMessage.lastMessageTimestamp,
       });
     } else {
       console.warn("Socket.IO instance not found");
     }
+
+    res.status(201).json({ message: savedMessage });
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-const mongoose = require("mongoose");
 
 router.get("/recent-messages", verifyAccessToken, async (req, res) => {
   //  IDs are stored as ObjectId in the database, we need to ensure that the loggedInUserId
@@ -60,7 +62,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
         },
       },
       {
-        $sort: { createdAt: -1 }, // Sort messages by the most recent timestamp
+        $sort: { lastMessageTimestamp: -1 }, // Sort messages by the most recent timestamp
       },
       {
         $group: {
@@ -73,7 +75,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
           },
           senderId: { $first: "$senderId" },
           message: { $first: "$content" }, // Get the most recent message
-          createdAt: { $first: "$createdAt" }, // Get the most recent timestamp
+          lastMessageTimestamp: { $first: "$lastMessageTimestamp" }, // Get the most recent timestamp
         },
       },
       {
@@ -94,11 +96,11 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
           senderId: 1,
           username: "$userInfo.username",
           message: 1,
-          createdAt: 1,
+          lastMessageTimestamp: 1,
         },
       },
       {
-        $sort: { createdAt: -1 }, // Optional: Sort conversations by most recent message
+        $sort: { lastMessageTimestamp: -1 }, // Optional: Sort conversations by most recent message
       },
     ]);
 
@@ -150,6 +152,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
 // OTHER USE (roomId) TO FETCH ALL THE MESSAGES BETWEEN TWO USERS.
 
 // get all messages between two users
+
 router.get("/:receiverId", verifyAccessToken, async (req, res) => {
   const { receiverId } = req.params;
 

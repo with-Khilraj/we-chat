@@ -18,6 +18,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    lastMessageTimestamp: {
+      type: Date,
+      default: Date.now
+    }
   },
   { timestamps: true }  // adds createdAt and updatedAt fields
 );

@@ -79,7 +79,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     fetchData();
   }, []);
 
-
   // function to update the recent messages
   const updateRecentMessages = useCallback(
     (newMessages) => {
@@ -106,7 +105,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     [loggedInUser?._id]
   );
 
-
   useEffect(() => {
     if (loggedInUser) {
       const fetchRecentMessages = async () => {
@@ -127,8 +125,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     }
   }, [loggedInUser, updateRecentMessages]);
 
-
-
   // useEffect for the socket events
   useEffect(() => {
     const handleNewMessage = (message) => {
@@ -144,15 +140,12 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     };
   }, [updateRecentMessages]);
 
-
-
-  // Helper: turncate the message content 
+  // Helper: turncate the message content
   const truncateMessage = (content = "", maxLength = 25) => {
     return content.length > maxLength
       ? `${content.substring(0, maxLength)}...`
       : content;
   };
-
 
   // Filter users based on the search input and sort the chat list based on the timestamp
   const filteredUsers = useMemo(() => {
@@ -167,6 +160,36 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
       });
   }, [users, search, recentMessages]);
 
+  // take a timestamp and return a formatted string based on the time difference
+  const formatTimestamp = (timestamp) => {
+    const now = new Date();
+    const messageTimestamp = new Date(timestamp);
+    const diffInSeconds = Math.abs(now - messageTimestamp) / 1000;
+
+    const intervals = {
+      week: 604800,
+      day: 86400,
+      hour: 3600,
+      minute: 60,
+    };
+
+    // calcutate the time difference in weeks, day, hours and minutes
+    if (diffInSeconds >= intervals.week) {
+      const weeks = Math.floor(diffInSeconds / intervals.week);
+      return `${weeks}w`;
+    } else if (diffInSeconds >= intervals.day) {
+      const days = Math.floor(diffInSeconds / intervals.day);
+      return `${days}d`;
+    } else if (diffInSeconds >= intervals.hour) {
+      const hours = Math.floor(diffInSeconds / intervals.hour);
+      return `${hours}h`;
+    } else if (diffInSeconds >= intervals.minute) {
+      const minutes = Math.floor(diffInSeconds / intervals.minute);
+      return `${minutes}m`;
+    } else {
+      return "just now";
+    }
+  };
 
   // adding debounce to the search input
   const debounceSetSearch = useMemo(
@@ -180,7 +203,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     };
   }, [debounceSetSearch]);
 
-  
   // handling the logout event
   const handleLogout = async () => {
     try {
@@ -270,20 +292,17 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
                 </div>
                 <div className="user-info">
                   <h4 className="user-name">{user.username}</h4>
-                  <p className="user-message">
-                    {truncateMessage(recentMessages[user._id]?.message) ||
-                      "No messages yet"}
-                  </p>
-                  {recentMessages[user._id] && (
-                    <span className="message-timestamp">
-                      {new Date(
-                        recentMessages[user._id].timestamp
-                      ).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  )}
+                  <div className="user-message-container">
+                    <p className="user-message">
+                      {truncateMessage(recentMessages[user._id]?.message) ||
+                        "No messages yet"}
+                    </p>
+                    {recentMessages[user._id] && (
+                      <span className="message-timestamp">
+                        {formatTimestamp(recentMessages[user._id].timestamp)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))

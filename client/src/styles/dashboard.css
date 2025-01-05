@@ -73,10 +73,11 @@
 
 .sidebar .user-item:hover {
   background-color: rgb(237, 222, 252);
+  /* background-color: rgba(57, 57, 209, 0.13); */
 }
 
 .sidebar .user-item.selected {
-  background-color: rgba(69, 69, 211, 0.1);
+  background-color: rgba(57, 57, 209, 0.13);
 }
 
 

@@ -79,6 +79,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     fetchData();
   }, []);
 
+
   // function to update the recent messages
   const updateRecentMessages = useCallback(
     (newMessages) => {
@@ -86,17 +87,25 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
         const updatedMessages = { ...prevMessages };
         newMessages.forEach((message) => {
           const senderID = message.senderId.toString();
+          const receiverID = message.userId.toString(); // userId = receiverId
+          const otherUserID =
+            senderID === loggedInUser._id.toString() ? receiverID : senderID;
           const displayMessage =
             senderID === loggedInUser._id.toString()
               ? `You: ${message.message}`
               : message.message;
-          updatedMessages[message.userId] = displayMessage;
+          updatedMessages[otherUserID] = {
+            message: displayMessage,
+            timestamp: new Date(message.lastMessageTimestamp).getTime(),
+          };
+          // updatedMessages[message.userId] = displayMessage;
         });
         return updatedMessages;
       });
     },
     [loggedInUser?._id]
   );
+
 
   useEffect(() => {
     if (loggedInUser) {
@@ -119,13 +128,14 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   }, [loggedInUser, updateRecentMessages]);
 
 
+
+  // useEffect for the socket events
   useEffect(() => {
     const handleNewMessage = (message) => {
       updateRecentMessages([message]);
     };
 
-    // lis
-    // ten for new messages
+    // listen for new messages
     socket.on("new_message", handleNewMessage);
 
     // clean up the socket listener whe the component unmounts
@@ -134,60 +144,29 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     };
   }, [updateRecentMessages]);
 
-  // useEffect(() => {
-  //   if (loggedInUser) {
-  //     // Fetch recent messages for each user
-  //     const fetchRecentMessages = async () => {
-  //       try {
-  //         const accessToken = localStorage.getItem("accessToken");
-  //         const response = await api.get("/api/messages/recent-messages", {
-  //           headers: {
-  //             Authorization: `Bearer ${accessToken}`,
-  //           },
-  //         });
-
-  //         console.log("API Response:::", response.data);
-
-  //         // store the recent messages for each user
-  //         const messages = response.data.recentMessages.reduce(
-  //           (acc, message) => {
-  //             // console.log("Messages Structure:::", message);
-  //             const senderID = message.senderId.toString(); // converting objectId into string
-
-  //             const displayMessage =
-  //               senderID === loggedInUser._id.toString()
-  //                 ? `You: ${message.message}`
-  //                 : message.message;
-  //             acc[message.userId] = displayMessage; // store the formatte message content for the user
-  //             return acc;
-  //           },
-  //           {}
-  //         );
-
-  //         setRecentMessages(messages);
-  //       } catch (error) {
-  //         console.error("Error fetching recent messages:", error);
-  //       }
-  //     };
-  //     fetchRecentMessages();
-  //   }
-  // }, [loggedInUser]);
-
-  // Helper: turncate the message content
 
 
+  // Helper: turncate the message content 
   const truncateMessage = (content = "", maxLength = 25) => {
     return content.length > maxLength
       ? `${content.substring(0, maxLength)}...`
       : content;
   };
 
-  // Filter users based on the search input
+
+  // Filter users based on the search input and sort the chat list based on the timestamp
   const filteredUsers = useMemo(() => {
-    return users.filter((user) =>
-      user.username.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [users, search]);
+    return users
+      .filter((user) =>
+        user.username.toLowerCase().includes(search.toLowerCase())
+      )
+      .sort((a, b) => {
+        const timeA = recentMessages[a._id]?.timestamp || 0;
+        const timeB = recentMessages[b._id]?.timestamp || 0;
+        return timeB - timeA;
+      });
+  }, [users, search, recentMessages]);
+
 
   // adding debounce to the search input
   const debounceSetSearch = useMemo(
@@ -201,7 +180,8 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     };
   }, [debounceSetSearch]);
 
-
+  
+  // handling the logout event
   const handleLogout = async () => {
     try {
       // await logout();
@@ -269,7 +249,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
         <div className="user-list">
           {filteredUsers.length > 0 ? (
             filteredUsers.map((user) => (
-              // console.log("Selected userId::::", onUserSelect?._id)
               <div
                 key={user._id}
                 className={`user-item ${
@@ -292,9 +271,19 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
                 <div className="user-info">
                   <h4 className="user-name">{user.username}</h4>
                   <p className="user-message">
-                    {truncateMessage(recentMessages[user._id]) ||
+                    {truncateMessage(recentMessages[user._id]?.message) ||
                       "No messages yet"}
                   </p>
+                  {recentMessages[user._id] && (
+                    <span className="message-timestamp">
+                      {new Date(
+                        recentMessages[user._id].timestamp
+                      ).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
                 </div>
               </div>
             ))

@@ -54,6 +54,15 @@
   background-color: #f0f2f5; /* Light background similar to Messenger */
 }
 
+.chat-container .message-group {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.chat-container .message-group.received {
+  display: inline-block;
+}
+
 
 .chat-container .message {
   margin: 5px 0;
@@ -75,8 +84,7 @@
   margin: 0;
 }
 
-.message.sent {
-  /* align-self: flex-end; */
+.chat-container .message.sent {
   background: linear-gradient(140deg, rgb(255, 87, 87), rgb(53, 53, 210));
   color: white;
   justify-self: flex-end;
@@ -84,7 +92,7 @@
   margin: 0;
 }
 
-.message.received {
+.chat-container .message.received {
   /* background: linear-gradient(210deg, rgb(255, 87, 87), rgb(53, 53, 210) ); */
   color: white;
   display: inline-block;
@@ -102,9 +110,11 @@
 }
 
 .avatar-content {
-  display: inline-block;
+  /* display: inline-block; */
   gap: 10px;
+  align-self: flex-end;
 }
+
 
 .message-avatar img {
   width: 40px;

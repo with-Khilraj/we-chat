@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "../Api";
 import moment from "moment";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import "../styles/chatContainer.css";
 import socket from "./socket";
 import { useOnlineUsers } from "../context/onlineUsersContext";
@@ -10,7 +10,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messageEndRef = useRef(null);
-  const onlineUsers  = useOnlineUsers();
+  const onlineUsers = useOnlineUsers();
 
   useEffect(() => {
     if (selectedUser) {
@@ -39,14 +39,13 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         setMessages((prevMessages) => {
           // console.log("Previous Message:::", prevMessages);
           if (!prevMessages.some((msg) => msg._id === data._id)) {
-            const updateMessages =  [...prevMessages, data];
-            console.log('Updated messages:::', updateMessages);
+            const updateMessages = [...prevMessages, data];
+            console.log("Updated messages:::", updateMessages);
             return updateMessages;
           }
           return prevMessages;
         });
       };
-
 
       socket.on("receive-message", handleReceiveMessage);
 
@@ -64,8 +63,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       // });
     }
   }, [selectedUser, currentUser]);
-
-  
 
   // Handle send message button
   // const handleSendMessage = async () => {
@@ -98,7 +95,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   //     //   }
   //     //   return prevMessages;
   //     // });
-      
+
   //     // setMessages((prevMessages) => {
   //     //   console.log("Previous messages (before sending)::::", prevMessages);
   //     //   if (!prevMessages.find((msg) => msg._id === response.data._id)) {
@@ -116,7 +113,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-    
+
     const messageId = uuidv4();
     const messageData = {
       _id: messageId,
@@ -125,13 +122,13 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       receiverId: selectedUser._id,
       content: newMessage,
     };
-  
+
     try {
       setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
       setNewMessage("");
-  
+
       socket.emit("send-message", messageData);
-  
+
       const accessToken = localStorage.getItem("accessToken");
       const response = await api.post("/api/messages/", messageData, {
         headers: {
@@ -150,14 +147,11 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     }
   };
 
-  
   useEffect(() => {
-    if(messages.length) {
+    if (messages.length) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
-
-
 
   // Helper: check if there's a 30 minute or more gap between two messages
   const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
@@ -166,6 +160,19 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     const currentTime = moment(currentMessage.createdAt);
     const previousTime = moment(previousMessage.createdAt);
     return currentTime.diff(previousTime, "minutes") >= 30;
+  };
+
+  // Helper: check if a message should start a new group
+  const shouldStartNewGroup = (currentMessage, previousMessage) => {
+    if (!previousMessage) return true;
+
+    const currentTime = moment(currentMessage.createdAt);
+    const previousTime = moment(previousMessage.createdAt);
+
+    return (
+      currentMessage.senderId !== previousMessage.senderId ||
+      currentTime.diff(previousTime, "minutes") >= 1
+    );
   };
 
   if (!selectedUser) {
@@ -193,7 +200,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           {onlineUsers.includes(selectedUser._id) && (
             <span className="online-status">Active now</span>
           )}
-          </h3>
+        </h3>
       </div>
 
       <div className="chat-messages">
@@ -205,40 +212,50 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             message,
             previousMessage
           );
+          const startNewGroup = shouldStartNewGroup(message, previousMessage);
 
           return (
             <div key={index}>
               {/* show timestamp if necessary */}
               {showTimeStamp && (
                 <div className="message-timestamp">
-                  {moment(message.createdAt || Date.now()).format("D MMM YYYY, HH:mm")}
+                  {moment(message.createdAt || Date.now()).format(
+                    "D MMM YYYY, HH:mm"
+                  )}
                 </div>
               )}
 
-              <div className="avatar-content">
-                {/* Avatar or Initial char of username */}
-                {!isCurrentUser && (
-                  <div className="message-avatar">
-                    {senderUser.avatar ? (
-                      <img src={senderUser.avatar} alt="" />
-                    ) : (
-                      <span className="message-initial">
-                        {senderUser.username.charAt(0).toUpperCase()}
-                      </span>
-                    )}
+              <div
+                className={`message-group ${
+                  isCurrentUser ? "sent" : "received"
+                }`}
+              >
+                {!isCurrentUser && startNewGroup && (
+                  <div className="avatar-content">
+                    {/* Avatar or Initial char of username */}
+                    <div className="message-avatar">
+                      {senderUser.avatar ? (
+                        <img src={senderUser.avatar} alt="" />
+                      ) : (
+                        <span className="message-initial">
+                          {senderUser.username.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-              
-                {/* Message bubble */}
-                <div
-                  className={`message ${
-                    message.senderId === currentUser._id ? "sent" : "received"
-                  }`}
-                >
-                  <p>{message.content}</p>
-                </div>
-                <div ref={messageEndRef}></div>
+
+              {/* Message bubble */}
+              <div
+                className={`message ${
+                  message.senderId === currentUser._id ? "sent" : "received"
+                }`}
+              >
+                <p>{message.content}</p>
+              </div>
+
+              <div ref={messageEndRef}></div>
             </div>
           );
         })}

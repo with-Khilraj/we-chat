@@ -208,9 +208,10 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           const isCurrentUser = message.senderId === currentUser._id;
           const senderUser = isCurrentUser ? currentUser : selectedUser;
           const previousMessage = messages[index - 1];
+          // const nextMessage = messages[index + 1];
           const showTimeStamp = shouldDisplayTimeStamp(
             message,
-            previousMessage
+            previousMessage,
           );
           const startNewGroup = shouldStartNewGroup(message, previousMessage);
 
@@ -246,7 +247,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                 )}
               </div>
 
-              {/* Message bubble */}
+              {/* Message abubble */}
               <div
                 className={`message ${
                   message.senderId === currentUser._id ? "sent" : "received"

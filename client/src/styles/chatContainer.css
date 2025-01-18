@@ -1,23 +1,25 @@
-.chat-header h3 {
-  margin: 0;
-  line-height: 1.1rem;
-}
-
 .chat-container .chat-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 10px 25px;
+  padding: 8px 25px;
   /* border-bottom: 1px solid #ccc; */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
 }
 
+.user-profile-name {
+  display: flex;
+  flex-direction: row;
+}
+
 .chat-container .chat-avatar {
-  width: 50px;
-  height: 50px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   background-color: #ddd;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
   font-size: 16px;
@@ -25,12 +27,21 @@
   position: relative;
 }
 
+.chat-header h3 {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1rem;
+  margin: 0;
+}
+
 .online-indicator {
   position: absolute;
   bottom: 3px;
   right: 4px;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   background-color: green;
   border-radius: 50%;
   border: 2px solid white;
@@ -41,6 +52,35 @@
   margin-top: 0;
   color: #606060;
 
+}
+
+.chat-call-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.video-call-icon,
+.audio-call-icon,
+.info-icon {
+  border: none;
+  background-color: transparent;
+}
+
+.info-icon {
+  margin-left: 20px;
+  filter: drop-shadow(10px -15px 5px rgba(0, 0, 0, 0.2));
+
+}
+
+.video-call-icon img,
+.audio-call-icon img,
+.info-icon img {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .chat-container .chat-messages {
@@ -158,7 +198,8 @@
   padding: 15px;
   border-top: 1px solid #ccc;
   gap: 10px;
-  background-color: #fff
+  background-color: #fff;
+  border-radius: 10px;
 }
 
 .chat-input input {

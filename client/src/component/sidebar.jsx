@@ -15,10 +15,11 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   const [recentMessages, setRecentMessages] = useState({});
   const [loggedInUser, setLoggedInUser] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isDropupOpen, setIsDropupOpen] = useState(false);
   const onlineUsers = useOnlineUsers();
   const navigate = useNavigate();
   const dropupRef = useRef(null);
+  const moreMenuRef = useRef(null);
+  const [isDropupOpen, setIsDropupOpen] = useState(false);
 
   // useEffect(() => {
   //   const accessToken = localStorage.getItem("accessToken");
@@ -215,7 +216,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
       localStorage.clear();
 
       // update the local state
-      setLoggedInUser(null);
+      // setLoggedInUser(null);
 
       // clear recent messages
       setRecentMessages({});
@@ -237,9 +238,17 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
       });
     }
   };
+    
+  const toggleDropup = (event) => {
+    event.stopPropagation();
+    setIsDropupOpen((prev) => !prev);
+  }
+
 
   const handleClickOutside = useCallback((event) => {
-    if(dropupRef.current && !dropupRef.current.contains(event.target)) {
+    if(dropupRef.current && 
+      !dropupRef.current.contains(event.target) &&
+      !moreMenuRef.current.contains(event.target)) {
       setIsDropupOpen(false);
     }
   }, []);
@@ -251,9 +260,6 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
     }
   }, [handleClickOutside]);
 
-  const toggleDropup = () => {
-    setIsDropupOpen(!isDropupOpen);
-  }
 
   if (loading) {
     return <div className="sidebar">Loading...</div>;
@@ -270,19 +276,16 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
             <span>{loggedInUser?.username.charAt(0).toUpperCase() || "U"}</span>
           )}
         </div>
-        <div className="more-menu" onClick={toggleDropup}>
+        <div className="more-menu" onClick={toggleDropup} ref={moreMenuRef}>
           <img className="more-menu-img" src={menu} alt="more" />
         </div>
-        <div ref={dropupRef} className= {`dropup-menu ${isDropupOpen ? 'open' : ''}`} >
+          <div ref={dropupRef} className= {`dropup-menu ${isDropupOpen ? 'open' : ''}`} >
           <ul>
             <li onClick={() => navigate('')}>Settings</li>
             <li onClick={() => navigate('')}>Report a problem</li>
             <li onClick={handleLogout}>Logout</li>
           </ul>
         </div>
-        {/* <button className="logout-btn" onClick={handleLogout}>
-          Logout
-        </button> */}
       </div>
 
       <div className="sidebar">

@@ -5,6 +5,9 @@ import { v4 as uuidv4 } from "uuid";
 import "../styles/chatContainer.css";
 import socket from "./socket";
 import { useOnlineUsers } from "../context/onlineUsersContext";
+import audio_call from "../assets/call.png";
+import video_call from "../assets/video-camera.png";
+import info_icon from "../assets/info.png";
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
@@ -184,23 +187,38 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <div className="chat-avatar">
-          {selectedUser.avatar ? (
-            <img src={selectedUser.avatar} alt="" />
-          ) : (
-            <span>{selectedUser.username.charAt(0).toUpperCase()}</span>
-          )}
-          {onlineUsers.includes(selectedUser._id) && (
-            <span className="online-indicator"></span>
-          )}
+        <div className="user-profile-name">
+          <div className="chat-avatar">
+            {selectedUser.avatar ? (
+              <img src={selectedUser.avatar} alt="" />
+            ) : (
+              <span>{selectedUser.username.charAt(0).toUpperCase()}</span>
+            )}
+            {onlineUsers.includes(selectedUser._id) && (
+              <span className="online-indicator"></span>
+            )}
+          </div>
+          <h3 className="chat-username">
+            {selectedUser.username}
+            <br></br>
+            {onlineUsers.includes(selectedUser._id) && (
+              <span className="online-status">Active now</span>
+            )}
+          </h3>
         </div>
-        <h3 className="chat-username">
-          {selectedUser.username}
-          <br></br>
-          {onlineUsers.includes(selectedUser._id) && (
-            <span className="online-status">Active now</span>
-          )}
-        </h3>
+
+        {/* adding video and audio call icons */}
+        <div className="chat-call-icons">
+          <button className="video-call-icon">
+            <img src={video_call} alt="" />
+          </button>
+          <button className="audio-call-icon">
+            <img src={audio_call} alt="" />
+          </button>
+          <button className="info-icon">
+            <img src={info_icon} alt="" />
+          </button>
+        </div>
       </div>
 
       <div className="chat-messages">

@@ -90,7 +90,7 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
         const updatedMessages = { ...prevMessages };
         newMessages.forEach((message) => {
           const senderID = message.senderId.toString();
-          const receiverID = message.userId.toString(); // userId = receiverId
+          const receiverID = message.receiverId.toString(); // userId = receiverId
           const otherUserID =
             senderID === loggedInUser._id.toString() ? receiverID : senderID;
           const displayMessage =

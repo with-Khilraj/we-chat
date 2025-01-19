@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const validator = require('validator');
 
 const messageSchema = new mongoose.Schema(
   {
@@ -14,9 +15,67 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+    messageType: {
+      type: String,
+      enum: ['text', 'file', 'audio', 'video', 'photo'],
+      required: true,
+      default: 'text'
+    },
     content: {
       type: String,
-      required: true
+      required: function() { return this.messageType === 'text' },
+    },
+    fileUrl: {
+      type: String,
+      required: function() { return this.messageType !== 'text';},
+      validate: {
+        validator: function(v) {
+          // return /^https?:\/\//.test(v);
+          return this.validator.isURL(v, { protocols: ['http', 'https'], require_protocol: true });
+        },
+        message: props => `${props.value} is not a valid URL`
+      }
+    },
+    fileName: {
+      type: String,
+      required: function() { return this.messageType !== 'text'}
+    },
+    fileSize: {
+      type: Number,
+      required: function() { return this.messageType !== 'text';},
+      min: 0,
+      max: 10485760 // 10MB limit (adjust as needed)
+    },
+    fileType: {
+      type: String,
+      required: function() { return this.messageType !== 'text'; },
+      enum: ['image/jpeg', 'image/png', 'video/mp4', 'audio/mpeg', 'application/pdf']
+    },
+    duration: {
+      type: Number,
+      required: function() { return this.messageType === 'audio' || this.messageType === 'video';},
+      // { return ['audio', 'video'].includes(this.messageType);}
+      min: 0,
+      max: 1800 // half hour limit (adjust as needed)
+    },
+    thumbnailUrl: {
+      type: String,
+      required: function() { return this.messageType === 'photo' || this.messageType === 'video'; },
+      validate: {
+        validator: function(v) {
+          return validator.isURL(v, { protocols: ['http', 'https'], require_protocol: true });
+        },
+        message: props => `${props.value} is not a valid URL`
+      }
+    },
+    status: {
+      type: String,
+      enum: ['sent', 'delivered', 'read'],
+      default: 'sent'
+    },
+    caption: {
+      type: String,
+      required: false
     },
     lastMessageTimestamp: {
       type: Date,
@@ -25,5 +84,10 @@ const messageSchema = new mongoose.Schema(
   },
   { timestamps: true }  // adds createdAt and updatedAt fields
 );
+
+// Indexes for better query performance
+messageSchema.index({ roomId: 1 });
+messageSchema.index({ senderId: 1 });
+messageSchema.index({ receiverId: 1 });
 
 module.exports = mongoose.model("Message", messageSchema);

@@ -2,17 +2,64 @@ const express = require("express");
 const router = express.Router();
 const Messaage = require("../models/Message");
 const mongoose = require("mongoose");
+const multer = require("multer");
+const upload = multer();
 const verifyAccessToken = require("../middlewares/authMiddleware");
 
 // send message
-router.post("/", verifyAccessToken, async (req, res) => {
-  const { roomId, receiverId, content } = req.body;
+router.post("/", verifyAccessToken, upload.none(), async (req, res) => {
+  // const { roomId, receiverId, content, messageType, fileUrl, fileName, fileSize, fileType, duration } = req.body;
+  const {
+    roomId,
+    receiverId,
+    content,
+    messageType,
+    fileUrl,
+    fileName,
+    fileSize,
+    fileType,
+    duration,
+    thumbnailUrl,
+    caption,
+    status,
+  } = req.body;
+
   console.log("Request Body:", req.body);
 
-  if (!receiverId || !content) {
+   // Validate receiverId is a valid MongoDB ObjectId
+   if (!mongoose.Types.ObjectId.isValid(receiverId)) {
+    return res.status(400).json({ error: "Invalid receiverId" });
+  }
+
+  //  Validate required fields based on messageType
+  if (!roomId || !receiverId || !messageType) {
     return res
       .status(400)
-      .json({ error: "All fields are required to send message" });
+      .json({ error: "receiverId is required to send message" });
+  }
+
+  if (messageType === "text" && !content) {
+    return res.status(400).json({ error: "content is required for text messages" });
+  }
+
+  if (messageType !== "text") {
+    if (!fileUrl || !fileSize || !fileType) {
+      return res
+        .status(400)
+        .json({ error: "fileUrl, fileSize, and fileType are required for non-text messages" });
+    }
+
+    if ((messageType === "file" || messageType === "photo") && !fileName) {
+      return res.status(400).json({ error: "fileName is required for file messages" });
+    }
+
+    if ((messageType === "audio" || messageType === "video") && !duration) {
+      return res.status(400).json({ error: "duration is required for audio and video messages" });
+    }
+
+    if((messageType === "photo" || messageType === "video") && !thumbnailUrl) {
+      return res.status(400).json({error: "thumbnailUrl is required for photo and video message"});
+    }
   }
 
   try {
@@ -20,7 +67,17 @@ router.post("/", verifyAccessToken, async (req, res) => {
       roomId,
       senderId: req.user.id,
       receiverId,
-      content,
+      // content,
+      content: messageType === "text" ? content : null,
+      messageType,
+      fileUrl,
+      fileName,
+      fileSize,
+      fileType,
+      duration,
+      thumbnailUrl,
+      caption,
+      status,
       lastMessageTimestamp: new Date(),
       createdAt: new Date(),
     });
@@ -30,9 +87,12 @@ router.post("/", verifyAccessToken, async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       io.emit("new_message", {
-        userId: receiverId,
+        receiverId: receiverId,
         senderId: req.user.id,
-        message: content,
+        message: content || fileUrl,
+        messageType: savedMessage.messageType,
+        fileType: savedMessage.fileType,
+        thumbnailUrl: savedMessage.thumbnailUrl,
         lastMessageTimestamp: savedMessage.lastMessageTimestamp,
       });
     } else {
@@ -75,6 +135,10 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
           },
           senderId: { $first: "$senderId" },
           message: { $first: "$content" }, // Get the most recent message
+          fileUrl: { $first: "$fileUrl" },
+          fileType: { $first: "$fileType" },
+          messageType: { $first: "$messageType" },
+          thumbnailUrl: { $first: "$thumbnailUrl" },
           lastMessageTimestamp: { $first: "$lastMessageTimestamp" }, // Get the most recent timestamp
         },
       },
@@ -92,10 +156,14 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
       {
         $project: {
           _id: 0, // Exclude default MongoDB ID
-          userId: "$_id",
+          receiverId: "$_id",
           senderId: 1,
           username: "$userInfo.username",
           message: 1,
+          fileUrl: 1,
+          fileType: 1,
+          messageType: 1,
+          thumbnailUrl: 1,
           lastMessageTimestamp: 1,
         },
       },

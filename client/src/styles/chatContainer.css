@@ -211,6 +211,11 @@
   outline: none;
 }
 
+.chat-input img {
+  width: 15px;
+  height: 15px;
+}
+
 .chat-input button {
   padding: 10px 15px;
   background-color: #0084ff;

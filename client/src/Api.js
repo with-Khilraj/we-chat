@@ -23,7 +23,7 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
     console.log("API Error:", error.response);
     if (
       error.response?.status === 403 &&
@@ -48,7 +48,7 @@ api.interceptors.response.use(
         console.error("Failed to refresh token:",refreshError);
         // Handle logout or redirect to the login page
         localStorage.removeItem('accessToken')
-        navigate('/login');
+        // navigate('/login');
         return Promise.reject(refreshError);
       }
     }

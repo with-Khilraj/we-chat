@@ -4,7 +4,6 @@ const validator = require('validator');
 const messageSchema = new mongoose.Schema(
   {
     roomId: { type: String, required: true },
-    
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -18,7 +17,6 @@ const messageSchema = new mongoose.Schema(
     messageType: {
       type: String,
       enum: ['text', 'file', 'audio', 'video', 'photo'],
-      required: true,
       default: 'text'
     },
     content: {
@@ -27,11 +25,19 @@ const messageSchema = new mongoose.Schema(
     },
     fileUrl: {
       type: String,
-      required: function() { return this.messageType !== 'text';},
+      required: function() { return this.messageType !== 'text'; },
       validate: {
         validator: function(v) {
+          // skip the validation if the fileUrl is undefined or null
+          if (v == null) {
+            return true;
+          }
+          // skip validation on base64 URL
+          if (typeof v === 'string' && v.startsWith('data:')) {
+            return true;
+          }
           // return /^https?:\/\//.test(v);
-          return this.validator.isURL(v, { protocols: ['http', 'https'], require_protocol: true });
+          return validator.isURL(v, { protocols: ['http', 'https'], require_protocol: true });
         },
         message: props => `${props.value} is not a valid URL`
       }
@@ -54,20 +60,10 @@ const messageSchema = new mongoose.Schema(
     duration: {
       type: Number,
       required: function() { return this.messageType === 'audio' || this.messageType === 'video';},
-      // { return ['audio', 'video'].includes(this.messageType);}
       min: 0,
       max: 1800 // half hour limit (adjust as needed)
     },
-    thumbnailUrl: {
-      type: String,
-      required: function() { return this.messageType === 'photo' || this.messageType === 'video'; },
-      validate: {
-        validator: function(v) {
-          return validator.isURL(v, { protocols: ['http', 'https'], require_protocol: true });
-        },
-        message: props => `${props.value} is not a valid URL`
-      }
-    },
+    
     status: {
       type: String,
       enum: ['sent', 'delivered', 'read'],

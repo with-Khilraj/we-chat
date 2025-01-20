@@ -185,7 +185,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         messageType = "audio";
       } else if (fileToSend.type.startsWith("video")) {
         messageType = "video";
-      } else if (fileToSend.type.startsWith("image")) {
+      } else if (fileToSend.type.startsWith("photo")) {
         messageType = "photo";
       } else {
         messageType = "file";
@@ -206,8 +206,8 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       duration: messageType === "audio" || messageType === "video"
       ? await getMediaDuration(fileToSend)
       : 0, // Calculate duration for audio/video files
-      thumbnailUrl: messageType === "photo" || messageType === "video"
-      ? await generateThumbnail(fileToSend) : "",
+      // thumbnailUrl: messageType === "photo" || messageType === "video"
+      // ? await generateThumbnail(fileToSend) : "",
       // caption: caption || "",
       status: "sent",
     };
@@ -240,7 +240,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         formData.append("fileSize", messageData.fileSize);
         formData.append("fileType", messageData.fileType);
         if (messageData.duration) formData.append("duration", messageData.duration);
-        if (messageData.thumbnailUrl) formData.append("thumbnailUrl", messageData.thumbnailUrl);
+        // if (messageData.thumbnailUrl) formData.append("thumbnailUrl", messageData.thumbnailUrl);
       }
 
       
@@ -286,23 +286,23 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   };
 
   // Helper function to generate a thumbnail (for photo and video)
-  const generateThumbnail = (file) => {
-    return new Promise((resolve) => {
-      if (file.type.startsWith === "image") {
-        resolve(URL.createObjectURL(file)); // Use the image itself as the thumbnail
-      } else if (file.type.startsWith === "video") {
-        const video = document.createElement("video");
-        video.src = URL.createObjectURL(file);
-        video.onloadeddata = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg"));
-        };
-      }
-    });
-  };
+  // const generateThumbnail = (file) => {
+  //   return new Promise((resolve) => {
+  //     if (file.type.startsWith === "image") {
+  //       resolve(URL.createObjectURL(file)); // Use the image itself as the thumbnail
+  //     } else if (file.type.startsWith === "video") {
+  //       const video = document.createElement("video");
+  //       video.src = URL.createObjectURL(file);
+  //       video.onloadeddata = () => {
+  //         const canvas = document.createElement("canvas");
+  //         canvas.width = video.videoWidth;
+  //         canvas.height = video.videoHeight;
+  //         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  //         resolve(canvas.toDataURL("image/jpeg"));
+  //       };
+  //     }
+  //   });
+  // };
   
   useEffect(() => {
     if (messages.length) {
@@ -432,19 +432,19 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                   {message.messageType === "photo" && (
                     <div>
                       <img src={message.fileUrl} alt={message.fileName} className="media-message" />
-                      {message.caption && <p className="caption">{message.caption}</p>}
+                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "video" && (
                     <div>
                       <video controls src={message.fileUrl} className="media-message" />
-                      {message.caption && <p className="caption">{message.caption}</p>}
+                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "audio" && (
                     <div>
                       <audio controls src={message.fileUrl} className="media-message" />
-                      {message.caption && <p className="caption">{message.caption}</p>}
+                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "file" && (
@@ -452,7 +452,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                       <a href={message.fileUrl} download={message.fileName}>
                         {message.fileName}
                       </a>
-                      {message.caption && <p className="caption">{message.caption}</p>}
+                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                 </div>

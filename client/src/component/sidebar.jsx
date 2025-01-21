@@ -3,7 +3,7 @@ import "../styles/sidebar.css";
 import { fetchUserData, fetchUserExceptCurrent } from "./userStore";
 import api from "../Api";
 import socket from "./socket";
-import { debounce, drop } from "lodash";
+import { debounce, } from "lodash";
 import { useOnlineUsers } from "../context/onlineUsersContext";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -93,10 +93,30 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
           const receiverID = message.receiverId.toString(); // userId = receiverId
           const otherUserID =
             senderID === loggedInUser._id.toString() ? receiverID : senderID;
-          const displayMessage =
-            senderID === loggedInUser._id.toString()
-              ? `You: ${message.message}`
-              : message.message;
+
+            // Determine the display message based on the messageType
+            let displayMessage;
+            console.log("Message content::::", message.status);
+            if(message.messageType === 'text') {
+              const messageContent = message.content || "";
+              displayMessage =
+                senderID === loggedInUser._id.toString()
+                  ? `You: ${messageContent}`
+                  : messageContent;
+            } else {
+              const messageTypeMap = {
+                "photo": 'a photo',
+                "video": 'a video',
+                "file": 'a file',
+                "audio": 'an audio',
+              };
+              const messageTypeText = messageTypeMap[message.messageType];
+              displayMessage =
+                senderID === loggedInUser._id.toString()
+                ? `You sent ${messageTypeText}`
+                : `sent you ${messageTypeText}`;
+            }
+          
           updatedMessages[otherUserID] = {
             message: displayMessage,
             timestamp: new Date(message.lastMessageTimestamp).getTime(),

@@ -17,7 +17,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [file, setFile] = useState(null);
-  // const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -29,7 +28,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
   useEffect(() => {
     if (selectedUser) {
-      // Join a chat room
       const roomId = [currentUser._id, selectedUser._id].sort().join("-");
       socket.emit("join-room", roomId);
 
@@ -168,14 +166,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       return;
     }
 
-    if (!selectedUser) {
-      setError("No user selected. Please select a user to send a message.");
-      return;
-    }
-
-    console.log("Selected user: ", selectedUser);
-    console.log("Selected user ID: ", selectedUser._id);
-
     const messageId = uuidv4();
 
     // Determine messageType based on whether a file is being sent
@@ -185,7 +175,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         messageType = "audio";
       } else if (fileToSend.type.startsWith("video")) {
         messageType = "video";
-      } else if (fileToSend.type.startsWith("photo")) {
+      } else if (fileToSend.type.startsWith("image")) {
         messageType = "photo";
       } else {
         messageType = "file";
@@ -206,9 +196,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       duration: messageType === "audio" || messageType === "video"
       ? await getMediaDuration(fileToSend)
       : 0, // Calculate duration for audio/video files
-      // thumbnailUrl: messageType === "photo" || messageType === "video"
-      // ? await generateThumbnail(fileToSend) : "",
-      // caption: caption || "",
       status: "sent",
     };
 
@@ -240,15 +227,8 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         formData.append("fileSize", messageData.fileSize);
         formData.append("fileType", messageData.fileType);
         if (messageData.duration) formData.append("duration", messageData.duration);
-        // if (messageData.thumbnailUrl) formData.append("thumbnailUrl", messageData.thumbnailUrl);
       }
-
       
-      formData.forEach((value, key) => {
-        console.log(key, value);
-      });
-      
-
       // Send message to server
       const response = await api.post("/api/messages/", formData, {
         headers: {
@@ -426,30 +406,28 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                     message.senderId === currentUser._id ? "sent" : "received"
                   }`}
                 >
-                  {/* <p>{message.content}</p> */}
-
-                  {message.messageType === "text" && <p>{message.content}</p>}
+                  {message.messageType === "text" && <p className="text-message">{message.content}</p>}
                   {message.messageType === "photo" && (
-                    <div>
+                    <div className="for-photo">
                       <img src={message.fileUrl} alt={message.fileName} className="media-message" />
                       {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "video" && (
                     <div>
-                      <video controls src={message.fileUrl} className="media-message" />
+                      <video controls src={message.fileUrl} className="video-message" />
                       {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "audio" && (
                     <div>
-                      <audio controls src={message.fileUrl} className="media-message" />
+                      <audio controls src={message.fileUrl} className="audio-message" />
                       {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "file" && (
                     <div>
-                      <a href={message.fileUrl} download={message.fileName}>
+                      <a href={message.fileUrl} download={message.fileName} className="file-message">
                         {message.fileName}
                       </a>
                       {/* {message.caption && <p className="caption">{message.caption}</p>} */}

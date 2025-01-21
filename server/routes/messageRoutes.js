@@ -3,16 +3,13 @@ const router = express.Router();
 const Message = require("../models/Message");
 const mongoose = require("mongoose");
 const multer = require("multer");
-// const upload = multer();
 const verifyAccessToken = require("../middlewares/authMiddleware");
 
 const storage = multer.memoryStorage();
-
 const upload = multer({ storage: storage });
 
 // send message
 router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
-  // const { roomId, receiverId, content, messageType, fileUrl, fileName, fileSize, fileType, duration } = req.body;
   const {
     roomId,
     receiverId,
@@ -70,7 +67,6 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
       roomId,
       senderId: req.user.id,
       receiverId,
-      // content,
       content: messageType === "text" ? content : null,
       messageType,
       fileUrl,
@@ -104,6 +100,9 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
     res.status(201).json({ message: savedMessage });
   } catch (error) {
     console.error("Error sending message:", error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: error.message });
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 });

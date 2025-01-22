@@ -12,7 +12,6 @@ const Dashboard = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
-  // const navigate = useNavigate();
 
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");

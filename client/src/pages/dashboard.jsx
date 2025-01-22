@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import { fetchUserData } from "../component/userStore";
@@ -31,24 +30,18 @@ const Dashboard = () => {
     getUserData();
   }, []);
 
-
-
   if (error) return <div>Error: {error}</div>; // Show error if present
   if (!userInfo) return <div>Loading...</div>; // Show loading message if data is not yet available
 
   return (
     <>
-      {/* <Navbar /> */}
-
       <div className="dashboard-container">
         <Sidebar
           selectedUser={selectedUser}
           setSelectedUser={setSelectedUser}
         />
+        
         <ChatContainer selectedUser={selectedUser} currentUser={userInfo} />
-
-
-        {/* <button onClick={handleProfile}>Profile</button> */}
 
         <ToastContainer />
       </div>

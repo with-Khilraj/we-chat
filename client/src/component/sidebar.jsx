@@ -96,14 +96,13 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
 
             // Determine the display message based on the messageType
             let displayMessage;
-            console.log("Message content::::", message.status);
             if(message.messageType === 'text') {
               const messageContent = message.content || "";
               displayMessage =
                 senderID === loggedInUser._id.toString()
                   ? `You: ${messageContent}`
                   : messageContent;
-            } else {
+            } else if (message.messageType) {
               const messageTypeMap = {
                 "photo": 'a photo',
                 "video": 'a video',
@@ -114,7 +113,9 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
               displayMessage =
                 senderID === loggedInUser._id.toString()
                 ? `You sent ${messageTypeText}`
-                : `sent you ${messageTypeText}`;
+                : `Sent you ${messageTypeText}`;
+            } else {
+              displayMessage = 'New message';
             }
           
           updatedMessages[otherUserID] = {

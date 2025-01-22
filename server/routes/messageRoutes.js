@@ -87,6 +87,7 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
       io.emit("new_message", {
         receiverId: receiverId,
         senderId: req.user.id,
+        content: content,
         message: content || fileUrl,
         messageType: savedMessage.messageType,
         fileType: savedMessage.fileType,

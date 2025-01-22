@@ -22,6 +22,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunk, setAudioChunk] = useState([]);
   const [error, setError] = useState("");
+  const [showProfileInfo, setShowProfileInfo] = useState(false);
   const messageEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const onlineUsers = useOnlineUsers();
@@ -72,7 +73,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   // hande file input change
   const handleFileInputChange = (e) => {
     const selectedFile = e.target.files[0];
-    if(selectedFile) {
+    if (selectedFile) {
       setFile(selectedFile);
       handleSendMessage(selectedFile);
     } else {
@@ -89,7 +90,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const handleAudioRecording = async () => {
     if (!isRecording) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true});
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const recorder = new MediaRecorder(stream);
         setMediaRecorder(recorder);
 
@@ -100,7 +101,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         recorder.onstop = async () => {
           const audioBlob = new Blob(audioChunk, { type: "audio/wav" });
           setFile(audioBlob);
-         
+
           handleSendMessage(audioBlob);
           setAudioChunk([]);
         };
@@ -194,8 +195,8 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       fileSize: fileToSend ? fileToSend.size : 0,
       fileType: fileToSend ? fileToSend.type : "",
       duration: messageType === "audio" || messageType === "video"
-      ? await getMediaDuration(fileToSend)
-      : 0, // Calculate duration for audio/video files
+        ? await getMediaDuration(fileToSend)
+        : 0, // Calculate duration for audio/video files
       status: "sent",
     };
 
@@ -209,10 +210,10 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
       socket.emit("send-message", messageData);
 
-      const accessToken = localStorage.getItem("accessToken");    
+      const accessToken = localStorage.getItem("accessToken");
       const formData = new FormData();
 
-       // Append only required fields to FormData
+      // Append only required fields to FormData
       formData.append("roomId", messageData.roomId);
       formData.append("senderId", messageData.senderId);
       formData.append("receiverId", messageData.receiverId); // Explicitly append receiverId
@@ -228,7 +229,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         formData.append("fileType", messageData.fileType);
         if (messageData.duration) formData.append("duration", messageData.duration);
       }
-      
+
       // Send message to server
       const response = await api.post("/api/messages/", formData, {
         headers: {
@@ -254,8 +255,8 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     }
   };
 
-   // Get duration of audio/video files
-   const getMediaDuration = (file) => {
+  // Get duration of audio/video files
+  const getMediaDuration = (file) => {
     return new Promise((resolve) => {
       const media = document.createElement(file.type.startsWith("audio") ? "audio" : "video");
       media.src = URL.createObjectURL(file);
@@ -283,7 +284,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   //     }
   //   });
   // };
-  
+
   useEffect(() => {
     if (messages.length) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -312,6 +313,15 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     );
   };
 
+  
+  // handle profile info change
+  const toggleProfileInfo = () => {
+    setShowProfileInfo(!showProfileInfo);
+  }
+
+  // adding class to the chat-container based on the state of the showProfileInfo
+  const chatContainerClass = showProfileInfo ? 'chat-container shrink' : 'chat-container';
+
   if (!selectedUser) {
     return (
       <div className="unselected-chat">Select a user to start chatting!</div>
@@ -319,92 +329,91 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   }
 
   return (
-    <div className="chat-container">
-      <div className="chat-header">
-        <div className="user-profile-name">
-          <div className="chat-avatar">
-            {selectedUser.avatar ? (
-              <img src={selectedUser.avatar} alt="" />
-            ) : (
-              <span>{selectedUser.username.charAt(0).toUpperCase()}</span>
-            )}
-            {onlineUsers.includes(selectedUser._id) && (
-              <span className="online-indicator"></span>
-            )}
-          </div>
-          <h3 className="chat-username">
-            {selectedUser.username}
-            <br></br>
-            {onlineUsers.includes(selectedUser._id) && (
-              <span className="online-status">Active now</span>
-            )}
-          </h3>
-        </div>
-
-        {/* adding video and audio call icons */}
-        <div className="chat-call-icons">
-          <button className="video-call-icon">
-            <img src={video_call} alt="" />
-          </button>
-          <button className="audio-call-icon">
-            <img src={audio_call} alt="" />
-          </button>
-          <button className="info-icon">
-            <img src={info_icon} alt="" />
-          </button>
-        </div>
-      </div>
-      
-      <div className="chat-messages">
-        {messages.map((message, index) => {
-          const isCurrentUser = message.senderId === currentUser._id;
-          const senderUser = isCurrentUser ? currentUser : selectedUser;
-          const previousMessage = messages[index - 1];
-          // const nextMessage = messages[index + 1];
-          const showTimeStamp = shouldDisplayTimeStamp(
-            message,
-            previousMessage,
-          );
-          const startNewGroup = shouldStartNewGroup(message, previousMessage);
-
-          return (
-            <div key={index}>
-              {/* show timestamp if necessary */}
-              {showTimeStamp && (
-                <div className="message-timestamp">
-                  {moment(message.createdAt || Date.now()).format(
-                    "D MMM YYYY, HH:mm"
-                  )}
-                </div>
+    <>
+      <div className={chatContainerClass}>
+        <div className="chat-header">
+          <div className="user-profile-name">
+            <div className="chat-avatar">
+              {selectedUser.avatar ? (
+                <img src={selectedUser.avatar} alt="" />
+              ) : (
+                <span>{selectedUser.username.charAt(0).toUpperCase()}</span>
               )}
+              {onlineUsers.includes(selectedUser._id) && (
+                <span className="online-indicator"></span>
+              )}
+            </div>
+            <h3 className="chat-username">
+              {selectedUser.username}
+              <br></br>
+              {onlineUsers.includes(selectedUser._id) && (
+                <span className="online-status">Active now</span>
+              )}
+            </h3>
+          </div>
 
-              <div
-                className={`message-group ${
-                  isCurrentUser ? "sent" : "received"
-                }`}
-              >
-                {!isCurrentUser && startNewGroup && (
-                  <div className="avatar-content">
-                    {/* Avatar or Initial char of username */}
-                    <div className="message-avatar">
-                      {senderUser.avatar ? (
-                        <img src={senderUser.avatar} alt="" />
-                      ) : (
-                        <span className="message-initial">
-                          {senderUser.username.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
+          {/* adding video and audio call icons */}
+          <div className="chat-call-icons">
+            <button className="video-call-icon">
+              <img src={video_call} alt="" />
+            </button>
+            <button className="audio-call-icon">
+              <img src={audio_call} alt="" />
+            </button>
+            <button className="info-icon" onClick={toggleProfileInfo}>
+              <img src={info_icon} alt="" />
+            </button>
+          </div>
+        </div>
+
+        <div className="chat-messages">
+          {messages.map((message, index) => {
+            const isCurrentUser = message.senderId === currentUser._id;
+            const senderUser = isCurrentUser ? currentUser : selectedUser;
+            const previousMessage = messages[index - 1];
+            // const nextMessage = messages[index + 1];
+            const showTimeStamp = shouldDisplayTimeStamp(
+              message,
+              previousMessage,
+            );
+            const startNewGroup = shouldStartNewGroup(message, previousMessage);
+
+            return (
+              <div key={index}>
+                {/* show timestamp if necessary */}
+                {showTimeStamp && (
+                  <div className="message-timestamp">
+                    {moment(message.createdAt || Date.now()).format(
+                      "D MMM YYYY, HH:mm"
+                    )}
                   </div>
                 )}
 
-              </div>
-              
+                <div
+                  className={`message-group ${isCurrentUser ? "sent" : "received"
+                    }`}
+                >
+                  {!isCurrentUser && startNewGroup && (
+                    <div className="avatar-content">
+                      {/* Avatar or Initial char of username */}
+                      <div className="message-avatar">
+                        {senderUser.avatar ? (
+                          <img src={senderUser.avatar} alt="" />
+                        ) : (
+                          <span className="message-initial">
+                            {senderUser.username.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
                 {/* Message abubble */}
                 <div
-                  className={`message ${
-                    message.senderId === currentUser._id ? "sent" : "received"
-                  }`}
+                  className={`message ${message.senderId === currentUser._id ? "sent" : "received"
+                    }`}
                 >
                   {message.messageType === "text" && <p className="text-message">{message.content}</p>}
                   {message.messageType === "photo" && (
@@ -435,51 +444,72 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                   )}
                 </div>
 
-            </div>
-          );
-        })}
-        <div ref={messageEndRef}></div>
+              </div>
+            );
+          })}
+          <div ref={messageEndRef}></div>
 
-      </div>
-
-      {/* message input */}
-      <div className="chat-input">
-        <div className="media-icons">
-          <button onClick={handleMediaClick}>
-          <img src={media_icon} alt="Media" />
-          </button>
-          {/* Icon for audio (if needed) */}
-          <button onClick={handleAudioRecording}>
-            <img src={audio_icon} alt="Audio" />
-          </button>
         </div>
 
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type your message..."
-        />
-         {/* <input
-          type="text"
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="Add a caption..."
-        /> */}
-        <button onClick={handleSendMessage} disabled= {isUploading}>
-          {isUploading ? "Sending" : "Send"}
-        </button>
+        {/* message input */}
+        <div className="chat-input">
+          <div className="media-icons">
+            <button onClick={handleMediaClick}>
+              <img src={media_icon} alt="Media" />
+            </button>
+            {/* Icon for audio (if needed) */}
+            <button onClick={handleAudioRecording}>
+              <img src={audio_icon} alt="Audio" />
+            </button>
+          </div>
 
-        {/* Hidden file input for media (photos, videos, files) */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          onChange={handleFileInputChange}
-          accept="image/*, video/*, .pdf, .doc, .docx" // Allow photos, videos, and files
-        />
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+          />
+         
+          <button onClick={handleSendMessage} disabled={isUploading}>
+            {isUploading ? "Sending" : "Send"}
+          </button>
+
+          {/* Hidden file input for media (photos, videos, files) */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            onChange={handleFileInputChange}
+            accept="image/*, video/*, .pdf, .doc, .docx" // Allow photos, videos, and files
+          />
+        </div>
       </div>
-    </div>
+
+      {/* Profile Info Container */}
+      <div className={`profile-info ${showProfileInfo ? 'show' : ''}`}>
+        <div className="profile-pic">
+          {selectedUser && (
+            <div className="user-profile-pic">
+              {selectedUser.avatar ? (
+                <img src={selectedUser.avatar} alt="" />
+              ) : (
+                <span className="user-initial-char">
+                  {selectedUser.username.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="profile-user-name">
+          {selectedUser && (
+            <h3>{selectedUser.username}</h3>
+          )}
+        </div>
+        {/* Profile content goes here */}
+        <p>Additional details about the current user...</p>
+      </div>
+    </>
   );
 };
 

@@ -9,7 +9,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import menu from '../assets/menu.png';
 
-const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
+const Sidebar = ({ selectedUser, setSelectedUser }) => {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [recentMessages, setRecentMessages] = useState({});
@@ -327,9 +327,9 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
               <div
                 key={user._id}
                 className={`user-item ${
-                  onUserSelect?._id === user._id ? "selected" : ""
+                  selectedUser?._id === user._id ? "selected" : ""
                 }`}
-                onClick={() => setOnUserSelected(user)} // passing selected user
+                onClick={() => setSelectedUser(user)} // passing selected user
               >
                 <div className="user-avatar">
                   {/* Display initials or profile image */}
@@ -368,4 +368,4 @@ const Sidebar = ({ onUserSelect, setOnUserSelected }) => {
   );
 };
 
-export default Sidebar;
+export default Sidebar

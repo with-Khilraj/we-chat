@@ -8,6 +8,12 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     isOnline: { type: Boolean, default: false },
     lastActive: { type: Date, default: null },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailverificationOTP: String,
+    OTPExprires: Date,
   },
   { timestamps: true }
 );

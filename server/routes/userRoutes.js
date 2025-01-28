@@ -4,14 +4,14 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const verifyAccessToken = require("../middlewares/authMiddleware");
 const RefreshToken = require("../models/refreshTokens");
+const sendVerificationOTP = require('../emailConfig')
 
 const router = express.Router();
 
-// Generate Access and Refresh Token
-
+// Generate Access and Refresh Token - For Authentication
 const generateToken = (user) => {
   const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "2d",
+    expiresIn: "5h",
   });
   const refreshToken = jwt.sign(
     { id: user._id },
@@ -22,6 +22,10 @@ const generateToken = (user) => {
   return { accessToken, refreshToken };
 };
 
+// Generate  6 digits OTP 
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 // Signup Route
 router.post("/signup", async (req, res) => {
@@ -41,21 +45,89 @@ router.post("/signup", async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate email verification token for Email Verification only
+    const otp = generateOTP();
+
     // Create a new user
     const newUser = new User({
       email,
       username,
       phone,
-      password: hashedPassword,
+      password: hashedPassword, 
+      emailverificationOTP: otp,
+      OTPExprires: Date.now() + 10 * 60 * 1000, // valid for 10 minutes
+      isEmailVerified: false,
     });
 
     await newUser.save();
 
-    res.status(201).json({ message: "User registered successfully" });
+    // send verification email
+    await sendVerificationOTP(email, otp);
+
+    res.status(201).json({ message: "{ Please check your email to verify your account }" });
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+// verify OTP route
+router.post("/verify-otp", async (req, res) => {
+  const { email, otp} = req.body;
+
+  try {
+    const user = await User.findOne({
+      email,
+      emailverificationOTP: otp,
+      OTPExprires: { $gt: Date.now() }
+    });
+
+    if(!user) {
+      return res.status(400).json({
+        error: "Invalid or expired OTP"
+      });
+    }
+
+    // update user verification status
+    user.isEmailVerified = true;
+    user.emailverificationOTP = undefined;
+    user.OTPExprires = undefined;
+
+    await user.save();
+
+    // Generate tokens for automatic login
+    const { accessToken, refreshToken } = generateToken(user);
+
+    // save refresh token to database
+    const refreshTokenEntry = new RefreshToken ({
+      userId: user._id,
+      token: refreshToken,
+      expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // which is basically 7 days expiry
+    });
+
+    // set refresh token as an HTTP-only cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: true,
+    });
+
+    res.status(200).json ({
+      message: "Email verified successfully",
+      accessToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+      }
+    })
+    
+  } catch (error) {
+    console.error("Verification OTP error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+})
+
 
 // Login Route
 router.post("/login", async (req, res) => {
@@ -69,9 +141,17 @@ router.post("/login", async (req, res) => {
   try {
     // find user by email
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+
+    // check if email is verified
+    // if(!user.isEmailVerified) {
+    //   return res.status(401).json({
+    //     error: "Please verify your email first"
+    //   })
+    // }
 
     // check password
     const isMatch = await bcrypt.compare(password, user.password);
@@ -98,12 +178,25 @@ router.post("/login", async (req, res) => {
       sameSite: "strict",
     });
 
-    res.status(200).json({ message: "Login Successful", accessToken });
+    res.status(200).json({ 
+      message: "Login Successful", 
+      accessToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+      }
+    });
+
   } catch (error) {
     console.log("Error while login:", error);
     res.status(500).json({ error: "Internal server" });
   }
 });
+
+
+// Resend OTP Route
+
 
 
 // Token Refresh Route with "token rotation" strategy
@@ -202,6 +295,8 @@ router.post("/refresh", async (req, res) => {
 // });
 
 // Logout Route
+
+
 router.post("/logout", async (req, res) => {
   console.log("Cookkies:::::", req.cookies)
   const refreshToken = req.cookies.refreshToken;

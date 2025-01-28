@@ -196,7 +196,35 @@ router.post("/login", async (req, res) => {
 
 
 // Resend OTP Route
+router.post("/resend-otp", async (req, res) => {
+  const { email} = req.body;
 
+  try {
+    const user = await User.findOne({ email, isEmailVerified: false});
+
+    if(!user) {
+      return res.status(404).json({ error: "User not found or already verified" });
+    }
+
+    const otp = generateOTP();
+
+    // update user with new OTP
+    user.emailverificationOTP = otp;
+    user.OTPExprires = Date.now() + 10 * 60 * 1000; // valid for 10 minutes
+    await user.save();
+
+    // send new OTP
+    await sendVerificationOTP(email, otp);
+
+    res.status(200).json({
+      message: "New OTP sent successfully",
+      email: email,
+    })
+  } catch (error) {
+    console.error("Error while resending OTP:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
 // Token Refresh Route with "token rotation" strategy

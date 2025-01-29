@@ -33,12 +33,14 @@ const EmailVerification = () => {
 
     // auto-focus next input
     if (value && index < otp.length - 1) {
-      // document.getElementById()
+      document.getElementById(`otp-${index + 1}`).focus();
     }
   };
 
   const handleKeyDown = (index, event) => {
-
+    if (event.key === 'Backspace' && !otp[index] && index > 0) {
+      document.getElementById(`otp-${index - 1}`).focus();
+    }
   }
 
   const handleResendOTP = async () => {

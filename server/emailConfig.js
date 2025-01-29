@@ -29,7 +29,7 @@ const sendVerificationOTP = async (email, otp) => {
         <h2>Welcome to our chat app!! </h2>
         <p> Your email verification OTP is:</p>
         <h1 style = "font-size: 30px; letter-spacing: 5px; text-align: center; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">${otp} </h1>
-        <p> The OTP will expire in 24 hours.</p>
+        <p> The OTP will expire in 10 minutes.</p>
         <p>If you did not request this, please ignore this email.</p>
       </div>
       `

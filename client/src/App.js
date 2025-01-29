@@ -6,8 +6,8 @@ import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
 import Sidebar from "./component/sidebar";
 import { OnlineUsersProvider } from ".//context/onlineUsersContext";
-
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import EmailVerification from "./component/EmailVerification";
 
 const App = () => {
   // const [message, setMessage] = useState("");
@@ -35,6 +35,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/sidebar" element={<Sidebar />} />
+            <Route path="/verify-email" element={<EmailVerification />} />
           </Routes>
         </main>
       </Router>

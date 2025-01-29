@@ -4,6 +4,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
 import "../styles/auth.css";
+import api from "../Api";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -22,19 +23,20 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/users/signup", formData);
+      const response = await api.post("http://localhost:5000/api/users/signup", formData);
 
       // show success message using toastify
-      toast.success("Registration Successful!", {
+      toast.success(response.data.message, {
         position: "top-right",
         autoClose: 2000, // 2 sec
       });
 
       // Redirect to login page after 2.3 second
       setTimeout(() => {
-        navigate("/login");
+        navigate("/verify-email", { state: { email: formData.email}});
       }, 2300);
     } catch (error) {
+      console.error("Signup error:", error);
       toast.error(error.response.data.error || "Something went wrong", {
         position: "top-right",
         autoClose: 3000,

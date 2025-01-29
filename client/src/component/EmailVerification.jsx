@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from 'react-toastify';
 import api from '../Api';
+import '../styles/EmailVerification.css'
 
 
 const EmailVerification = () => {
@@ -65,8 +67,15 @@ const EmailVerification = () => {
       // store tokens and user data
       localStorage.setItem('token', response.data.accessToken);
 
-      // Navigate to the home page
-      navigate('/');
+      toast.success(response.data.message, {
+        position: 'top-center',
+        autoClose: 2000,
+      })
+
+      // set timeout to redirect to login page
+      setTimeout(() =>  {
+        navigate('/login');
+      }, 2010);
     } catch (error) {
       setError(error.response?.data?.error || 'Verification failed');
     }

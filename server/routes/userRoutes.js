@@ -61,10 +61,24 @@ router.post("/signup", async (req, res) => {
 
     await newUser.save();
 
-    // send verification email
-    await sendVerificationOTP(email, otp);
+    try {
+      // Attempt to send verification email
+      await sendVerificationOTP(email, otp);
 
-    res.status(201).json({ message: "{ Please check your email to verify your account }" });
+      res.status(201).json({ 
+        message: " Please check your email to verify your account",
+        email: email
+      });
+
+    } catch (error) {
+      console.error("Error while sending verification email:", error);
+
+      // Even if email fails, user is created
+      return res.status(201).json({
+        message: "Account created but verification email failed to send",
+        email: email
+      });
+    }   
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -142,16 +156,16 @@ router.post("/login", async (req, res) => {
     // find user by email
     const user = await User.findOne({ email });
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    // if (!user) {
+    //   return res.status(404).json({ error: "User not found" });
+    // }
 
     // check if email is verified
-    // if(!user.isEmailVerified) {
-    //   return res.status(401).json({
-    //     error: "Please verify your email first"
-    //   })
-    // }
+    if(!user.isEmailVerified) {
+      return res.status(401).json({
+        error: "Please verify your email first"
+      })
+    }
 
     // check password
     const isMatch = await bcrypt.compare(password, user.password);

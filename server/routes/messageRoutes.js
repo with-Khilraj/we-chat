@@ -112,7 +112,7 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
 router.put("/:messageId/seen", verifyAccessToken, async (req, res) => {
   try {
     const message = await Message.findByIdAndUpdate(
-      req.user.id,
+      req.params.id,
       { seen: true },
       { new: true }
     );
@@ -269,7 +269,6 @@ router.get("/:receiverId", verifyAccessToken, async (req, res) => {
       ],
     }).sort({ createdAt: 1 }); // sort messages in ascending order
     res.status(200).json({ messages });
-    // console.log("Messages fetched::::", messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
     res.status(500).json({ error: "Internal server error" });

@@ -98,7 +98,11 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
             // Determine the display message based on the messageType
             let displayMessage;
             if(message.messageType === 'text') {
-              const messageContent = message.content || "";
+              // we call message.message not message.content because in server-side, 
+              // we save the content and file both on 'message' while sending the message
+              const messageContent = message.message || "";   
+              console.log("message::::", message);
+              console.log("messageContent::::", messageContent);
               displayMessage =
                 senderID === loggedInUser._id.toString()
                   ? `You: ${messageContent}`
@@ -151,6 +155,8 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
       fetchRecentMessages();
     }
   }, [loggedInUser, updateRecentMessages]);
+
+  
 
   // useEffect for the socket events
   useEffect(() => {

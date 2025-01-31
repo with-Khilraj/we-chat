@@ -93,6 +93,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
           const receiverID = message.receiverId.toString(); // userId = receiverId
           const otherUserID =
             senderID === loggedInUser._id.toString() ? receiverID : senderID;
+            const isSeen = message.seen || false;
 
             // Determine the display message based on the messageType
             let displayMessage;
@@ -121,6 +122,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
           updatedMessages[otherUserID] = {
             message: displayMessage,
             timestamp: new Date(message.lastMessageTimestamp).getTime(),
+            seen: isSeen
           };
           // updatedMessages[message.userId] = displayMessage;
         });
@@ -347,14 +349,19 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
                 <div className="user-info">
                   <h4 className="user-name">{user.username}</h4>
                   <div className="user-message-container">
-                    <p className="user-message">
+                    <p className= {`user-message ${!recentMessages[user._id]?.seen ? 'unseen' : ''}`}>
                       {truncateMessage(recentMessages[user._id]?.message) ||
                         "No messages yet"}
                     </p>
                     {recentMessages[user._id] && (
-                      <span className="message-timestamp">
-                        {formatTimestamp(recentMessages[user._id].timestamp)}
-                      </span>
+                      <>
+                        <span className="message-timestamp">
+                          {formatTimestamp(recentMessages[user._id].timestamp)}
+                        </span>
+                        {!recentMessages[user._id]?.seen && (
+                          <span className="unseen-indicator"></span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -51,7 +51,7 @@ A real-time chat application built with the MERN stack (MongoDB, Express.js, Rea
 
 1. Clone the repository
 bash
-- git clone https://github.com/yourusername/we-chat.git
+- git clone (https://github.com/with-Khilraj/we-chat.git)
 
 # Install dependencies for both client and server at once
 bash

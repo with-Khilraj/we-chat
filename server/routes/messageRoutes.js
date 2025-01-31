@@ -75,13 +75,14 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
       fileType,
       duration,
       caption,
+      seen: false,
       status,
       lastMessageTimestamp: new Date(),
       createdAt: new Date(),
     });
     const savedMessage = await newMessage.save();
 
-    //emit 'new_message' event whenever a new message is sent
+    //emit 'new_message' event whenever a new message is sent (for real-time updates)
     const io = req.app.get("io");
     if (io) {
       io.emit("new_message", {
@@ -91,7 +92,6 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
         message: content || fileUrl,
         messageType: savedMessage.messageType,
         fileType: savedMessage.fileType,
-        // thumbnailUrl: savedMessage.thumbnailUrl,
         lastMessageTimestamp: savedMessage.lastMessageTimestamp,
       });
     } else {
@@ -107,6 +107,35 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// mark message as seen
+router.put("/:messageId/seen", verifyAccessToken, async (req, res) => {
+  try {
+    const message = await Message.findByIdAndUpdate(
+      req.user.id,
+      { seen: true },
+      { new: true }
+    );
+
+    if(!message) {
+      return res.status(404).json({error: "Message not found" })
+    }
+
+    // emit a 'message_seen' even whenever a message is seen in real-time
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('message_seen', {
+        messageId: message._id,
+        seen: true,
+      });
+    }
+
+    res.status(200).json({ message: "Message marked as seen" });
+  } catch (error) {
+    console.error("Error marking message as seen:", error);
+      res.status(500).json({error: "Internal Server error"})
+    }
+})
 
 
 // router.get("/recent-messages", verifyAccessToken, async (req, res) => {

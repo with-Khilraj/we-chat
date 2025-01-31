@@ -63,11 +63,14 @@ const messageSchema = new mongoose.Schema(
       min: 0,
       max: 1800 // half hour limit (adjust as needed)
     },
-    
     status: {
       type: String,
       enum: ['sent', 'delivered', 'read'],
       default: 'sent'
+    },
+    seen: {
+      type: Boolean,
+      default: false
     },
     caption: {
       type: String,

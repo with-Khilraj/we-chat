@@ -7,6 +7,7 @@ const { Server } = require("socket.io");
 const userRoutes = require("./routes/userRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const User = require("./models/User");
+const Message = require("./models/Message");
 
 const app = express();
 require("dotenv").config();
@@ -68,9 +69,17 @@ io.on("connection", (socket) => {
   });
 
   // send a message
-  socket.on("send-message", (data) => {
+  socket.on("send-message", async (data) => {
     try {
+      // update the message status to 'sent' in the database
+      await Message.findByIdAndUpdate(data._id, { status: "sent" });
+
+      // emit the event to the room
       io.to(data.roomId).emit("receive-message", data);
+
+      // emit the 'message-sent' event to both sender and receiver
+      io.to(data.senderId).emit("message-sent", { messageId: data._id, status: "sent" });
+      io.to(data.receiverId).emit("message-sent", { messageId: data._id, status: "sent" });
     } catch (error) {
       console.error(`Error sending message to room ${data.roomId}:`, error);
     }
@@ -101,6 +110,36 @@ io.on("connection", (socket) => {
     }
   });
 
+  // handel message delivered
+  socket.on("message-delivered", async (data) => {
+    const { messageId, roomId } = data;
+    try {
+      // update the message status to delivered
+      await Message.findByIdAndUpdate(messageId, { status: "delivered" });
+
+      // emite the event to both sender and receiver
+      io.to(roomId).emit("message-delivered", { messageId, status: "delivered" });
+    } catch (error) {
+      console.error("Error updating message status:", error);
+    }
+  });
+
+  // handel message seen
+  socket.on("message-seen", async (data) => {
+    const { messageIds, roomId } = data;
+    try {
+      // update the message status to seen in the database
+      await Message.updateMany (
+        { _id: {$in: messageIds } },
+        { status: "seen" }
+      );
+      // emite the event to both sender and receiver
+      io.to(roomId).emit('message-seen', { messageIds, status: "seen" });
+    } catch (error) {
+      console.error("Error updating message status:", error);
+    }
+  });
+
   socket.on("disconnect", async () => {
     try {
       const userId = onlineUsers.get(socket.id);
@@ -112,12 +151,15 @@ io.on("connection", (socket) => {
         });
         console.log(`User disconnected: ${userId}`);
 
+        // update the user status of undelivered messages to 'sent'
+        await Message.updateMany(
+          { receiverId: userId, status: "delivered" },
+          { status: "sent" }
+        );
+
         // Remove the association from memory
         onlineUsers.delete(socket.id);
         onlineUsers.delete(userId);
-
-        // Emit only the newly offline user
-        // io.emit("userStatusChanged", { userId, isOnline: false });
 
       //Emit the updated online users list to all the connected users
         io.emit(

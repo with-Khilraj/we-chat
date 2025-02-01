@@ -108,6 +108,12 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
   }
 });
 
+
+// update the specific message status
+router.put('/:messageId/status', verifyAccessToken, async (req, res) => {
+
+})
+
 // mark message as seen
 router.put("/:messageId/seen", verifyAccessToken, async (req, res) => {
   try {

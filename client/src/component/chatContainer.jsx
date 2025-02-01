@@ -47,12 +47,9 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       };
       fetchChatHistory();
 
-      // fetch chat history
+      // handle receive message
       const handleReceiveMessage = (data) => {
-        console.log("New message received::", data);
-
         setMessages((prevMessages) => {
-          // console.log("Previous Message:::", prevMessages);
           if (!prevMessages.some((msg) => msg._id === data._id)) {
             const updateMessages = [...prevMessages, data];
             console.log("Updated messages:::", updateMessages);
@@ -62,11 +59,41 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         });
       };
 
+      // listen for 'receive-message' event
       socket.on("receive-message", handleReceiveMessage);
+
+      // listen for message status updates
+      socket.on('message-sent', (data) => {
+        setMessages((prevMessages) => 
+          prevMessages.map((msg) =>
+            msg._id === data.messageId ? { ...msg, status: data.status} : msg
+          )
+        );
+      });
+
+      socket.on('message-delivered', (data) => {
+        setMessages((prevMessages) => 
+          prevMessages.map((msg) =>
+            msg._id === data.messageId ? { ...msg, status: data.status} : msg
+          )
+        );
+      });
+
+      socket.on('message-seen', (data) => {
+        setMessages((prevMessages) => 
+          prevMessages.map((msg) =>
+            msg._id === data.messageId ? { ...msg, status: data.status} : msg
+          )
+        );
+      });
 
       return () => {
         socket.off("receive-message", handleReceiveMessage);
+        socket.off('message-sent');
+        socket.off('message-delivered');
+        socket.off('message-seen');
       };
+
     }
   }, [selectedUser, currentUser]);
 
@@ -285,11 +312,54 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   //   });
   // };
 
+
   useEffect(() => {
     if (messages.length) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+
+      // emit 'message-delivered' for all the undelivered messages
+      const undeliveredMessages = messages.filter(
+        (msg) => msg.receiverId === currentUser._id && msg.status === "sent"
+      );
+      
+      if (undeliveredMessages.length > 0) {
+        socket.emit('message-delivered', {
+          messageId: undeliveredMessages[0]._id,  // emit for the latest message
+          roomId: [currentUser._id, selectedUser._id].sort().join("-"),
+        });
+      }  
     }
-  }, [messages]);
+  }, [messages, currentUser, selectedUser]);
+
+  // when user views the chat, emit 'message-seen' for all the unread messages
+  useEffect(() => {
+    if (selectedUser) {
+      // emit 'message-seen' for all the unread messages
+      const unreadMessages = messages.filter(
+        (msg) => msg.receiverId === currentUser._id && msg.status === "seen"
+      );
+      if (unreadMessages.length > 0) {
+        socket.emit('message-seen', {
+          messageIds: unreadMessages.map((msg) => msg._id),
+          roomId: [currentUser._id, selectedUser._id].sort().join("-"),
+        })
+      }
+    }
+  }, [selectedUser, currentUser, messages]);
+
+  // Helper: function to render the appropriate status icon
+  const renderStatusIndicator = (status) => {
+    switch (status) {
+      case "sent":
+        return <span className="status-sent">✓</span>
+      case "delivered":
+        return <span className="status-delivered">✓✓</span>
+      case "seen":
+        return <span className="status-seen">✓✓✓ (Seen)</span>
+      default:
+        return null;
+    }
+  };
 
   // Helper: check if there's a 30 minute or more gap between two messages
   const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
@@ -419,19 +489,16 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                   {message.messageType === "photo" && (
                     <div className="for-photo">
                       <img src={message.fileUrl} alt={message.fileName} className="media-message" />
-                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "video" && (
                     <div>
                       <video controls src={message.fileUrl} className="video-message" />
-                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "audio" && (
                     <div>
                       <audio controls src={message.fileUrl} className="audio-message" />
-                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
                   {message.messageType === "file" && (
@@ -439,11 +506,16 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                       <a href={message.fileUrl} download={message.fileName} className="file-message">
                         {message.fileName}
                       </a>
-                      {/* {message.caption && <p className="caption">{message.caption}</p>} */}
                     </div>
                   )}
-                </div>
 
+                  {/* status indicator */}
+                  {message.senderId === currentUser._id && (
+                    <div className="message-status">
+                    {renderStatusIndicator(message.status)}
+                  </div>
+                  )}            
+                </div>
               </div>
             );
           })}

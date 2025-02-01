@@ -364,9 +364,9 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
                         <span className="message-timestamp">
                           {formatTimestamp(recentMessages[user._id].timestamp)}
                         </span>
-                        {!recentMessages[user._id]?.seen && (
+                        {/* {!recentMessages[user._id]?.seen && (
                           <span className="unseen-indicator"></span>
-                        )}
+                        )} */}
                       </>
                     )}
                   </div>

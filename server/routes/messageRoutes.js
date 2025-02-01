@@ -75,7 +75,6 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
       fileType,
       duration,
       caption,
-      seen: false,
       status,
       lastMessageTimestamp: new Date(),
       createdAt: new Date(),
@@ -111,37 +110,35 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
 
 // update the specific message status
 router.put('/:messageId/status', verifyAccessToken, async (req, res) => {
+  const { messageId } = req.params;
+  const { status } = req.body;
 
-})
-
-// mark message as seen
-router.put("/:messageId/seen", verifyAccessToken, async (req, res) => {
   try {
     const message = await Message.findByIdAndUpdate(
-      req.params.id,
-      { seen: true },
+      messageId,
+      { status },
       { new: true }
     );
 
-    if(!message) {
-      return res.status(404).json({error: "Message not found" })
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
     }
 
-    // emit a 'message_seen' even whenever a message is seen in real-time
+    // Emit status update via Socket.IO
     const io = req.app.get('io');
     if (io) {
-      io.emit('message_seen', {
+      io.emit('message-status-updated', {
         messageId: message._id,
-        seen: true,
+        status: message.status,
       });
     }
 
-    res.status(200).json({ message: "Message marked as seen" });
+    res.status(200).json({ message });
   } catch (error) {
-    console.error("Error marking message as seen:", error);
-      res.status(500).json({error: "Internal Server error"})
-    }
-})
+    console.error("Error updating message status:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
 // router.get("/recent-messages", verifyAccessToken, async (req, res) => {

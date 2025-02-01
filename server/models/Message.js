@@ -68,10 +68,6 @@ const messageSchema = new mongoose.Schema(
       enum: ['sent', 'delivered', 'seen'],
       default: 'sent'
     },
-    seen: {
-      type: Boolean,
-      default: false
-    },
     caption: {
       type: String,
       required: false
@@ -88,5 +84,7 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ roomId: 1 });
 messageSchema.index({ senderId: 1 });
 messageSchema.index({ receiverId: 1 });
+messageSchema.index({ status: 1 });
 
 module.exports = mongoose.model("Message", messageSchema);
+

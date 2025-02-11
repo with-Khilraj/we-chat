@@ -10,7 +10,7 @@ const User = require("./models/User");
 const Message = require("./models/Message");
 
 const app = express();
-require("dotenv").config({ path: './.env.local'});
+require("dotenv").config();
 
 const PORT = process.env.PORT || 5000;
 
@@ -71,13 +71,22 @@ io.on("connection", (socket) => {
   // send a message
   socket.on("send-message", async (data) => {
     try {
+      // Validate Ojbect fields
+      if (
+        !mongoose.Types.ObjectId.isValid(data._id) ||
+        !mongoose.Types.ObjectId.isValid(data.senderId) ||
+        !mongoose.Types.ObjectId.isValid(data.receiverId)
+      ) {
+        console.error("Invalid ObjectId in send-message event:", data)
+      }
+
       // update the message status to 'sent' in the database
       await Message.findByIdAndUpdate(data._id, { status: "sent" });
 
       // emit the event to the room
       io.to(data.roomId).emit("receive-message", data);
 
-      // emit the 'message-sent' event to both sender and receiver
+      // // emit the 'message-sent' event to both sender and receiver
       io.to(data.senderId).emit("message-sent", { messageId: data._id, status: "sent" });
       io.to(data.receiverId).emit("message-sent", { messageId: data._id, status: "sent" });
     } catch (error) {
@@ -106,31 +115,24 @@ io.on("connection", (socket) => {
         Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
       );
     } catch (error) {
-      console.error("Error updating user status:", error);
-    }
-  });
-
-  // handel message delivered
-  socket.on("message-delivered", async (data) => {
-    const { messageId, roomId } = data;
-    try {
-      // update the message status to delivered
-      await Message.findByIdAndUpdate(messageId, { status: "delivered" });
-
-      // emite the event to both sender and receiver
-      io.to(roomId).emit("message-delivered", { messageId, status: "delivered" });
-    } catch (error) {
-      console.error("Error updating message status:", error);
+      console.error("Invalid updating online-user:", error);
     }
   });
 
   // handel message seen
   socket.on("message-seen", async (data) => {
     const { messageIds, roomId } = data;
+
+    // Validate all messageIds are valid ObjectIds
+    if (!Array.isArray(messageIds) || messageIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+      console.error("Invalid ObjectId in message-seen event:", data);
+      return;
+    }
+
     try {
       // update the message status to seen in the database
-      await Message.updateMany (
-        { _id: {$in: messageIds } },
+      await Message.updateMany(
+        { _id: { $in: messageIds } },
         { status: "seen" }
       );
       // emite the event to both sender and receiver
@@ -139,6 +141,7 @@ io.on("connection", (socket) => {
       console.error("Error updating message status:", error);
     }
   });
+
 
   socket.on("disconnect", async () => {
     try {
@@ -161,7 +164,7 @@ io.on("connection", (socket) => {
         onlineUsers.delete(socket.id);
         onlineUsers.delete(userId);
 
-      //Emit the updated online users list to all the connected users
+        //Emit the updated online users list to all the connected users
         io.emit(
           "onlineUsers",
           Array.from(onlineUsers.keys()).filter((key) => key.length === 24)

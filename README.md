@@ -54,19 +54,21 @@ bash
 - git clone (https://github.com/with-Khilraj/we-chat.git)
 
 # Install dependencies for both client and server at once
-bash
+### bash
 - cd we-chat
 - npm install (just once outside the client and server folder)
 
-1. create a .env file in the server folder and add the following:
+### create a .env file in the server folder and add the following:
 - MONGO_URI=your_mongodb_connection_string
 - JWT_SECRET=your_jwt_secret
 - REFRESH_TOKEN_SECRET=your_refresh_token_secret
+
+### create a .env.local file in the server folder and add the following
 - EMAIL_USER=your_gmail@gmail.com
 - EMAIL_PASSWORD=your_gmail_app_password (never use your real pass, use generated app pass)
 
 
-2. Set up Gmail App Password
+### Set up Gmail App Password
 - Enable 2-Step Verification in your Gmail account
 - Generate App Password (Settings → Security → App Passwords)
 - Use the generated password in your .env file
@@ -74,12 +76,12 @@ bash
 
 ### Running the Application
 
-1. Start the backend server
+#### Start the backend server
 bash
 - cd server
 - npm start or npm run dev
 
-2. Start the frontend server
+#### Start the frontend server
 bash
 - cd client
 - npm start
@@ -120,5 +122,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Nodemailer for email services
 
 ## Contact
-
-Your Name - [Khilraj Shrestha](mailto:khilraj321@gmail.com)
+khilraj321@gmail.com

@@ -10,7 +10,7 @@ const User = require("./models/User");
 const Message = require("./models/Message");
 
 const app = express();
-require("dotenv").config({ path: './.env.local' });
+require("dotenv").config();
 
 const PORT = process.env.PORT || 5000;
 

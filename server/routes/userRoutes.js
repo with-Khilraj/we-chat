@@ -146,7 +146,6 @@ router.post("/verify-otp", async (req, res) => {
 // Login Route
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
-
   // validate email and password
   if (!email || !password) {
     return res.status(400).json({ error: "Please fill the required field" });
@@ -155,10 +154,6 @@ router.post("/login", async (req, res) => {
   try {
     // find user by email
     const user = await User.findOne({ email });
-
-    // if (!user) {
-    //   return res.status(404).json({ error: "User not found" });
-    // }
 
     // check if email is verified
     if(!user.isEmailVerified) {
@@ -175,7 +170,6 @@ router.post("/login", async (req, res) => {
 
     // Logic to generate Aceess or Refresh Token
     const { accessToken, refreshToken } = generateToken(user);
-
 
     // save refresh token to database
     const refreshTokenEntry = new RefreshToken({
@@ -387,6 +381,7 @@ router.post("/logout", async (req, res) => {
 //     res.status(500).json({ error: "Internal server error" });
 //   }
 // });
+
 
 // fetch logged-in user profile
 router.get("/profile", verifyAccessToken, async (req, res) => {

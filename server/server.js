@@ -6,6 +6,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const userRoutes = require("./routes/userRoutes");
 const messageRoutes = require("./routes/messageRoutes");
+const chatRoutes = require('./routes/charRoutes')
 const User = require("./models/User");
 const Message = require("./models/Message");
 
@@ -43,7 +44,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // routes
 app.use("/api/users", userRoutes);
-app.use("/api/messages", messageRoutes);
+app.use("/api/messages", messageRoutes, chatRoutes);
 
 // using Map to store online users
 const onlineUsers = new Map();

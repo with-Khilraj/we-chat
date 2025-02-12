@@ -25,6 +25,9 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showProfileInfo, setShowProfileInfo] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const onlineUsers = useOnlineUsers();
@@ -323,6 +326,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   };
 
 
+  // to go the end/last messages of users
   useEffect(() => {
     if (messages.length) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
@@ -378,6 +382,34 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       currentMessage.senderId !== previousMessage.senderId ||
       currentTime.diff(previousTime, "minutes") >= 1
     );
+  };
+
+  // function to handle the typing event
+  const handleTypingEvent = (e) => {
+    setNewMessage(e.target.value);
+
+    // emit typing event
+    if (!isTyping) {
+      socket.emit('typing', {
+        roomId: [currentUser._id, selectedUser._id].sort().join("_"),
+        isTyping: true
+      });
+      setIsTyping(true);
+    }
+
+    // clear previous Timeout
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+    }
+
+    // Set timeout to stop typing indicator
+    typingTimeout.current = setTimeout(() => {
+      socket.emit('typing', {
+        roomId: [currentUser._id, selectedUser._id].sort().join("_"),
+        isTyping: false,
+      });
+      setIsTyping(false);
+    }, 1000)
   };
 
   

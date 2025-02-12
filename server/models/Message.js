@@ -72,6 +72,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: false
     },
+    reaction: String,
+    edited: { type: Boolean, default: false},
+    pinned: { type: Boolean, default: false },
+    forwareded: {type: Boolean, default: false },
     lastMessageTimestamp: {
       type: Date,
       default: Date.now

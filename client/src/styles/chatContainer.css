@@ -1,6 +1,8 @@
 .chat-container {
-  flex: 0 0 74.2%;
+  flex: 0 0 74%;
   transition: flex 0.3s ease;
+  position: relative;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .chat-container.shrink {
@@ -16,7 +18,7 @@
   background-color: #fff; /* White chat area */
   display: flex;
   flex-direction: column;
-  margin-top: 20px;
+  margin-top: 10px;
   border-radius: 10px;
   margin-bottom: 5px;
 }
@@ -33,9 +35,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 25px;
-  /* border-bottom: 1px solid #ccc; */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  z-index: 10;
 }
 
 .user-profile-name {
@@ -115,13 +120,13 @@
 
 .chat-container .chat-messages {
   flex: 1;
-  padding: 10px;
+  padding: 10px 20px;
   display: flex;
   justify-self: flex-start;
   flex-direction: column;
   overflow-y: auto;
   scrollbar-width: none;
-  background-color: #f0f2f5; /* Light background similar to Messenger */
+  background-color: #f8f9fa; /* Light background similar to Messenger */
 }
 
 .chat-container .message-group {
@@ -135,8 +140,9 @@
 
 
 .chat-container .message  {
-  margin: 5px 0;
-  max-width: 70%;
+  position: relative;
+  /* margin: 5px 0; */
+  max-width: 80%;
   word-wrap: break-word;
   border-top-left-radius: 3px;
   border-bottom-right-radius: 3px;
@@ -154,9 +160,7 @@
 
 .text-message {
   padding: 7px 10px;
-
 }
-
 
 .chat-container .message.sent {
   background: linear-gradient(140deg, rgb(255, 87, 87), rgb(53, 53, 210));
@@ -170,7 +174,7 @@
   /* background: linear-gradient(210deg, rgb(255, 87, 87), rgb(53, 53, 210) ); */
   color: white;
   display: inline-block;
-  margin-left: 12px;
+  margin-left: 5px;
   background-color: #0084ff;
 }
 
@@ -232,7 +236,6 @@
   max-width: 200px;
   object-fit: cover;
   border-radius: 8px;
-  /* padding: 0; */
   box-shadow: 0px 5px 10px rgba(146, 15, 182, 0.689);
 }
 
@@ -267,15 +270,12 @@ audio.media-message {
 }
 
 .status-sent {
-  color: #999;
+  color: #17e900;
 }
 
-.status-delivered {
-  color: #1fcc25;
-}
 
 .status-seen {
-  color: #1289eb;
+  color: #17e900;
 }
 
 

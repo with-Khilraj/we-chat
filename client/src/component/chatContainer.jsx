@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import api from "../Api";
 import { useNavigate } from "react-router-dom";
 import moment from "moment";
-import { v4 as uuidv4 } from "uuid";
 import "../styles/chatContainer.css";
 import socket from "./socket";
 import { useOnlineUsers } from "../context/onlineUsersContext";
@@ -11,6 +10,8 @@ import video_call from "../assets/video-camera.png";
 import info_icon from "../assets/info.png";
 import audio_icon from "../assets/mic.png";
 import media_icon from "../assets/image-gallery.png";
+import mongoose from 'mongoose';
+
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunk, setAudioChunk] = useState([]);
   const [error, setError] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const messageEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -41,6 +43,21 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             },
           });
           setMessages(response.data.messages);
+
+          // Mark all unread messages as 'seen'
+          const unreadMessages = response.data.messages.filter(
+            (msg) => msg.receiverId === currentUser._id && msg.status === 'sent'
+          );
+          if(unreadMessages.length > 0) {
+            await api.put('/api/messages/status/bulk', {
+              messageIds: unreadMessages.map((msg) => msg._id), status: 'seen' },
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              }
+            );
+          }
         } catch (error) {
           console.error("Error fetching chat history:", error);
         }
@@ -50,7 +67,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       // handle receive message
       const handleReceiveMessage = (data) => {
         setMessages((prevMessages) => {
-          if (!prevMessages.some((msg) => msg._id === data._id)) {
+          if (data.senderId !== currentUser._id && !prevMessages.some((msg) => msg._id === data._id)) {
             const updateMessages = [...prevMessages, data];
             console.log("Updated messages:::", updateMessages);
             return updateMessages;
@@ -62,16 +79,21 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
       // listen for 'receive-message' event
       socket.on("receive-message", handleReceiveMessage);
 
-      // listen for message status updates
-      socket.on('message-sent', (data) => {
-        setMessages((prevMessages) => 
-          prevMessages.map((msg) =>
-            msg._id === data.messageId ? { ...msg, status: data.status} : msg
-          )
-        );
-      });
+      // clean up function
+      return () => {
+        socket.off("receive-message", handleReceiveMessage);
+        socket.emit('leave-room', roomId);
+      };
 
-      socket.on('message-delivered', (data) => {
+    }
+  }, [selectedUser, currentUser]);
+
+
+
+  useEffect(() => {
+    if (selectedUser) {
+       // listen for message status updates
+       socket.on('message-sent', (data) => {
         setMessages((prevMessages) => 
           prevMessages.map((msg) =>
             msg._id === data.messageId ? { ...msg, status: data.status} : msg
@@ -86,16 +108,15 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           )
         );
       });
-
-      return () => {
-        socket.off("receive-message", handleReceiveMessage);
-        socket.off('message-sent');
-        socket.off('message-delivered');
-        socket.off('message-seen');
-      };
-
     }
-  }, [selectedUser, currentUser]);
+
+    // clean up the event listner when the component unmounts
+    return () => {
+      socket.off('message-sent');
+      socket.off('message-seen');
+    };
+  })
+
 
   // hande file input change
   const handleFileInputChange = (e) => {
@@ -186,15 +207,23 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   // };
 
   const handleSendMessage = async (fileToSend = file) => {
-    if (!newMessage.trim() && !fileToSend) return;
+    if (isSending) return true;
+    setIsSending(true);
+
+    if (!newMessage.trim() && !fileToSend) {
+      setIsSending(false);
+      return;
+    }
 
     // Validate receiverId
     if (!selectedUser?._id || !isValidObjectId(selectedUser._id)) {
       setError("Invalid receiver ID. Please select a valid user.");
+      setIsSending(false);
       return;
     }
 
-    const messageId = uuidv4();
+    // const messageId = uuidv4();
+    const messageId = new mongoose.Types.ObjectId();
 
     // Determine messageType based on whether a file is being sent
     let messageType = "text"; // Default to text message
@@ -293,50 +322,20 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     });
   };
 
-  // Helper function to generate a thumbnail (for photo and video)
-  // const generateThumbnail = (file) => {
-  //   return new Promise((resolve) => {
-  //     if (file.type.startsWith === "image") {
-  //       resolve(URL.createObjectURL(file)); // Use the image itself as the thumbnail
-  //     } else if (file.type.startsWith === "video") {
-  //       const video = document.createElement("video");
-  //       video.src = URL.createObjectURL(file);
-  //       video.onloadeddata = () => {
-  //         const canvas = document.createElement("canvas");
-  //         canvas.width = video.videoWidth;
-  //         canvas.height = video.videoHeight;
-  //         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-  //         resolve(canvas.toDataURL("image/jpeg"));
-  //       };
-  //     }
-  //   });
-  // };
-
 
   useEffect(() => {
     if (messages.length) {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-
-      // emit 'message-delivered' for all the undelivered messages
-      const undeliveredMessages = messages.filter(
-        (msg) => msg.receiverId === currentUser._id && msg.status === "sent"
-      );
-      
-      if (undeliveredMessages.length > 0) {
-        socket.emit('message-delivered', {
-          messageId: undeliveredMessages[0]._id,  // emit for the latest message
-          roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-        });
-      }  
+      messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
     }
   }, [messages, currentUser, selectedUser]);
+
 
   // when user views the chat, emit 'message-seen' for all the unread messages
   useEffect(() => {
     if (selectedUser) {
       // emit 'message-seen' for all the unread messages
       const unreadMessages = messages.filter(
-        (msg) => msg.receiverId === currentUser._id && msg.status === "seen"
+        (msg) => msg.receiverId === currentUser._id && msg.status === "sent"
       );
       if (unreadMessages.length > 0) {
         socket.emit('message-seen', {
@@ -352,10 +351,8 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     switch (status) {
       case "sent":
         return <span className="status-sent">✓</span>
-      case "delivered":
-        return <span className="status-delivered">✓✓</span>
       case "seen":
-        return <span className="status-seen">✓✓✓ (Seen)</span>
+        return <span className="status-seen">✓✓</span>
       default:
         return null;
     }

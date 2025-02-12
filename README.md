@@ -71,7 +71,7 @@ bash
 ### Set up Gmail App Password
 - Enable 2-Step Verification in your Gmail account
 - Generate App Password (Settings → Security → App Passwords)
-- Use the generated password in your .env file
+- Use the generated password in your .env.local file
 
 
 ### Running the Application

@@ -24,6 +24,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     error,
     showProfileInfo,
     isTyping,
+    isOhterUsertyping,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -180,8 +181,19 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
               </div>
             );
           })}
-          <div ref={messageEndRef}></div>
 
+          {/* Add typing indicator */}
+          {isOhterUsertyping && (
+            <div className="typing-indicator received">
+              <div className="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          )}
+
+          <div ref={messageEndRef}></div>
         </div>
 
         {/* message input */}
@@ -202,7 +214,14 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
           />
-         
+
+          <input 
+            type="text"
+            value={newMessage}
+            onChange={handleTypingEvent}
+            placeholder="Type your message..."
+           />
+           
           <button onClick={handleSendMessage} disabled={isUploading}>
             {isUploading ? "Sending" : "Send"}
           </button>

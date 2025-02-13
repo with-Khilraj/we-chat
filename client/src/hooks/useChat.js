@@ -16,6 +16,7 @@ export const useChat = (selectedUser, currentUser) => {
   const [error, setError] = useState("");
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isOhterUsertyping, setIsOtherUserTyping] = useState(false);
 
   const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
@@ -299,6 +300,24 @@ export const useChat = (selectedUser, currentUser) => {
     }, 1000)
   };
 
+  // Add the useEffect to listen for typing events
+  useEffect(() => {
+    if (selectedUser) {
+      const roomId = [currentUser._id, selectedUser._id].sort().join("_");
+
+      const handleTyping = (data) => {
+        if (data.roomId === roomId) {
+          setIsOtherUserTyping(data.isTyping);
+        }
+      };
+
+      socket.on('typing', handleTyping);
+
+      return () => {
+      socket.off('typing', handleTyping);
+      }
+    }
+  }, [selectedUser, currentUser]);
   
   // to go the end/last messages of users
   useEffect(() => {
@@ -323,6 +342,7 @@ export const useChat = (selectedUser, currentUser) => {
     error,
     showProfileInfo,
     isTyping,
+    isOhterUsertyping,
     messageEndRef,
     fileInputRef,
     handleSendMessage,

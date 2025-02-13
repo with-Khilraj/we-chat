@@ -41,7 +41,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
   // listen for new messages
   useEffect(() => {
-    const roomId = [currentUser._id, selectedUser?._id].sort().join('_');
+    const roomId = [currentUser._id, selectedUser?._id].sort().join('-');
     socket.emit('join-room', roomId);
 
     socket.on('new-message', (message) => {
@@ -211,17 +211,11 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            // onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleTypingEvent}
             placeholder="Type your message..."
           />
 
-          <input 
-            type="text"
-            value={newMessage}
-            onChange={handleTypingEvent}
-            placeholder="Type your message..."
-           />
-           
           <button onClick={handleSendMessage} disabled={isUploading}>
             {isUploading ? "Sending" : "Send"}
           </button>

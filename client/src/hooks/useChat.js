@@ -279,7 +279,7 @@ export const useChat = (selectedUser, currentUser) => {
     // emit typing event
     if (!isTyping) {
       socket.emit('typing', {
-        roomId: [currentUser._id, selectedUser._id].sort().join("_"),
+        roomId: [currentUser._id, selectedUser._id].sort().join("-"),
         isTyping: true
       });
       setIsTyping(true);
@@ -293,7 +293,7 @@ export const useChat = (selectedUser, currentUser) => {
     // Set timeout to stop typing indicator
     typingTimeout.current = setTimeout(() => {
       socket.emit('typing', {
-        roomId: [currentUser._id, selectedUser._id].sort().join("_"),
+        roomId: [currentUser._id, selectedUser._id].sort().join("-"),
         isTyping: false,
       });
       setIsTyping(false);
@@ -303,7 +303,7 @@ export const useChat = (selectedUser, currentUser) => {
   // Add the useEffect to listen for typing events
   useEffect(() => {
     if (selectedUser) {
-      const roomId = [currentUser._id, selectedUser._id].sort().join("_");
+      const roomId = [currentUser._id, selectedUser._id].sort().join("-");
 
       const handleTyping = (data) => {
         if (data.roomId === roomId) {

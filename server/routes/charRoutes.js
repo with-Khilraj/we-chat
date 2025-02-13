@@ -66,4 +66,29 @@ router.put('/:messageId', verifyAccessToken, async (req, res) => {
 });
 
 
+// delete message endpoint
+router.delete('/:messageId', verifyAccessToken, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+
+    const message = await Message.findByIdAndDelete(messageId);
+
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    // Emit delete event to socket.IO
+    const io = req.app.get('io');
+    io.emit(message.roomId).to('message-delete', {
+      messageId: message._id
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error while deleting message:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+})
+
+
 module.exports = router;

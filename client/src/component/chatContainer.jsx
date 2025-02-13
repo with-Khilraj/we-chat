@@ -1,425 +1,57 @@
-import React, { useEffect, useRef, useState } from "react";
-import api from "../Api";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect } from "react";
 import moment from "moment";
 import "../styles/chatContainer.css";
-import socket from "./socket";
+import socket from "../utils/socket";
 import { useOnlineUsers } from "../context/onlineUsersContext";
+import { useChat } from "../hooks/useChat";
+import { shouldDisplayTimeStamp, shouldStartNewGroup, renderStatusIndicator } from "../utils/chatUtils";
 import audio_call from "../assets/call.png";
 import video_call from "../assets/video-camera.png";
 import info_icon from "../assets/info.png";
 import audio_icon from "../assets/mic.png";
 import media_icon from "../assets/image-gallery.png";
-import mongoose from 'mongoose';
 
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
-  const navigate = useNavigate();
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [file, setFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [audioChunk, setAudioChunk] = useState([]);
-  const [error, setError] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [showProfileInfo, setShowProfileInfo] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const {
+    messages,
+    setMessages,
+    newMessage,
+    setNewMessage,
+    file,
+    isUploading,
+    isRecording,
+    error,
+    showProfileInfo,
+    isTyping,
+    messageEndRef,
+    fileInputRef,
+    handleSendMessage,
+    handleFileInputChange,
+    handleMediaClick,
+    handleAudioRecording,
+    handleTypingEvent,
+    toggleProfileInfo,
+  } = useChat (selectedUser, currentUser);
 
-  const typingTimeout = useRef(null);
-  const messageEndRef = useRef(null);
-  const fileInputRef = useRef(null);
   const onlineUsers = useOnlineUsers();
-
-  useEffect(() => {
-    if (selectedUser) {
-      const roomId = [currentUser._id, selectedUser._id].sort().join("-");
-      socket.emit("join-room", roomId);
-
-      const fetchChatHistory = async () => {
-        try {
-          const accessToken = localStorage.getItem("accessToken");
-          const response = await api.get(`/api/messages/${selectedUser._id}`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
-          setMessages(response.data.messages);
-
-          // Mark all unread messages as 'seen'
-          const unreadMessages = response.data.messages.filter(
-            (msg) => msg.receiverId === currentUser._id && msg.status === 'sent'
-          );
-          if(unreadMessages.length > 0) {
-            await api.put('/api/messages/status/bulk', {
-              messageIds: unreadMessages.map((msg) => msg._id), status: 'seen' },
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                },
-              }
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching chat history:", error);
-        }
-      };
-      fetchChatHistory();
-
-      // handle receive message
-      const handleReceiveMessage = (data) => {
-        setMessages((prevMessages) => {
-          if (data.senderId !== currentUser._id && !prevMessages.some((msg) => msg._id === data._id)) {
-            const updateMessages = [...prevMessages, data];
-            console.log("Updated messages:::", updateMessages);
-            return updateMessages;
-          }
-          return prevMessages;
-        });
-      };
-
-      // listen for 'receive-message' event
-      socket.on("receive-message", handleReceiveMessage);
-
-      // clean up function
-      return () => {
-        socket.off("receive-message", handleReceiveMessage);
-        socket.emit('leave-room', roomId);
-      };
-
-    }
-  }, [selectedUser, currentUser]);
-
-
-
-  useEffect(() => {
-    if (selectedUser) {
-       // listen for message status updates
-       socket.on('message-sent', (data) => {
-        setMessages((prevMessages) => 
-          prevMessages.map((msg) =>
-            msg._id === data.messageId ? { ...msg, status: data.status} : msg
-          )
-        );
-      });
-
-      socket.on('message-seen', (data) => {
-        setMessages((prevMessages) => 
-          prevMessages.map((msg) =>
-            msg._id === data.messageId ? { ...msg, status: data.status} : msg
-          )
-        );
-      });
-    }
-
-    // clean up the event listner when the component unmounts
-    return () => {
-      socket.off('message-sent');
-      socket.off('message-seen');
-    };
-  })
-
-
-  // hande file input change
-  const handleFileInputChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      handleSendMessage(selectedFile);
-    } else {
-      setFile(null);
-    }
-  };
-
-  // Trigger file input when an icon is clicked
-  const handleMediaClick = (type) => {
-    fileInputRef.current.click();
-  }
-
-  // handle audio recording
-  const handleAudioRecording = async () => {
-    if (!isRecording) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream);
-        setMediaRecorder(recorder);
-
-        recorder.ondataavailable = (e) => {
-          setAudioChunk((prev) => [...prev, e.data]);
-        };
-
-        recorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunk, { type: "audio/wav" });
-          setFile(audioBlob);
-
-          handleSendMessage(audioBlob);
-          setAudioChunk([]);
-        };
-
-        recorder.start();
-        setIsRecording(true);
-      } catch (e) {
-        console.error("Error starting audio recording:", e);
-      }
-    } else {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-  }
-
-  const isValidObjectId = (id) => {
-    return /^[0-9a-fA-F]{24}$/.test(id);
-  };
-
-  // Handle send message button
-  // const handleSendMessage = async () => {
-  //   if (!newMessage.trim()) return;
-
-  //   const messageId = uuidv4();
-  //   const messageData = {
-  //     _id: messageId,
-  //     roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-  //     senderId: currentUser._id,
-  //     receiverId: selectedUser._id,
-  //     content: newMessage,
-  //   };
-
-  //   try {
-  //     setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
-  //     setNewMessage("");
-
-  //     socket.emit("send-message", messageData);
-
-  //     const accessToken = localStorage.getItem("accessToken");
-  //     const response = await api.post("/api/messages/", messageData, {
-  //       headers: {
-  //         Authorization: `Bearer ${accessToken}`,
-  //       },
-  //     });
-
-  //     // Update message with actual ID from server response
-  //     setMessages((prevMessages) =>
-  //       prevMessages.map((msg) =>
-  //         msg._id === Date.now() ? { ...msg, _id: response.data._id } : msg
-  //       )
-  //     );
-  //   } catch (error) {
-  //     console.error("Error while sending message:", error);
-  //   }
-  // };
-
-  const handleSendMessage = async (fileToSend = file) => {
-    if (isSending) return true;
-    setIsSending(true);
-
-    if (!newMessage.trim() && !fileToSend) {
-      setIsSending(false);
-      return;
-    }
-
-    // Validate receiverId
-    if (!selectedUser?._id || !isValidObjectId(selectedUser._id)) {
-      setError("Invalid receiver ID. Please select a valid user.");
-      setIsSending(false);
-      return;
-    }
-
-    // const messageId = uuidv4();
-    const messageId = new mongoose.Types.ObjectId();
-
-    // Determine messageType based on whether a file is being sent
-    let messageType = "text"; // Default to text message
-    if (fileToSend && fileToSend instanceof File) {
-      if (fileToSend.type.startsWith("audio")) {
-        messageType = "audio";
-      } else if (fileToSend.type.startsWith("video")) {
-        messageType = "video";
-      } else if (fileToSend.type.startsWith("image")) {
-        messageType = "photo";
-      } else {
-        messageType = "file";
-      }
-    }
-
-    const messageData = {
-      _id: messageId,
-      roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-      senderId: currentUser._id,
-      receiverId: selectedUser._id,
-      content: newMessage.trim(),
-      messageType,
-      fileUrl: fileToSend && fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null, // Temporary URL for preview
-      fileName: fileToSend ? fileToSend.name : "",
-      fileSize: fileToSend ? fileToSend.size : 0,
-      fileType: fileToSend ? fileToSend.type : "",
-      duration: messageType === "audio" || messageType === "video"
-        ? await getMediaDuration(fileToSend)
-        : 0, // Calculate duration for audio/video files
-      status: "sent",
-    };
-
-    console.log("Constructed MesssageDate::::::", messageData);
-
-    try {
-      setIsUploading(true);
-      setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
-      setNewMessage("");
-      setFile(null);
-
-      socket.emit("send-message", messageData);
-
-      const accessToken = localStorage.getItem("accessToken");
-      const formData = new FormData();
-
-      // Append only required fields to FormData
-      formData.append("roomId", messageData.roomId);
-      formData.append("senderId", messageData.senderId);
-      formData.append("receiverId", messageData.receiverId); // Explicitly append receiverId
-      formData.append("content", messageData.content);
-      formData.append("messageType", messageData.messageType);
-      formData.append("caption", messageData.caption);
-      formData.append("status", messageData.status);
-
-      if (fileToSend && fileToSend instanceof File) {
-        formData.append("file", fileToSend);
-        formData.append("fileName", messageData.fileName);
-        formData.append("fileSize", messageData.fileSize);
-        formData.append("fileType", messageData.fileType);
-        if (messageData.duration) formData.append("duration", messageData.duration);
-      }
-
-      // Send message to server
-      const response = await api.post("/api/messages/", formData, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      // Update message with actual ID from server response
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          // msg._id === Date.now() ? { ...msg, _id: response.data._id } : msg
-          msg._id === messageId ? { ...msg, _id: response.data._id } : msg
-        )
-      );
-    } catch (error) {
-      console.error("Error while sending message:", error);
-      if (error.response?.status === 401) {
-        navigate('/login');
-      }
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Get duration of audio/video files
-  const getMediaDuration = (file) => {
-    return new Promise((resolve) => {
-      const media = document.createElement(file.type.startsWith("audio") ? "audio" : "video");
-      media.src = URL.createObjectURL(file);
-      media.onloadedmetadata = () => {
-        resolve(media.duration);
-      };
-    });
-  };
-
-
-  // to go the end/last messages of users
-  useEffect(() => {
-    if (messages.length) {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
-    }
-  }, [messages, currentUser, selectedUser]);
-
-
-  // when user views the chat, emit 'message-seen' for all the unread messages
-  useEffect(() => {
-    if (selectedUser) {
-      // emit 'message-seen' for all the unread messages
-      const unreadMessages = messages.filter(
-        (msg) => msg.receiverId === currentUser._id && msg.status === "sent"
-      );
-      if (unreadMessages.length > 0) {
-        socket.emit('message-seen', {
-          messageIds: unreadMessages.map((msg) => msg._id),
-          roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-        })
-      }
-    }
-  }, [selectedUser, currentUser, messages]);
-
-  // Helper: function to render the appropriate status icon
-  const renderStatusIndicator = (status) => {
-    switch (status) {
-      case "sent":
-        return <span className="status-sent">✓</span>
-      case "seen":
-        return <span className="status-seen">✓✓</span>
-      default:
-        return null;
-    }
-  };
-
-  // Helper: check if there's a 30 minute or more gap between two messages
-  const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
-    if (!previousMessage) return true;
-
-    const currentTime = moment(currentMessage.createdAt);
-    const previousTime = moment(previousMessage.createdAt);
-    return currentTime.diff(previousTime, "minutes") >= 30;
-  };
-
-  // Helper: check if a message should start a new group
-  const shouldStartNewGroup = (currentMessage, previousMessage) => {
-    if (!previousMessage) return true;
-
-    const currentTime = moment(currentMessage.createdAt);
-    const previousTime = moment(previousMessage.createdAt);
-
-    return (
-      currentMessage.senderId !== previousMessage.senderId ||
-      currentTime.diff(previousTime, "minutes") >= 1
-    );
-  };
-
-  // function to handle the typing event
-  const handleTypingEvent = (e) => {
-    setNewMessage(e.target.value);
-
-    // emit typing event
-    if (!isTyping) {
-      socket.emit('typing', {
-        roomId: [currentUser._id, selectedUser._id].sort().join("_"),
-        isTyping: true
-      });
-      setIsTyping(true);
-    }
-
-    // clear previous Timeout
-    if (typingTimeout.current) {
-      clearTimeout(typingTimeout.current);
-    }
-
-    // Set timeout to stop typing indicator
-    typingTimeout.current = setTimeout(() => {
-      socket.emit('typing', {
-        roomId: [currentUser._id, selectedUser._id].sort().join("_"),
-        isTyping: false,
-      });
-      setIsTyping(false);
-    }, 1000)
-  };
-
-  
-  // handle profile info change
-  const toggleProfileInfo = () => {
-    setShowProfileInfo(!showProfileInfo);
-  }
-
   // adding class to the chat-container based on the state of the showProfileInfo
   const chatContainerClass = showProfileInfo ? 'chat-container shrink' : 'chat-container';
+
+  // listen for new messages
+  useEffect(() => {
+    const roomId = [currentUser._id, selectedUser?._id].sort().join('_');
+    socket.emit('join-room', roomId);
+
+    socket.on('new-message', (message) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
+    });
+
+    return () => {
+      socket.off('new-message');
+      socket.emit('leave-room', roomId);
+    }
+  }, [setMessages, selectedUser, currentUser]);
 
   if (!selectedUser) {
     return (

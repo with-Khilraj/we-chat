@@ -4,6 +4,7 @@ const Message = require("../models/Message");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const verifyAccessToken = require("../middlewares/authMiddleware");
+const getChatHistory = require("../service/chatService");
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -107,6 +108,10 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
   }
 });
 
+
+
+
+
 // validate ObjectId
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
@@ -193,7 +198,7 @@ router.put('/status/bulk', verifyAccessToken, async (req, res) => {
 })
 
 
-
+// get the recent message of all users
 router.get("/recent-messages", verifyAccessToken, async (req, res) => {
   //  IDs are stored as ObjectId in the database, we need to ensure that the loggedInUserId
   // is passed as ObjectId (not a string) in the aggregation pipeline for matching.
@@ -268,25 +273,17 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
 });
 
 
-
-
-//  BOTH OF THE ROUTE LOGIC ARE PERFECT. ONE LOGIC USE (receiverId) WHILE
-// OTHER USE (roomId) TO FETCH ALL THE MESSAGES BETWEEN TWO USERS.
-
-// get all messages between two users
-router.get("/:receiverId", verifyAccessToken, async (req, res) => {
-  const { receiverId } = req.params;
-
+// get all messages between two users using 'roomId'
+router.get("/:roomId", verifyAccessToken, async (req, res) => {
   try {
-    const messages = await Message.find({
-      // $or is used to find messages where:
-      // The logged-in user sent the message to the receiver.
-      // The logged-in user received the message from the receiver.
-      $or: [
-        { senderId: req.user.id, receiverId },
-        { senderId: receiverId, receiverId: req.user.id },
-      ],
-    }).sort({ createdAt: 1 }); // sort messages in ascending order
+    const { roomId } = req.params;
+
+    // normal way to get the chats
+    const messages = await Message.find({ roomId }).sort({ createdAt: 1 });
+
+    // using caching
+    // const messages = await getChatHistory(roomId);
+
     res.status(200).json({ messages });
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -294,11 +291,20 @@ router.get("/:receiverId", verifyAccessToken, async (req, res) => {
   }
 });
 
-// router.get("/:roomId", verifyAccessToken, async (req, res) => {
-//   try {
-//     const { roomId } = req.params;
+// GET ALL MESSAGES BETWEEN TWO USERS USING 'receiverId'
+// router.get("/:receiverId", verifyAccessToken, async (req, res) => {
+//   const { receiverId } = req.params;
 
-//     const messages = await Message.find({ roomId }).sort({ createdAt: 1 });
+//   try {
+//     const messages = await Message.find({
+//       // $or is used to find messages where:
+//       // The logged-in user sent the message to the receiver.
+//       // The logged-in user received the message from the receiver.
+//       $or: [
+//         { senderId: req.user.id, receiverId },
+//         { senderId: receiverId, receiverId: req.user.id },
+//       ],
+//     }).sort({ createdAt: 1 }); // sort messages in ascending order
 //     res.status(200).json({ messages });
 //   } catch (error) {
 //     console.error("Error fetching messages:", error);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import "../styles/sidebar.css";
-import { fetchUserData, fetchUserExceptCurrent } from "./userStore";
+import { fetchUserData, fetchUserExceptCurrent } from "../utils/userStore";
 import api from "../Api";
-import socket from "./socket";
+import socket from "../utils/socket";
 import { debounce, } from "lodash";
 import { useOnlineUsers } from "../context/onlineUsersContext";
 import { toast } from "react-toastify";
@@ -163,15 +163,14 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
     const handleNewMessage = (message) => {
       updateRecentMessages([message]);
     };
-
     // listen for new messages
     socket.on("new_message", handleNewMessage);
-
     // clean up the socket listener whe the component unmounts
     return () => {
       socket.off("new_message", handleNewMessage);
     };
   }, [updateRecentMessages]);
+
 
   // Helper: turncate the message content
   const truncateMessage = (content = "", maxLength = 25) => {
@@ -179,6 +178,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
       ? `${content.substring(0, maxLength)}...`
       : content;
   };
+
 
   // Filter users based on the search input and sort the chat list based on the timestamp
   const filteredUsers = useMemo(() => {
@@ -243,9 +243,6 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
       await api.post("/api/users/logout");
       // Clear all user-related data from local storage
       localStorage.clear();
-
-      // update the local state
-      // setLoggedInUser(null);
 
       // clear recent messages
       setRecentMessages({});

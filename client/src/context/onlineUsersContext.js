@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import socket from "../component/socket.js";
+import socket from "../utils/socket.js";
 
 const OnlineUsersContext = createContext();
 
@@ -18,24 +18,6 @@ export const OnlineUsersProvider = ({ children }) => {
     };
   }, []);
 
-
-  // useEffect(() => {
-  //   const handleUserStatusChanged = ({ userId, isOnline }) => {
-  //     setOnlineUsers((prevOnlineUsers) => {
-  //       if (isOnline) {
-  //         return [...new Set([...prevOnlineUsers, userId])];
-  //       } else {
-  //         return prevOnlineUsers.filter((id) => id !== userId);
-  //       }
-  //     });
-  //   };
-
-  //   socket.on('userStatusChanged', handleUserStatusChanged);
-
-  //   return () => {
-  //     socket.off('userStatusChanged', handleUserStatusChanged);
-  //   };
-  // }, []);
 
   return (
     <OnlineUsersContext.Provider value={(onlineUsers)}>

@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const verifyAccessToken = require("../middlewares/authMiddleware");
 const RefreshToken = require("../models/refreshTokens");
-const sendVerificationOTP = require('../emailConfig')
+const sendVerificationOTP = require('../service/emailConfig')
 
 const router = express.Router();
 

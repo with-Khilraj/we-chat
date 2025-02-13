@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchUserData } from "../component/userStore";
+import { fetchUserData } from "../utils/userStore";
 // import fetchUserData from "../component/util";
 
 const Profile = () => {

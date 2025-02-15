@@ -69,6 +69,11 @@ io.on("connection", (socket) => {
     console.log(`User left room: ${roomId}`);
   });
 
+  socket.on('typing', (data) => {
+    console.log("Received typing event from client:", data);
+    socket.to(data.roomId).emit('typing', data);
+  })
+
   // send a message
   socket.on("send-message", async (data) => {
     try {

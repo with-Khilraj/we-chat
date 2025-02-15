@@ -322,6 +322,8 @@ audio.media-message {
   padding: 6px 10px;
   border-radius: 15px;
   max-width: 60%;
+  background-color: #d32222;
+  align-self: flex-start;
 }
 
 .typing-indicator.received {
@@ -339,7 +341,7 @@ audio.media-message {
   width: 6px;
   height: 6px;
   margin: 0 2px;
-  background-color: #666;
+  background-color: #12c93d;
   border-radius: 50%;
   animation: typing 1.2s infinite ease-in-out;
 }

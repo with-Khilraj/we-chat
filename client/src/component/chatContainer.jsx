@@ -24,7 +24,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     error,
     showProfileInfo,
     isTyping,
-    isOhterUsertyping,
+    isOtherUsertyping,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -41,7 +41,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
   // listen for new messages
   useEffect(() => {
-    const roomId = [currentUser._id, selectedUser?._id].sort().join('-');
+    const roomId = [currentUser._id, selectedUser?._id].sort().join("-");
     socket.emit('join-room', roomId);
 
     socket.on('new-message', (message) => {
@@ -183,7 +183,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           })}
 
           {/* Add typing indicator */}
-          {isOhterUsertyping && (
+          {isOtherUsertyping && (
             <div className="typing-indicator received">
               <div className="typing-dots">
                 <span></span>

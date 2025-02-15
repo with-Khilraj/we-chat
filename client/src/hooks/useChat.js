@@ -16,7 +16,7 @@ export const useChat = (selectedUser, currentUser) => {
   const [error, setError] = useState("");
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [isOhterUsertyping, setIsOtherUserTyping] = useState(false);
+  const [isOtherUsertyping, setIsOtherUserTyping] = useState(false);
 
   const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
@@ -70,10 +70,10 @@ export const useChat = (selectedUser, currentUser) => {
           return prevMessages;
         });
       };
-  
+
       // listen for 'receive-message' event
       socket.on("receive-message", handleReceiveMessage);
-  
+
       // clean up function
       return () => {
         socket.off("receive-message", handleReceiveMessage);
@@ -271,13 +271,36 @@ export const useChat = (selectedUser, currentUser) => {
     }
   }, [selectedUser, currentUser, messages]);
 
+
+  // Add the useEffect to listen for typing events
+  useEffect(() => {
+    if (selectedUser) {
+      const roomId = [currentUser._id, selectedUser._id].sort().join("-");
+
+      const handleTyping = (data) => {
+        if (data.roomId === roomId) {
+          console.log("Updating isOtherUserTyping to:::", data.isTyping);
+          setIsOtherUserTyping(data.isTyping);
+        }
+      };
+
+      socket.on('typing', handleTyping);
+
+      return () => {
+        socket.off('typing', handleTyping);
+        console.log("Remove typing event listner")
+      }
+    }
+  }, [selectedUser, currentUser]);
   
+
   // function to handle the typing event
   const handleTypingEvent = (e) => {
     setNewMessage(e.target.value);
 
     // emit typing event
     if (!isTyping) {
+      console.log("Emmitting typing event: isTyping = true");
       socket.emit('typing', {
         roomId: [currentUser._id, selectedUser._id].sort().join("-"),
         isTyping: true
@@ -292,6 +315,7 @@ export const useChat = (selectedUser, currentUser) => {
 
     // Set timeout to stop typing indicator
     typingTimeout.current = setTimeout(() => {
+      console.log('Emitting typing event: isTyping = false')
       socket.emit('typing', {
         roomId: [currentUser._id, selectedUser._id].sort().join("-"),
         isTyping: false,
@@ -300,32 +324,14 @@ export const useChat = (selectedUser, currentUser) => {
     }, 1000)
   };
 
-  // Add the useEffect to listen for typing events
-  useEffect(() => {
-    if (selectedUser) {
-      const roomId = [currentUser._id, selectedUser._id].sort().join("-");
 
-      const handleTyping = (data) => {
-        if (data.roomId === roomId) {
-          setIsOtherUserTyping(data.isTyping);
-        }
-      };
-
-      socket.on('typing', handleTyping);
-
-      return () => {
-      socket.off('typing', handleTyping);
-      }
-    }
-  }, [selectedUser, currentUser]);
-  
   // to go the end/last messages of users
   useEffect(() => {
     if (messages.length) {
       messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, currentUser, selectedUser]);
-  
+
   // handle profile info change
   const toggleProfileInfo = () => {
     setShowProfileInfo(!showProfileInfo);
@@ -342,7 +348,7 @@ export const useChat = (selectedUser, currentUser) => {
     error,
     showProfileInfo,
     isTyping,
-    isOhterUsertyping,
+    isOtherUsertyping,
     messageEndRef,
     fileInputRef,
     handleSendMessage,

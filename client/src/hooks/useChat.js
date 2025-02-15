@@ -279,7 +279,6 @@ export const useChat = (selectedUser, currentUser) => {
 
       const handleTyping = (data) => {
         if (data.roomId === roomId) {
-          console.log("Updating isOtherUserTyping to:::", data.isTyping);
           setIsOtherUserTyping(data.isTyping);
         }
       };
@@ -288,11 +287,10 @@ export const useChat = (selectedUser, currentUser) => {
 
       return () => {
         socket.off('typing', handleTyping);
-        console.log("Remove typing event listner")
       }
     }
   }, [selectedUser, currentUser]);
-  
+
 
   // function to handle the typing event
   const handleTypingEvent = (e) => {

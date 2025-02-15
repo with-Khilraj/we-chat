@@ -33,7 +33,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     handleAudioRecording,
     handleTypingEvent,
     toggleProfileInfo,
-  } = useChat (selectedUser, currentUser);
+  } = useChat(selectedUser, currentUser);
 
   const onlineUsers = useOnlineUsers();
   // adding class to the chat-container based on the state of the showProfileInfo
@@ -140,43 +140,62 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                     </div>
                   )}
 
-                </div>
+                  {/* Message abubble */}
+                  <div
+                    className={`message-container ${message.senderId === currentUser._id ?
+                      "sent" : "received"
+                      }`}>
+                    <div className="message">
+                      <div className="message-content">
+                        {message.messageType === "text" && <p className="text-message">{message.content}</p>}
+                        {message.messageType === "photo" && (
+                          <div className="for-photo">
+                            <img src={message.fileUrl} alt={message.fileName} className="media-message" />
+                          </div>
+                        )}
+                        {message.messageType === "video" && (
+                          <div>
+                            <video controls src={message.fileUrl} className="video-message" />
+                          </div>
+                        )}
+                        {message.messageType === "audio" && (
+                          <div>
+                            <audio controls src={message.fileUrl} className="audio-message" />
+                          </div>
+                        )}
+                        {message.messageType === "file" && (
+                          <div>
+                            <a href={message.fileUrl} download={message.fileName} className="file-message">
+                              {message.fileName}
+                            </a>
+                          </div>
+                        )}
 
-                {/* Message abubble */}
-                <div
-                  className={`message ${message.senderId === currentUser._id ? "sent" : "received"
-                    }`}
-                >
-                  {message.messageType === "text" && <p className="text-message">{message.content}</p>}
-                  {message.messageType === "photo" && (
-                    <div className="for-photo">
-                      <img src={message.fileUrl} alt={message.fileName} className="media-message" />
-                    </div>
-                  )}
-                  {message.messageType === "video" && (
-                    <div>
-                      <video controls src={message.fileUrl} className="video-message" />
-                    </div>
-                  )}
-                  {message.messageType === "audio" && (
-                    <div>
-                      <audio controls src={message.fileUrl} className="audio-message" />
-                    </div>
-                  )}
-                  {message.messageType === "file" && (
-                    <div>
-                      <a href={message.fileUrl} download={message.fileName} className="file-message">
-                        {message.fileName}
-                      </a>
-                    </div>
-                  )}
+                        {/* Hover Icons for received or left */}
+                      {message.senderId !== currentUser._id && (
+                        <div className="message-hover-icons">
+                          <button className="icon-button" >
+                            <span role="img" aria-label="React">❤️</span> {/* Reaction icon */}
+                          </button>
+                          <button className="icon-button" >
+                            <span role="img" aria-label="Reply">↩️</span> {/* Reply icon */}
+                          </button>
+                          <button className="icon-button" >
+                            <span role="img" aria-label="More">⋮</span> {/* More options icon */}
+                          </button>
+                        </div>
+                      )}
+                      </div>
 
-                  {/* status indicator */}
-                  {message.senderId === currentUser._id && (
-                    <div className="message-status">
-                    {renderStatusIndicator(message.status)}
+                      
+                    </div>
+                    {/* status indicator */}
+                    {message.senderId === currentUser._id && (
+                      <div className="message-status inside">
+                        {renderStatusIndicator(message.status)}
+                      </div>
+                    )}
                   </div>
-                  )}            
                 </div>
               </div>
             );
@@ -192,7 +211,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
               </div>
             </div>
           )}
-
           <div ref={messageEndRef}></div>
         </div>
 

@@ -25,6 +25,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     showProfileInfo,
     isTyping,
     isOtherUsertyping,
+    incommingCall,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -89,6 +90,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             <button className="video-call-icon">
               <img src={video_call} alt="" />
             </button>
+
             <button className="audio-call-icon">
               <img src={audio_call} alt="" />
             </button>

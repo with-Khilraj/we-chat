@@ -17,6 +17,9 @@ export const useChat = (selectedUser, currentUser) => {
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUsertyping, setIsOtherUserTyping] = useState(false);
+  const [isCalling, setIsCalling] = useState(false);
+  const [incommingCall, setIncomingCall] = useState(false);
+  const [callRoomId, setCallRoomId] = useState(null);
 
   const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
@@ -323,6 +326,76 @@ export const useChat = (selectedUser, currentUser) => {
   };
 
 
+  // Handle incoming call
+  useEffect(() => {
+    socket.on('initiate-call', (data) => {
+      setIncomingCall(data);
+      console.log('Incomming call from:', data.callerId);
+    });
+
+    socket.on('call-accepted', (data) => {
+      setIsCalling(true);
+      setCallRoomId(data.roomId);
+      console.log("Call accepted by:", data.receiverId);
+    });
+
+    socket.on('call-rejected', () => {
+      setIsCalling(false);
+      setIncomingCall(null);
+      console.log("Call rejected");
+    });
+
+    socket.on('call-ended', () => {
+      setIsCalling(false);
+      setIncomingCall(null);
+      setCallRoomId(null);
+      console.log("call ended");
+    });
+
+    return () => {
+      socket.off('incomming-call');
+      socket.off('call-accepted');
+      socket.off('call-rejected');
+      socket.off('call-ended');
+    }
+  }, []);
+
+  // functions to handle call initiation, acceptance, rejection and ending
+  const initialCall = () => {
+    const roomId = [currentUser._id, selectedUser._id].sort().join("-");
+    socket.emit('initiate-call', {
+      callerId: currentUser._id,
+      receiverId: selectedUser._id,
+      roomId
+    });
+    console.log("Call initiated");
+  };
+
+  const acceptCall = (roomId) => {
+    socket.emit("accept-call", {
+      callerId: currentUser._id,
+      receiverId: selectedUser._id,
+      roomId,
+    });
+    console.log("Call accepted");
+  };
+
+  const rejectCall = () => {
+    socket.emit('reject-call', {
+      callerId: currentUser._id,
+      receiverId: selectedUser._id
+    });
+    console.log("Call rejected");
+  };
+
+  const endCall = (roomId) => {
+    socket.emit('end-call', {
+      roomId,
+    });
+    console.log("Call ended");
+  };
+
+
   // to go the end/last messages of users
   useEffect(() => {
     if (messages.length) {
@@ -347,6 +420,7 @@ export const useChat = (selectedUser, currentUser) => {
     showProfileInfo,
     isTyping,
     isOtherUsertyping,
+    incommingCall,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -354,6 +428,10 @@ export const useChat = (selectedUser, currentUser) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
+    initialCall,
+    acceptCall,
+    rejectCall,
+    endCall,
     toggleProfileInfo,
   }
 }

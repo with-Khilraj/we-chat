@@ -49,6 +49,9 @@ app.use("/api/messages", messageRoutes, chatRoutes);
 // using Map to store online users
 const onlineUsers = new Map();
 
+// Store active calls
+const activeCalls = new Map();
+
 // setup socket.io
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
@@ -147,6 +150,48 @@ io.on("connection", (socket) => {
       console.error("Error updating message status:", error);
     }
   });
+
+  // Handle call initiation
+  socket.on('initiate-call', (data) => {
+    const { callerId, receiverId, roomId } = data;
+    console.log(`Call initiated by ${callerId} to ${receiverId}`);
+
+    // notifying the receiver
+    socket.to(receiverId).emit("incomming-call", { callerId, roomId });
+  })
+
+  // Handle call acceptance
+  socket.on('accept-call', (data) => {
+    const { callerId, receiverId, roomId } = data;
+    console.log(`Call accepted by ${receiverId} from ${callerId}`);
+
+    // notify the caller
+    socket.to(callerId).emit('call-accepted', { receiverId, roomId });
+
+    // store the call in activeCalls
+    activeCalls.set(roomId, { callerId, receiverId });
+  })
+
+  // Handle call rejection
+  socket.on('reject-call', (data) => {
+    const { callerId, receiverId } = data;
+    console.log(`Call rejected by ${receiverId} from ${callerId}`);
+
+    // notify the caller
+    socket.to(callerId).emit("call-rejected", { receiverId });
+  })
+
+  // Handle call end
+  socket.on('end-call', (data) => {
+    const { roomId } = data;
+    console.log(`Call ended in room ${roomId}`);
+
+    // Remove the call from activeCalls
+    activeCalls.delete(roomId);
+
+    // Notify the both users
+    io.to(roomId).emit("call-ended", { roomId });
+  })
 
 
   socket.on("disconnect", async () => {

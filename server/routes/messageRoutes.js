@@ -109,9 +109,6 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
 });
 
 
-
-
-
 // validate ObjectId
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);

@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import moment from "moment";
 import "../styles/chatContainer.css";
-import socket from "../utils/socket";
+import "../styles/audio_video_call.css"
 import { useOnlineUsers } from "../context/onlineUsersContext";
 import { useChat } from "../hooks/useChat";
 import { shouldDisplayTimeStamp, shouldStartNewGroup, renderStatusIndicator } from "../utils/chatUtils";
@@ -17,15 +17,11 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     messages,
     setMessages,
     newMessage,
-    setNewMessage,
-    file,
     isUploading,
-    isRecording,
-    error,
     showProfileInfo,
-    isTyping,
     isOtherUsertyping,
-    incommingCall,
+    isCalling,
+    incomingCall,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -33,27 +29,18 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
+    initiateCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    localStream,
+    remoteStream,
     toggleProfileInfo,
   } = useChat(selectedUser, currentUser);
 
   const onlineUsers = useOnlineUsers();
   // adding class to the chat-container based on the state of the showProfileInfo
   const chatContainerClass = showProfileInfo ? 'chat-container shrink' : 'chat-container';
-
-  // listen for new messages
-  useEffect(() => {
-    const roomId = [currentUser._id, selectedUser?._id].sort().join("-");
-    socket.emit('join-room', roomId);
-
-    socket.on('new-message', (message) => {
-      setMessages((prevMessages) => [...prevMessages, message]);
-    });
-
-    return () => {
-      socket.off('new-message');
-      socket.emit('leave-room', roomId);
-    }
-  }, [setMessages, selectedUser, currentUser]);
 
   if (!selectedUser) {
     return (
@@ -91,9 +78,24 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
               <img src={video_call} alt="" />
             </button>
 
-            <button className="audio-call-icon">
+            {/* Call  Modal */}
+            {incomingCall && (
+              <div className="call-modal">
+                <h3>Incomming Call from {selectedUser.username}</h3>
+                <button onClick={() => acceptCall(incomingCall.roomId) }>Accept</button>
+                <button onClick={rejectCall}>Reject</button>
+              </div>
+            )}
+
+            {/* Call Buttons */}
+            <button onClick={initiateCall}  disabled={isCalling} className="audio-call-icon">
               <img src={audio_call} alt="" />
             </button>
+
+            {/* Audio Elements */}
+            {localStream && <audio ref={(ref) => ref && (ref.srcObject = localStream)} muted autoPlay />}
+            {remoteStream && <audio ref={(ref) => ref && (ref.srcObject = remoteStream)} autoPlay />}
+
             <button className="info-icon" onClick={toggleProfileInfo}>
               <img src={info_icon} alt="" />
             </button>

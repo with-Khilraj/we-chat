@@ -99,7 +99,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
             let displayMessage;
             if(message.messageType === 'text') {
               // we call message.message not message.content because in server-side, 
-              // we save the content and file both on 'message' while sending the message
+              // we save the content and file both on 'message' while sending the message to the client
               const messageContent = message.message || "";   
               console.log("message::::", message);
               console.log("messageContent::::", messageContent);

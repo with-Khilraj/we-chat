@@ -77,7 +77,7 @@ io.on("connection", (socket) => {
     socket.to(data.roomId).emit('typing', data);
   })
 
-  // send a message
+  // listen for a message (useChat.js ==> handleSendMessage function)
   socket.on("send-message", async (data) => {
     try {
       // Validate Ojbect fields
@@ -157,7 +157,7 @@ io.on("connection", (socket) => {
     console.log(`Call initiated by ${callerId} to ${receiverId}`);
 
     // notifying the receiver
-    socket.to(receiverId).emit("incomming-call", { callerId, roomId });
+    socket.to(receiverId).emit("incoming-call", { callerId, roomId });
   })
 
   // Handle call acceptance
@@ -193,6 +193,23 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("call-ended", { roomId });
   })
 
+  // Handle WebRTC offer
+  socket.on('offer', (data) => {
+    const { roomId, offer } = data;
+    socket.to(roomId).emit('offer', { roomId, offer });
+  });
+
+  // Handle WebRTC answer
+  socket.on('answer', (data) => {
+    const { roomId, answer } = data;
+    socket.to(roomId).emit('answer', { roomId, answer });
+  });
+
+  // Handle ICE candidates
+  socket.on('ice-candidate', (data) => {
+    const { roomId, candidate } = data;
+    socket.to(roomId).emit('ice-candidate', { roomId, candidate });
+  });
 
   socket.on("disconnect", async () => {
     try {

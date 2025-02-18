@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../Api';
 import socket from '../utils/socket';
+import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 import { isValidObjectId, getMediaDuration } from '../utils/chatUtils';
 
@@ -18,7 +19,7 @@ export const useChat = (selectedUser, currentUser) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUsertyping, setIsOtherUserTyping] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
-  const [incommingCall, setIncomingCall] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(false);
   const [callRoomId, setCallRoomId] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
@@ -110,7 +111,7 @@ export const useChat = (selectedUser, currentUser) => {
         socket.off('message-seen', handleMessageStautus);
       };
     }
-  }, [])
+  }, [selectedUser])
 
 
   // hande file input change
@@ -161,104 +162,104 @@ export const useChat = (selectedUser, currentUser) => {
   }
 
   // Handle send messages button
-  const handleSendMessage = async (fileToSend = file) => {
-    if (!newMessage.trim() && !fileToSend) {
-      return;
+ const handleSendMessage = async (fileToSend = file) => {
+  if (!newMessage.trim() && !fileToSend) {
+    return;
+  }
+
+  // Validate receiverId
+  if (!selectedUser?._id || !isValidObjectId(selectedUser._id)) {
+    setError("Invalid receiver ID. Please select a valid user.");
+    return;
+  }
+
+  // const messageId = uuidv4();
+  const messageId = new mongoose.Types.ObjectId();
+
+  // Determine messageType based on whether a file is being sent
+  let messageType = "text"; // Default to text message
+  if (fileToSend && fileToSend instanceof File) {
+    if (fileToSend.type.startsWith("audio")) {
+      messageType = "audio";
+    } else if (fileToSend.type.startsWith("video")) {
+      messageType = "video";
+    } else if (fileToSend.type.startsWith("image")) {
+      messageType = "photo";
+    } else {
+      messageType = "file";
     }
+  }
 
-    // Validate receiverId
-    if (!selectedUser?._id || !isValidObjectId(selectedUser._id)) {
-      setError("Invalid receiver ID. Please select a valid user.");
-      return;
-    }
-
-    // const messageId = uuidv4();
-    const messageId = new mongoose.Types.ObjectId();
-
-    // Determine messageType based on whether a file is being sent
-    let messageType = "text"; // Default to text message
-    if (fileToSend && fileToSend instanceof File) {
-      if (fileToSend.type.startsWith("audio")) {
-        messageType = "audio";
-      } else if (fileToSend.type.startsWith("video")) {
-        messageType = "video";
-      } else if (fileToSend.type.startsWith("image")) {
-        messageType = "photo";
-      } else {
-        messageType = "file";
-      }
-    }
-
-    const messageData = {
-      _id: messageId,
-      roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-      senderId: currentUser._id,
-      receiverId: selectedUser._id,
-      content: newMessage.trim(),
-      messageType,
-      fileUrl: fileToSend && fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null, // Temporary URL for preview
-      fileName: fileToSend ? fileToSend.name : "",
-      fileSize: fileToSend ? fileToSend.size : 0,
-      fileType: fileToSend ? fileToSend.type : "",
-      duration: messageType === "audio" || messageType === "video"
-        ? await getMediaDuration(fileToSend)
-        : 0, // Calculate duration for audio/video files
-      status: "sent",
-    };
-
-    try {
-      setIsUploading(true);
-      setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
-      setNewMessage("");
-      setFile(null);
-
-      const accessToken = localStorage.getItem("accessToken");
-      const formData = new FormData();
-
-      // Append only required fields to FormData
-      formData.append("roomId", messageData.roomId);
-      formData.append("senderId", messageData.senderId);
-      formData.append("receiverId", messageData.receiverId); // Explicitly append receiverId
-      formData.append("content", messageData.content);
-      formData.append("messageType", messageData.messageType);
-      formData.append("caption", messageData.caption);
-      formData.append("status", messageData.status);
-
-      if (fileToSend && fileToSend instanceof File) {
-        formData.append("file", fileToSend);
-        formData.append("fileName", messageData.fileName);
-        formData.append("fileSize", messageData.fileSize);
-        formData.append("fileType", messageData.fileType);
-        if (messageData.duration) formData.append("duration", messageData.duration);
-      }
-
-      // Send message to server
-      const response = await api.post("/api/messages/", formData, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      // Emit messages
-      socket.emit("send-message", messageData);
-
-      // Update message with actual ID from server response
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          // msg._id === Date.now() ? { ...msg, _id: response.data._id } : msg
-          msg._id === messageId ? { ...msg, _id: response.data._id } : msg
-        )
-      );
-    } catch (error) {
-      console.error("Error while sending message:", error);
-      if (error.response?.status === 401) {
-        navigate('/login');
-      }
-    } finally {
-      setIsUploading(false);
-    }
+  const messageData = {
+    _id: messageId,
+    roomId: [currentUser._id, selectedUser._id].sort().join("-"),
+    senderId: currentUser._id,
+    receiverId: selectedUser._id,
+    content: newMessage.trim(),
+    messageType,
+    fileUrl: fileToSend && fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null, // Temporary URL for preview
+    fileName: fileToSend ? fileToSend.name : "",
+    fileSize: fileToSend ? fileToSend.size : 0,
+    fileType: fileToSend ? fileToSend.type : "",
+    duration: messageType === "audio" || messageType === "video"
+      ? await getMediaDuration(fileToSend)
+      : 0, // Calculate duration for audio/video files
+    status: "sent",
   };
+
+  try {
+    setIsUploading(true);
+    setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
+    setNewMessage("");
+    setFile(null);
+
+    const accessToken = localStorage.getItem("accessToken");
+    const formData = new FormData();
+
+    // Append only required fields to FormData
+    formData.append("roomId", messageData.roomId);
+    formData.append("senderId", messageData.senderId);
+    formData.append("receiverId", messageData.receiverId); // Explicitly append receiverId
+    formData.append("content", messageData.content);
+    formData.append("messageType", messageData.messageType);
+    formData.append("caption", messageData.caption);
+    formData.append("status", messageData.status);
+
+    if (fileToSend && fileToSend instanceof File) {
+      formData.append("file", fileToSend);
+      formData.append("fileName", messageData.fileName);
+      formData.append("fileSize", messageData.fileSize);
+      formData.append("fileType", messageData.fileType);
+      if (messageData.duration) formData.append("duration", messageData.duration);
+    }
+
+    // Send message to server
+    const response = await api.post("/api/messages/", formData, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    // Emit messages
+    socket.emit("send-message", messageData);
+
+    // Update message with actual ID from server response
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        // msg._id === Date.now() ? { ...msg, _id: response.data._id } : msg
+        msg._id === messageId ? { ...msg, _id: response.data._id } : msg
+      )
+    );
+  } catch (error) {
+    console.error("Error while sending message:", error);
+    if (error.response?.status === 401) {
+      navigate('/login');
+    }
+  } finally {
+    setIsUploading(false);
+  }
+};
 
 
   // when user views the chat, emit 'message-seen' for all the unread messages
@@ -266,7 +267,7 @@ export const useChat = (selectedUser, currentUser) => {
     if (selectedUser) {
       // emit 'message-seen' for all the unread messages
       const unreadMessages = messages.filter(
-        (msg) => msg.receiverId === currentUser._id && msg.status === "sent"
+        (msg) => msg.receiverId === currentUser._id && msg.status === "sent"  && isValidObjectId(msg._id)
       );
       if (unreadMessages.length > 0) {
         socket.emit('message-seen', {
@@ -329,9 +330,9 @@ export const useChat = (selectedUser, currentUser) => {
   };
 
 
-  // Handle incoming call
+  // Listen for incoming call
   useEffect(() => {
-    socket.on('initiate-call', (data) => {
+    socket.on('incoming-call', (data) => {
       setIncomingCall(data);
       console.log('Incomming call from:', data.callerId);
     });
@@ -356,7 +357,7 @@ export const useChat = (selectedUser, currentUser) => {
     });
 
     return () => {
-      socket.off('incomming-call');
+      socket.off('incoming-call');
       socket.off('call-accepted');
       socket.off('call-rejected');
       socket.off('call-ended');
@@ -364,7 +365,7 @@ export const useChat = (selectedUser, currentUser) => {
   }, []);
 
   // functions to handle call initiation, acceptance, rejection and ending
-  const initialCall = () => {
+  const initiateCall = () => {
     const roomId = [currentUser._id, selectedUser._id].sort().join("-");
     socket.emit('initiate-call', {
       callerId: currentUser._id,
@@ -400,7 +401,7 @@ export const useChat = (selectedUser, currentUser) => {
 
   // Setup WebRTC to establish a peer to peer connection
   const setupWebRTC = async (roomId) => {
-    const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]};
+    const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     const pc = new RTCPeerConnection(configuration);
 
     // add local stream
@@ -416,7 +417,7 @@ export const useChat = (selectedUser, currentUser) => {
     // handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit('ice-candidates', { roomId, candidate: event.candidate });
+        socket.emit('ice-candidate', { roomId, candidate: event.candidate });
       }
     };
 
@@ -435,7 +436,7 @@ export const useChat = (selectedUser, currentUser) => {
     socket.emit('offer', { roomId, offer });
   };
 
-  const handleOffer = async (roomId, offer) => {
+  const handleOffer = useCallback(async (roomId, offer) => {
     const pc = await setupWebRTC(roomId);
 
     // set remote description
@@ -446,10 +447,56 @@ export const useChat = (selectedUser, currentUser) => {
     await pc.setLocalDescription(answer);
 
     // send answer to the other user
-    socket.emit('answer', { roomId, offer });
-  };
+    socket.emit('answer', { roomId, answer });
+  }, []);
 
-  
+  const handleAnswer = useCallback(async (roomId, answer) => {
+    if (peerConnection) {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    }
+  }, [peerConnection]);
+
+  const handleIceCandidate = useCallback(async (roomId, candidate) => {
+    if (peerConnection) {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  }, [peerConnection]);
+
+  // clean-up WebRTC resources
+  const cleanupWebRTC = useCallback(() => {
+    if (peerConnection) {
+      peerConnection.close();
+      setPeerConnection(null);
+    }
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    setRemoteStream(null);
+  }, [localStream, peerConnection]);
+
+  // listen for webRTC events
+  useEffect(() => {
+    socket.on('offer', (data) => {
+      handleOffer(data.roomId, data.offer);
+    });
+
+    socket.on('answer', (data) => {
+      handleAnswer(data.roomId, data.answer);
+    });
+
+    socket.on('ice-candidate', (data) => {
+      handleIceCandidate(data.roomId, data.candidate);
+    });
+
+    return () => {
+      socket.off('offer');
+      socket.off('answer');
+      socket.off('ice-candidate');
+      cleanupWebRTC();
+    }
+  }, [handleAnswer, handleOffer, handleIceCandidate, cleanupWebRTC])
+
 
   // to go the end/last messages of users
   useEffect(() => {
@@ -475,7 +522,8 @@ export const useChat = (selectedUser, currentUser) => {
     showProfileInfo,
     isTyping,
     isOtherUsertyping,
-    incommingCall,
+    isCalling,
+    incomingCall,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -483,10 +531,12 @@ export const useChat = (selectedUser, currentUser) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
-    initialCall,
+    initiateCall,
     acceptCall,
     rejectCall,
     endCall,
+    localStream,
+    remoteStream,
     toggleProfileInfo,
   }
 }

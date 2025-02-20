@@ -16,40 +16,37 @@ export const getMediaDuration = (file) => {
   });
 };
 
+// Helper: check if there's a 30 minute or more gap between two messages
+export const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
+  if (!previousMessage) return true;
+
+  const currentTime = moment(currentMessage.createdAt);
+  const previousTime = moment(previousMessage.createdAt);
+  return currentTime.diff(previousTime, "minutes") >= 30;
+};
+
+// Helper: check if a message should start a new group
+export const shouldStartNewGroup = (currentMessage, previousMessage) => {
+  if (!previousMessage) return true;
+
+  const currentTime = moment(currentMessage.createdAt);
+  const previousTime = moment(previousMessage.createdAt);
+
+  return (
+    currentMessage.senderId !== previousMessage.senderId ||
+    currentTime.diff(previousTime, "minutes") >= 1
+  );
+};
 
 
-
-  // Helper: check if there's a 30 minute or more gap between two messages
-  export const shouldDisplayTimeStamp = (currentMessage, previousMessage) => {
-    if (!previousMessage) return true;
-
-    const currentTime = moment(currentMessage.createdAt);
-    const previousTime = moment(previousMessage.createdAt);
-    return currentTime.diff(previousTime, "minutes") >= 30;
-  };
-
-  // Helper: check if a message should start a new group
-  export const shouldStartNewGroup = (currentMessage, previousMessage) => {
-    if (!previousMessage) return true;
-
-    const currentTime = moment(currentMessage.createdAt);
-    const previousTime = moment(previousMessage.createdAt);
-
-    return (
-      currentMessage.senderId !== previousMessage.senderId ||
-      currentTime.diff(previousTime, "minutes") >= 1
-    );
-  };
-
-  
-  // Helper: function to render the appropriate status icon
-  export const renderStatusIndicator = (status) => {
-    switch (status) {
-      case "sent":
-        return <span className="status-sent">✓</span>
-      case "seen":
-        return <span className="status-seen">✓✓</span>
-      default:
-        return null;
-    }
-  };
+// Helper: function to render the appropriate status icon
+export const renderStatusIndicator = (status) => {
+  switch (status) {
+    case "sent":
+      return <span className="status-sent">✓</span>
+    case "seen":
+      return <span className="status-seen">✓✓</span>
+    default:
+      return null;
+  }
+};

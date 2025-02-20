@@ -13,10 +13,14 @@ const CallInitiation = ({ user, onCallStart }) => {
     >
       <div className="user-info">
         <div className="avatar">
-          <img src={user.avatar} alt={user.name} />
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user?.avatar} />
+          ) : (
+            <span>{user?.username.charAt(0).toUpperCase()}</span>
+          )}
           <div className="status-indicator"></div>
         </div>
-        <h3>{user.name}</h3>
+        <h3>{user.usernme}</h3>
         <p>Connecting...</p>
       </div>
       <motion.button

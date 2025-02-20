@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import "../styles/Calls.css"
 
 const ActiveCall = ({ user, onEndCall, onToggleMute }) => {
   const [isMuted, setIsMuted] = useState(false);

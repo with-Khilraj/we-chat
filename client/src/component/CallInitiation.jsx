@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import "../styles/Calls.css";
 
-const CallInitiation = ({ user, onCallStart }) => {
+const CallInitiation = ({ user, onCallCancel }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -21,7 +21,7 @@ const CallInitiation = ({ user, onCallStart }) => {
           )}
           <div className="status-indicator"></div>
         </div>
-        <h3>{user.usernme}</h3>
+        <h3>{user.username}</h3>
         <p>Connecting...</p>
       </div>
       <motion.button
@@ -30,7 +30,7 @@ const CallInitiation = ({ user, onCallStart }) => {
         whileTap={{ scale: 0.95 }}
         onHoverStart={() => setIsHovered(true)}
         onHoverEnd={() => setIsHovered(false)}
-        onClick={onCallStart}
+        onClick={onCallCancel}
       >
         <motion.span
           className="call-icon"
@@ -39,8 +39,10 @@ const CallInitiation = ({ user, onCallStart }) => {
         >
           📞
         </motion.span>
-        Start Call
+        End Call
       </motion.button>
     </motion.div>
   );
 };
+
+export default CallInitiation;

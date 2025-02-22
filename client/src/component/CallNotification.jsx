@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import "../styles/Calls.css"
 
 const CallNotification = ({ user, onAccept, onReject }) => {
   return (
@@ -35,4 +36,6 @@ const CallNotification = ({ user, onAccept, onReject }) => {
       </motion.div>
     </AnimatePresence>
   )
-}
+};
+
+export default CallNotification;

@@ -64,4 +64,6 @@ const ActiveCall = ({ user, onEndCall, onToggleMute }) => {
       </div>
     </motion.div>
   )
-}
+};
+
+export default ActiveCall;

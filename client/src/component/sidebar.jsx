@@ -349,7 +349,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
                     <span className="online-indicator"></span>
                   )}
                 </div>
-                <div className="user-info">
+                <div className="user-info-sidebar">
                   <h4 className="user-name">{user.username}</h4>
                   <div className="user-message-container">
                     <p className= {`user-message ${!recentMessages[user._id]?.seen ? 'unseen' : ''}`}>

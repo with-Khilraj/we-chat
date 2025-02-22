@@ -1,7 +1,7 @@
 import React from "react";
 import moment from "moment";
 import "../styles/chatContainer.css";
-import "../styles/audio_video_call.css"
+import "../styles/Calls.css"
 import { useOnlineUsers } from "../context/onlineUsersContext";
 import { useChat } from "../hooks/useChat";
 import { shouldDisplayTimeStamp, shouldStartNewGroup, renderStatusIndicator } from "../utils/chatUtils";
@@ -10,18 +10,25 @@ import video_call from "../assets/video-camera.png";
 import info_icon from "../assets/info.png";
 import audio_icon from "../assets/mic.png";
 import media_icon from "../assets/image-gallery.png";
+import FloatingCallWindow from "./FloatingCallWindow";
+import ActiveCall from "./ActiveCall";
+import IncomingCall from "./Incoming_call";
+import CallInitiation from "./CallInitiation"; 
+import { AnimatePresence } from "framer-motion";
 
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
   const {
     messages,
-    setMessages,
     newMessage,
     isUploading,
     showProfileInfo,
     isOtherUsertyping,
     isCalling,
     incomingCall,
+    caller,
+    callState,
+    callRoomId,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -29,10 +36,10 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
-    initiateCall,
-    acceptCall,
-    rejectCall,
-    endCall,
+    handleInitiateCall,
+    handleAcceptCall,
+    handleRejectCall,
+    handleEndCall,
     localStream,
     remoteStream,
     toggleProfileInfo,
@@ -78,17 +85,12 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
               <img src={video_call} alt="" />
             </button>
 
-            {/* Call  Modal */}
-            {incomingCall && (
-              <div className="call-modal">
-                <h3>Incomming Call from {selectedUser.username}</h3>
-                <button onClick={() => acceptCall(incomingCall.roomId) }>Accept</button>
-                <button onClick={rejectCall}>Reject</button>
-              </div>
-            )}
-
             {/* Call Buttons */}
-            <button onClick={initiateCall}  disabled={isCalling} className="audio-call-icon">
+            <button
+              onClick={handleInitiateCall}
+              disabled={isCalling}
+              className="audio-call-icon"
+            >
               <img src={audio_call} alt="" />
             </button>
 
@@ -176,22 +178,22 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                         )}
 
                         {/* Hover Icons for received or left */}
-                      {message.senderId !== currentUser._id && (
-                        <div className="message-hover-icons">
-                          <button className="icon-button" >
-                            <span role="img" aria-label="React">❤️</span> {/* Reaction icon */}
-                          </button>
-                          <button className="icon-button" >
-                            <span role="img" aria-label="Reply">↩️</span> {/* Reply icon */}
-                          </button>
-                          <button className="icon-button" >
-                            <span role="img" aria-label="More">⋮</span> {/* More options icon */}
-                          </button>
-                        </div>
-                      )}
+                        {message.senderId !== currentUser._id && (
+                          <div className="message-hover-icons">
+                            <button className="icon-button" >
+                              <span role="img" aria-label="React">❤️</span> {/* Reaction icon */}
+                            </button>
+                            <button className="icon-button" >
+                              <span role="img" aria-label="Reply">↩️</span> {/* Reply icon */}
+                            </button>
+                            <button className="icon-button" >
+                              <span role="img" aria-label="More">⋮</span> {/* More options icon */}
+                            </button>
+                          </div>
+                        )}
                       </div>
 
-                      
+
                     </div>
                     {/* status indicator */}
                     {message.senderId === currentUser._id && (
@@ -277,6 +279,42 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         {/* Profile content goes here */}
         <p>Additional details about the current user...</p>
       </div>
+
+      {/* Call Components */}
+      <AnimatePresence>
+        {/* Call Initiation UI (for caller) */}
+        {callState === 'ringing' && !incomingCall && !isCalling && (
+          <CallInitiation
+            user={selectedUser}
+            onCallCancel={handleEndCall}
+          />
+        )}
+
+        {/* Incoming Call UI (for receiver) */}
+        {callState === 'ringing' && incomingCall && (
+          <IncomingCall
+            user={caller}
+            onAccept={() => handleAcceptCall(callRoomId)}
+            onReject={handleRejectCall}
+          />
+        )}
+
+        {callState === 'active' && (
+          <FloatingCallWindow>
+            <ActiveCall
+              user={selectedUser}
+              onEndCall={handleEndCall}
+              onToggleMute={(muted) => {
+                if (localStream) {
+                  localStream.getAudioTracks().forEach(track => {
+                    track.enabled = !muted;
+                  });
+                }
+              }}
+            />
+          </FloatingCallWindow>
+        )}
+      </AnimatePresence>
     </>
   );
 };

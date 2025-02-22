@@ -158,6 +158,7 @@ io.on("connection", (socket) => {
 
     // notifying the receiver
     socket.to(receiverId).emit("incoming-call", { callerId, roomId });
+    console.log("Emitting incoming-call event:", { callerId, roomId });
   })
 
   // Handle call acceptance

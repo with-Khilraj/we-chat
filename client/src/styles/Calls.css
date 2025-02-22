@@ -1,22 +1,29 @@
-/* Base Styles */
+/* Base Styles for All Call Components */
 .call-initiation,
 .active-call,
-.incoming-call {
+.incoming-call,
+.call-notification {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
-  padding: 2rem;
+  padding: 1.5rem;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
-  max-width: 400px;
-  margin: 0 auto;
+  max-width: 300px;
+  width: 90%;
+  z-index: 1001;
+  text-align: center;
 }
 
-.user-info {
-  text-align: center;
+/* Call Initiation UI */
+.call-initiation .user-info {
   margin-bottom: 2rem;
 }
 
-.avatar {
+.call-initiation .avatar {
   width: 100px;
   height: 100px;
   border-radius: 50%;
@@ -24,14 +31,14 @@
   position: relative;
 }
 
-.avatar img {
+.call-initiation .avatar img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.status-indicator {
+.call-initiation .status-indicator {
   width: 15px;
   height: 15px;
   border-radius: 50%;
@@ -39,76 +46,190 @@
   bottom: 5px;
   right: 5px;
   border: 2px solid white;
-}
-
-.status-indicator.active {
   background: #4caf50;
 }
 
-.ring-animation {
-  position: absolute;
-  top: 0;
-  left: 0;
+.call-initiation .call-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.call-initiation .cancel-call-button {
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.call-initiation .cancel-call-button:hover {
+  background: #cc0000;
+}
+
+/* Active Call UI */
+.active-call {
+  text-align: center;
+}
+
+.active-call .call-header {
+  margin-bottom: 1.5rem;
+}
+
+.active-call .avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+}
+
+.active-call .avatar img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  animation: ring 1.5s infinite;
-  border: 2px solid rgba(76, 175, 80, 0.5);
+  object-fit: cover;
 }
 
-@keyframes ring {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
-.call-controls {
-  display: flex;
-  justify-content: center;
-  gap: 1.5rem;
-}
-
-.control-button,
-.end-call-button {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.end-call-button {
-  background: #ff4444;
-  color: white;
-}
-
-.call-timer {
+.active-call .call-timer {
   font-size: 1.2rem;
   color: #666;
   margin-top: 0.5rem;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .call-initiation,
-  .active-call,
-  .incoming-call {
-    width: 90%;
-    padding: 1.5rem;
-  }
-  
-  .avatar {
-    width: 80px;
-    height: 80px;
-  }
+.active-call .call-controls {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
 }
 
+.active-call .control-button,
+.active-call .end-call-button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
 
-/* Floating Windows */
+.active-call .control-button:hover,
+.active-call .end-call-button:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.active-call .end-call-button {
+  background: #ff4444;
+  color: white;
+}
+
+/* Incoming Call UI */
+.incoming-call .user-info {
+  margin-bottom: 1.5rem;
+}
+
+.incoming-call .avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+}
+
+.incoming-call .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.incoming-call .call-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.incoming-call .accept-button,
+.incoming-call .reject-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.incoming-call .accept-button {
+  background: #4caf50;
+  color: white;
+}
+
+.incoming-call .accept-button:hover {
+  background: #45a049;
+}
+
+.incoming-call .reject-button {
+  background: #ff4444;
+  color: white;
+}
+
+.incoming-call .reject-button:hover {
+  background: #e60000;
+}
+
+/* Call Notification UI */
+.call-notification .notification-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.call-notification .avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+}
+
+.call-notification .avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.call-notification .notification-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.call-notification .accept-button,
+.call-notification .reject-button {
+  border: none;
+  background: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.call-notification .accept-button:hover,
+.call-notification .reject-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.call-notification .accept-button {
+  color: #4caf50;
+}
+
+.call-notification .reject-button {
+  color: #ff4444;
+}
+
+/* Floating Call Window */
 .floating-window {
   position: fixed;
   bottom: 20px;
@@ -134,48 +255,18 @@
   white-space: nowrap;
 }
 
-/* for call Notification */
-.call-notification {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
-  padding: 1rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  z-index: 1001;
-}
+/* Responsive Design */
+@media (max-width: 768px) {
+  .call-initiation,
+  .active-call,
+  .incoming-call,
+  .call-notification {
+    width: 90%;
+    padding: 1.5rem;
+  }
 
-.notification-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.notification-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.notification-actions button {
-  border: none;
-  background: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: background 0.2s ease;
-}
-
-.notification-actions button:hover {
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.accept-button {
-  color: #4caf50;
-}
-
-.reject-button {
-  color: #ff4444;
+  .avatar {
+    width: 80px;
+    height: 80px;
+  }
 }

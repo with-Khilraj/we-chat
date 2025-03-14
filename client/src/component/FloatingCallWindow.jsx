@@ -1,6 +1,6 @@
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import { useState } from "react";
 import "../styles/Calls.css";
-const { motion, useMotionValue, useTransform } = require("framer-motion");
-const { useState } = require("react");
 
 const FloatingCallWindow = ({ children }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -10,10 +10,10 @@ const FloatingCallWindow = ({ children }) => {
 
   return (
     <motion.div
-      className="floation-window"
+      className="floating-window"
       style={{ x, y, rotate }}
       drag
-      dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0}}
+      dragConstraints={{ top: -200, left: -200, right: 200, bottom: 200 }} // Adjusted for flexibility
       dragElastic={0.1}
       whileDrag={{ scale: 1.05 }}
       onDragStart={() => setIsDragging(true)}
@@ -23,7 +23,7 @@ const FloatingCallWindow = ({ children }) => {
       {isDragging && (
         <motion.div
           className="drag-indicator"
-          inital={{ opacity: 0}}
+          initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
@@ -31,7 +31,7 @@ const FloatingCallWindow = ({ children }) => {
         </motion.div>
       )}
     </motion.div>
-  )
-}
+  );
+};
 
 export default FloatingCallWindow;

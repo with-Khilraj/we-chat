@@ -431,7 +431,7 @@ router.get("/all", verifyAccessToken, async (req, res) => {
 
 router.get('/:userId', verifyAccessToken, async (req, res) => {
   try {
-    const userId = req.params.id;
+    const userId = req.params.userId;
 
     // Fetch user from the database
     const user = await User.findById(userId).select('-password');

@@ -13,11 +13,11 @@ export const useChat = (selectedUser, currentUser) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [audioChunk, setAudioChunk] = useState([]);
+  const [audioChunks, setAudioChunks] = useState([]);
   const [error, setError] = useState("");
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [isOtherUsertyping, setIsOtherUserTyping] = useState(false);
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
   const [callState, setCallState] = useState('idle')  // 'idle', 'ringing', 'active'
@@ -32,89 +32,252 @@ export const useChat = (selectedUser, currentUser) => {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
+  // Centralized roomId generator
+  const getRoomId = useCallback(() => {
+    return selectedUser && currentUser
+      ? [currentUser._id, selectedUser._id].sort().join('-')
+      : null;
+  }, [currentUser, selectedUser]);
 
+  // Fetch chat history and join room
   useEffect(() => {
-    if (selectedUser) {
-      const roomId = [currentUser._id, selectedUser._id].sort().join("-");
-      socket.emit("join-room", roomId);
+    if (!selectedUser || !currentUser) return;
 
-      const fetchChatHistory = async () => {
-        try {
-          const accessToken = localStorage.getItem("accessToken");
-          const response = await api.get(`/api/messages/${roomId}`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
-          setMessages(response.data.messages);
+    const roomId = getRoomId();
+    if (!roomId) return;
 
-          // Mark all unread messages as 'seen'
-          const unreadMessages = response.data.messages.filter(
-            (msg) => msg.receiverId === currentUser._id && msg.status === 'sent'
-          );
-          if (unreadMessages.length > 0) {
-            await api.put('/api/messages/status/bulk', {
-              messageIds: unreadMessages.map((msg) => msg._id), status: 'seen'
-            },
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                },
-              }
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching chat history:", error);
-        }
-      };
-      fetchChatHistory();
+    socket.emit('join-room', roomId);
 
-      const handleReceiveMessage = (data) => {
-        setMessages((prevMessages) => {
-          if (data.senderId !== currentUser._id && !prevMessages.some((msg) => msg._id === data._id)) {
-            const updateMessages = [...prevMessages, data];
-            console.log("Updated messages:::", updateMessages);
-            return updateMessages;
-          }
-          return prevMessages;
+    const fetchChatHistory = async () => {
+      try {
+        const accessToken = localStorage.getItem("accessToken");
+        if (!accessToken) throw new Error('No access token found');
+
+        const response = await api.get(`/api/messages/${roomId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
-      };
+        setMessages(response.data.messages || []);
 
-      // listen for 'receive-message' event
-      socket.on("receive-message", handleReceiveMessage);
+        // Mark all unread messages as 'seen'
+        const unreadMessages = response.data.messages.filter(
+          (msg) => msg.receiverId === currentUser._id && msg.status === 'sent'
+        );
+        if (unreadMessages.length > 0) {
+          await api.put('/api/messages/status/bulk', {
+            messageIds: unreadMessages.map((msg) => msg._id), status: 'seen'
+          },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+        }
+      } catch (error) {
+        setError('Failed to load the chat history. Please try again.');
+        console.error("Error fetching chat history:", error);
+      }
+    };
+    fetchChatHistory();
 
-      // clean up function
-      return () => {
-        socket.off("receive-message", handleReceiveMessage);
-        socket.emit('leave-room', roomId);
-      };
+    const handleReceiveMessage = (data) => {
+      setMessages((prevMessages) => {
+        if (data.senderId !== currentUser._id && !prevMessages.some((msg) => msg._id === data._id)) {
+          const updateMessages = [...prevMessages, data];
+          return updateMessages;
+        }
+        return prevMessages;
+      });
+    };
 
-    }
-  }, [selectedUser, currentUser]);
+    // listen for 'receive-message' event
+    socket.on("receive-message", handleReceiveMessage);
 
-  
+    // clean up function
+    return () => {
+      socket.off("receive-message", handleReceiveMessage);
+      socket.emit('leave-room', roomId);
+    };
+  }, [selectedUser, currentUser, getRoomId]);
+
+
   // Handle message status update
   useEffect(() => {
-    if (selectedUser) {
-      const handleMessageStatus = (data) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === data.messageId ? { ...msg, status: data.status } : msg
-          )
-        );
-      };
+    if (!selectedUser) return;
 
-      socket.on('message-sent', handleMessageStatus);
-      socket.on('message-seen', handleMessageStatus);
+    const handleMessageStatus = (data) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === data.messageId ? { ...msg, status: data.status } : msg
+        )
+      );
+    };
 
-      // clean up the event listner when the component unmounts
-      return () => {
-        socket.off('message-sent', handleMessageStatus);
-        socket.off('message-seen', handleMessageStatus);
-      };
-    }
+    socket.on('message-sent', handleMessageStatus);
+    socket.on('message-seen', handleMessageStatus);
+
+    // clean up the event listner when the component unmounts
+    return () => {
+      socket.off('message-sent', handleMessageStatus);
+      socket.off('message-seen', handleMessageStatus);
+    };
   }, [selectedUser])
 
+
+
+  // Trigger file input when an icon is clicked
+  const handleMediaClick = (type) => {
+    fileInputRef.current?.click();
+  }
+
+  // Handle audio recording
+  const handleAudioRecording = async () => {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        setMediaRecorder(recorder);
+        setAudioChunks([]);
+
+        recorder.ondataavailable = (e) => {
+          setAudioChunks((prev) => [...prev, e.data]);
+        };
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          setFile(audioBlob);
+          handleSendMessage(audioBlob);
+          setAudioChunks([]);
+          stream.getTracks().forEach((track) => track.stop()); // Clean up stream
+        };
+
+        recorder.start();
+        setIsRecording(true);
+      } catch (err) {
+        setError('Failed to start recording. Please check microphone permissions.');
+        console.error('Error starting audio recording:', err);
+      }
+    } else if (mediaRecorder) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  // Handle send messages button
+  const handleSendMessage = async (fileToSend = file) => {
+    if (!newMessage.trim() && !fileToSend) return;
+
+    // Validate receiverId
+    const roomId = getRoomId();
+    if (!roomId || !selectedUser?._id || !isValidObjectId(selectedUser._id)) {
+      setError("Invalid receiver ID. Please select a valid user.");
+      return;
+    }
+
+    // Validate fileToSend
+    if (fileToSend && !(fileToSend instanceof File || fileToSend instanceof Blob)) {
+      console.error('Invalid fileToSend:', fileToSend);
+      setError('Invalid file input. Please select a valid file.');
+      return;
+    }
+
+    const messageId = uuidv4();
+
+    // Determine messageType based on whether a file is being sent
+    const messageType = fileToSend
+      ? fileToSend.type.startsWith('audio')
+        ? 'audio'
+        : fileToSend.type.startsWith('video')
+          ? 'video'
+          : fileToSend.type.startsWith('image')
+            ? 'photo'
+            : 'file'
+      : 'text';
+
+    // log for debugging
+    console.log('Sending Messages::::', { newMessage, fileToSend, messageType });
+
+    const messageData = {
+      _id: messageId,
+      roomId,
+      senderId: currentUser._id,
+      receiverId: selectedUser._id,
+      content: messageType === 'text' ? newMessage.trim() : '',
+      messageType,
+      ...(fileToSend && { // Only include file fields if fileToSend exists
+        fileUrl: fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null,
+        fileName: fileToSend.name,
+        fileSize: fileToSend.size,
+        fileType: fileToSend.type,
+        duration: ['audio', 'video'].includes(messageType) ? await getMediaDuration(fileToSend) : 0,
+      }),
+      status: "sent",
+    };
+
+    try {
+      setIsUploading(true);
+      setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
+      setNewMessage("");
+      setFile(null);
+
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error('No access token found')
+
+      const formData = new FormData();
+
+      // Append only required fields to FormData
+      Object.entries(messageData).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) formData.append(key, value);
+      });
+      if (fileToSend instanceof File) formData.append('file', fileToSend);
+
+      // formData.append("roomId", messageData.roomId);
+      // formData.append("senderId", messageData.senderId);
+      // formData.append("receiverId", messageData.receiverId); // Explicitly append receiverId
+      // formData.append("content", messageData.content);
+      // formData.append("messageType", messageData.messageType);
+      // formData.append("caption", messageData.caption);
+      // formData.append("status", messageData.status);
+
+      // if (fileToSend && fileToSend instanceof File) {
+      //   formData.append("file", fileToSend);
+      //   formData.append("fileName", messageData.fileName);
+      //   formData.append("fileSize", messageData.fileSize);
+      //   formData.append("fileType", messageData.fileType);
+      //   if (messageData.duration) formData.append("duration", messageData.duration);
+      // }
+
+      // Send message to server
+      const response = await api.post("/api/messages/", formData, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Emit messages
+      socket.emit("send-message", { ...messageData, _id: response.data.message._id });
+
+      // Update message with actual ID from server response
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId ? { ...msg, _id: response.data.message._id } : msg
+        )
+      );
+    } catch (error) {
+      setError('Failed to send message. Please try again.')
+      console.error("Error while sending message:", error);
+      if (error.response?.status === 401) {
+        navigate('/login');
+      }
+      // Rollback optimistic update on failure
+      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // hande file input change
   const handleFileInputChange = (e) => {
@@ -127,253 +290,121 @@ export const useChat = (selectedUser, currentUser) => {
     }
   };
 
-  // Trigger file input when an icon is clicked
-  const handleMediaClick = (type) => {
-    fileInputRef.current.click();
-  }
-
-  // handle audio recording
-  const handleAudioRecording = async () => {
-    if (!isRecording) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream);
-        setMediaRecorder(recorder);
-
-        recorder.ondataavailable = (e) => {
-          setAudioChunk((prev) => [...prev, e.data]);
-        };
-
-        recorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunk, { type: "audio/wav" });
-          setFile(audioBlob);
-
-          handleSendMessage(audioBlob);
-          setAudioChunk([]);
-        };
-
-        recorder.start();
-        setIsRecording(true);
-      } catch (e) {
-        console.error("Error starting audio recording:", e);
-      }
-    } else {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-  }
-
-  // Handle send messages button
-  const handleSendMessage = async (fileToSend = file) => {
-    if (!newMessage.trim() && !fileToSend) {
-      return;
-    }
-
-    // Validate receiverId
-    if (!selectedUser?._id || !isValidObjectId(selectedUser._id)) {
-      setError("Invalid receiver ID. Please select a valid user.");
-      return;
-    }
-
-    // const messageId = uuidv4();
-    const messageId = new mongoose.Types.ObjectId();
-
-    // Determine messageType based on whether a file is being sent
-    let messageType = "text"; // Default to text message
-    if (fileToSend && fileToSend instanceof File) {
-      if (fileToSend.type.startsWith("audio")) {
-        messageType = "audio";
-      } else if (fileToSend.type.startsWith("video")) {
-        messageType = "video";
-      } else if (fileToSend.type.startsWith("image")) {
-        messageType = "photo";
-      } else {
-        messageType = "file";
-      }
-    }
-
-    const messageData = {
-      _id: messageId,
-      roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-      senderId: currentUser._id,
-      receiverId: selectedUser._id,
-      content: newMessage.trim(),
-      messageType,
-      fileUrl: fileToSend && fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null, // Temporary URL for preview
-      fileName: fileToSend ? fileToSend.name : "",
-      fileSize: fileToSend ? fileToSend.size : 0,
-      fileType: fileToSend ? fileToSend.type : "",
-      duration: messageType === "audio" || messageType === "video"
-        ? await getMediaDuration(fileToSend)
-        : 0, // Calculate duration for audio/video files
-      status: "sent",
-    };
-
-    try {
-      setIsUploading(true);
-      setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
-      setNewMessage("");
-      setFile(null);
-
-      const accessToken = localStorage.getItem("accessToken");
-      const formData = new FormData();
-
-      // Append only required fields to FormData
-      formData.append("roomId", messageData.roomId);
-      formData.append("senderId", messageData.senderId);
-      formData.append("receiverId", messageData.receiverId); // Explicitly append receiverId
-      formData.append("content", messageData.content);
-      formData.append("messageType", messageData.messageType);
-      formData.append("caption", messageData.caption);
-      formData.append("status", messageData.status);
-
-      if (fileToSend && fileToSend instanceof File) {
-        formData.append("file", fileToSend);
-        formData.append("fileName", messageData.fileName);
-        formData.append("fileSize", messageData.fileSize);
-        formData.append("fileType", messageData.fileType);
-        if (messageData.duration) formData.append("duration", messageData.duration);
-      }
-
-      // Send message to server
-      const response = await api.post("/api/messages/", formData, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      // Emit messages
-      socket.emit("send-message", messageData);
-
-      // Update message with actual ID from server response
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          // msg._id === Date.now() ? { ...msg, _id: response.data._id } : msg
-          msg._id === messageId ? { ...msg, _id: response.data._id } : msg
-        )
-      );
-    } catch (error) {
-      console.error("Error while sending message:", error);
-      if (error.response?.status === 401) {
-        navigate('/login');
-      }
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   // when user views the chat, emit 'message-seen' for all the unread messages
   useEffect(() => {
-    if (selectedUser) {
-      // emit 'message-seen' for all the unread messages
-      const unreadMessages = messages.filter(
-        (msg) => msg.receiverId === currentUser._id && msg.status === "sent" && isValidObjectId(msg._id)
-      );
-      if (unreadMessages.length > 0) {
-        socket.emit('message-seen', {
-          messageIds: unreadMessages.map((msg) => msg._id),
-          roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-        })
-      }
+    const roomId = getRoomId();
+    if (!roomId) return;
+
+    // emit 'message-seen' for all the unread messages
+    const unreadMessages = messages.filter(
+      (msg) => msg.receiverId === currentUser._id && msg.status === "sent" && isValidObjectId(msg._id)
+    );
+    if (unreadMessages.length > 0) {
+      socket.emit('message-seen', {
+        messageIds: unreadMessages.map((msg) => msg._id),
+        roomId,
+      });
     }
-  }, [selectedUser, currentUser, messages]);
+  }, [messages, getRoomId]);
 
 
   // Add the useEffect to listen for typing events
   useEffect(() => {
-    if (selectedUser) {
-      const roomId = [currentUser._id, selectedUser._id].sort().join("-");
+    const roomId = getRoomId();
+    if (!roomId) return;
 
-      const handleTyping = (data) => {
-        if (data.roomId === roomId) {
-          setIsOtherUserTyping(data.isTyping);
-        }
-      };
-
-      socket.on('typing', handleTyping);
-
-      return () => {
-        socket.off('typing', handleTyping);
+    const handleTyping = (data) => {
+      if (data.roomId === roomId) {
+        setIsOtherUserTyping(data.isTyping);
       }
+    };
+
+    socket.on('typing', handleTyping);
+
+    return () => {
+      socket.off('typing', handleTyping);
     }
-  }, [selectedUser, currentUser]);
+  }, [selectedUser, currentUser, getRoomId]);
 
 
   // function to handle the typing event
-  const handleTypingEvent = (e) => {
+  const handleTypingEvent = useCallback((e) => {
     setNewMessage(e.target.value);
+    const roomId = getRoomId();
+    if (!roomId) return;
 
-    // emit typing event
     if (!isTyping) {
-      console.log("Emmitting typing event: isTyping = true");
-      socket.emit('typing', {
-        roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-        isTyping: true
-      });
+      socket.emit('typing', { roomId, isTyping: true });
       setIsTyping(true);
     }
 
-    // clear previous Timeout
-    if (typingTimeout.current) {
-      clearTimeout(typingTimeout.current);
-    }
-
-    // Set timeout to stop typing indicator
+    clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => {
-      console.log('Emitting typing event: isTyping = false')
-      socket.emit('typing', {
-        roomId: [currentUser._id, selectedUser._id].sort().join("-"),
-        isTyping: false,
-      });
+      socket.emit('typing', { roomId, isTyping: false });
       setIsTyping(false);
-    }, 1000)
-  };
+    }, 1000);
+  }, [isTyping, getRoomId]);
 
 
   // IMPLEMENTATION FOR AUDIO CALL FUNCTIONALITY ..............................
 
   // WebRTC Setup
-  const setupWebRTC = async (roomId) => {
-    const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+  const setupWebRTC = useCallback(async (roomId) => {
+    const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
     const pc = new RTCPeerConnection(configuration);
 
-    // Add local stream
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    setLocalStream(stream);
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setLocalStream(stream);
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    } catch (err) {
+      setError('Failed to access microphone. Please check permissions.');
+      console.error('WebRTC setup error:', err);
+      return null;
+    }
 
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      setRemoteStream(event.streams[0]);
+    pc.ontrack = (event) => setRemoteStream(event.streams[0]);
+    pc.onicecandidate = (event) => {
+      if (event.candidate) socket.emit("ice-candidate", { roomId, candidate: event.candidate });
     };
 
-    // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit('ice-candidate', { roomId, candidate: event.candidate });
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        console.error("WebRTC connection failed");
+        cleanupWebRTC();
+        setCallState("idle");
+        setError("Call connection failed. Please try again.");
       }
     };
 
     setPeerConnection(pc);
     return pc;
-  };
+  }, []);
 
   // Start Call (Caller)
-  const startCall = async (roomId) => {
-    const pc = await setupWebRTC(roomId);
+  const startCall = useCallback(async (roomId) => {
+    try {
+      const pc = await setupWebRTC(roomId);
+      if (!pc) return;
 
-    // Create offer
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+      // Create offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
 
-    // Send offer to the other user
-    socket.emit('offer', { roomId, offer });
-  };
+      // Send offer to the other user
+      socket.emit('offer', { roomId, offer });
+    } catch (error) {
+      console.error('WebRTC error:', error);
+      setError('Failed to start call');
+      // endCall();
+    }
+
+  }, [setupWebRTC]);
 
   // Handle Offer (Receiver)
   const handleOffer = useCallback(async (roomId, offer) => {
     const pc = await setupWebRTC(roomId);
+    if (!pc) return;
 
     // Set remote description
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -384,7 +415,7 @@ export const useChat = (selectedUser, currentUser) => {
 
     // Send answer to the other user
     socket.emit('answer', { roomId, answer });
-  }, []);
+  }, [setupWebRTC]);
 
   // Handle Answer (Caller)
   const handleAnswer = useCallback(async (roomId, answer) => {
@@ -407,79 +438,116 @@ export const useChat = (selectedUser, currentUser) => {
       setPeerConnection(null);
     }
     if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+        track.enabled = false; // Extra precaution
+      });
       setLocalStream(null);
     }
     setRemoteStream(null);
-  }, [localStream, peerConnection]);
+    setCallRoomId(null); // Reset room ID too
+  }, [peerConnection, localStream]);
 
   // Call Management
-  const initiateCall = () => {
-    const roomId = [currentUser._id, selectedUser._id].sort().join("-");
+  const initiateCall = useCallback(() => {
+    const roomId = getRoomId();
+    if (!roomId) return;
+
     socket.emit('initiate-call', {
       callerId: currentUser._id,
       receiverId: selectedUser._id,
       roomId,
     });
-    console.log("Call initiated");
-  };
+    setCallRoomId(roomId);
+    setCallState('ringing');
+  }, [getRoomId, currentUser, selectedUser]);
 
-  const acceptCall = (roomId) => {
-    socket.emit("accept-call", {
-      callerId: currentUser._id,
-      receiverId: selectedUser._id,
-      roomId,
-    });
-    console.log("Call accepted");
-  };
+  const acceptCall = useCallback((roomId) => {
+    const expectedRoomId = getRoomId();
+    if (roomId !== expectedRoomId) {
+      console.error('Room ID mismatch:', { roomId, expectedRoomId });
+      cleanupWebRTC();
+      return;
+    }
+    try {
+      socket.emit('accept-call', {
+        callerId: currentUser._id,
+        receiverId: selectedUser._id,
+        roomId,
+      });
+      setCallState('active');
+      startCall(roomId);
+    } catch (error) {
+      console.error('Error accepting call:', error);
+      setCallState('idle');
+      cleanupWebRTC();
+    }
+  }, [startCall, getRoomId, cleanupWebRTC, currentUser, selectedUser]);
 
-  const rejectCall = () => {
+  const rejectCall = useCallback(() => {
+    const roomId = getRoomId();
+    if (!roomId) return;
+
     socket.emit('reject-call', {
       callerId: currentUser._id,
       receiverId: selectedUser._id,
-    });
-    console.log("Call rejected");
-  };
-
-  const endCall = (roomId) => {
-    socket.emit('end-call', {
       roomId,
     });
-    console.log("Call ended");
-  };
+    setCallState('idle');
+    setIncomingCall(null);
+    cleanupWebRTC();
+  }, [getRoomId, cleanupWebRTC, currentUser, selectedUser]);
 
+  const endCall = useCallback(() => {
+    const roomId = getRoomId();
+    if (!roomId) return;
 
-  // Event Listeners
+    socket.emit('end-call', { roomId });
+    setCallState('idle');
+    setCallRoomId(null);
+    setIncomingCall(null);
+    cleanupWebRTC();
+  }, [getRoomId, cleanupWebRTC]);
+
+  // Call Event Listeners
   useEffect(() => {
     // Listen for incoming call
-    socket.on('incoming-call', (data) => {
-      console.log('Incoming call from:', data.callerId);
-      setIncomingCall(data); // Update incomingCall state
-      setCallState('ringing')
-    });
+    const handleIncomingCall = (data) => {
+      setIncomingCall(data);
+      setCaller({ _id: data.callerId });
+      setCallState('ringing');
+      setCallRoomId(data.roomId);
+    };
 
     // Listen for call acceptance
-    socket.on('call-accepted', (data) => {
+    const handleCallAccepted = (data) => {
       setIsCalling(true);
+      setCallState('active');
       setCallRoomId(data.roomId);
-      console.log("Call accepted by:", data.receiverId);
-    });
+      startCall(data.roomId)
+    }
 
     // Listen for call rejection
-    socket.on('call-rejected', () => {
+    const handleCallRejected = () => {
       setIsCalling(false);
+      setCallState('idle');
       setIncomingCall(null);
-      console.log("Call rejected");
-    });
+      cleanupWebRTC();
+    };
 
     // Listen for call end
-    socket.on('call-ended', () => {
+    const handleCallEnded = () => {
       setIsCalling(false);
+      setCallState('idle');
       setIncomingCall(null);
       setCallRoomId(null);
-      setCallState('idle');
-      console.log("Call ended");
-    });
+      cleanupWebRTC();
+    };
+
+    socket.on('incoming-call', handleIncomingCall);
+    socket.on('call-accepted', handleCallAccepted);
+    socket.on('call-rejected', handleCallRejected);
+    socket.on('call-ended', handleCallEnded);
 
     return () => {
       socket.off('incoming-call');
@@ -487,37 +555,56 @@ export const useChat = (selectedUser, currentUser) => {
       socket.off('call-rejected');
       socket.off('call-ended');
     };
+  }, [cleanupWebRTC, startCall]);
+
+  useEffect(() => {
+    socket.on('call-busy', () => {
+      setCallState('idle');
+      setError('User is already in a call')
+    });
+    return () => socket.off('call-busy');
   }, []);
 
+  // time out
+  useEffect(() => {
+    let timeout;
+    if (callState === 'ringing' && !incomingCall) {
+      timeout = setTimeout(() => {
+        endCall();
+        setError('Call timed out')
+      }, 30000);
+    }
+    return () => clearTimeout(timeout);
+  }, [callState, incomingCall, endCall]);
 
   // handle call intitation
-  const handleInitiateCall = () => {
-    const roomId = [currentUser._id, selectedUser._id].sort().join("-");
-    setCallRoomId(roomId);
-    setCallState('ringing');
-    initiateCall();
-  };
+  // const handleInitiateCall = () => {
+  //   const roomId = [currentUser._id, selectedUser._id].sort().join("-");
+  //   setCallRoomId(roomId);
+  //   setCallState('ringing');
+  //   initiateCall();
+  // };
 
-  // Handle call acceptance
-  const handleAcceptCall = (roomId) => {
-    setCallState('active');
-    acceptCall(roomId);
-    startCall(roomId);
-  };
+  // // Handle call acceptance
+  // const handleAcceptCall = (roomId) => {
+  //   setCallState('active');
+  //   acceptCall(roomId);
+  //   startCall(roomId);
+  // };
 
-  // Handle call rejection
-  const handleRejectCall = () => {
-    setCallState('idle');
-    rejectCall();
-    cleanupWebRTC();
-  };
+  // // Handle call rejection
+  // const handleRejectCall = () => {
+  //   setCallState('idle');
+  //   rejectCall();
+  //   cleanupWebRTC();
+  // };
 
-  // Handle call end
-  const handleEndCall = () => {
-    setCallState('idle');
-    endCall(callRoomId);
-    cleanupWebRTC();
-  }
+  // // Handle call end
+  // const handleEndCall = () => {
+  //   setCallState('idle');
+  //   endCall(callRoomId);
+  //   cleanupWebRTC();
+  // }
 
 
   useEffect(() => {
@@ -544,45 +631,40 @@ export const useChat = (selectedUser, currentUser) => {
 
   // fetch caller details 
   useEffect(() => {
-    if (incomingCall && incomingCall.callerId) {
-      console.log("Incoming call state check::::", incomingCall.callerId);
-  
-      const fetchCallerDetails = async () => {
-        try {
-          const accessToken = await localStorage.getItem('accessToken');
-          if (!accessToken) {
-            console.error("Access token is missing");
-            return;
-          }
-  
-          console.log("Fetching caller details for callerId:", incomingCall.callerId);
-          const response = await api.get(`/api/users/${incomingCall.callerId}`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
-  
-          if (!response.data) {
-            console.error("No user data returned for callerId:", incomingCall.callerId);
-            return;
-          }
-  
-          console.log("Fetched caller details:", response.data);
-          setCaller(response.data);
-        } catch (error) {
-          console.error("Error fetching caller details:", error);
+    if (!incomingCall?.callerId) return;
+
+
+    const fetchCallerDetails = async () => {
+      try {
+        const accessToken = await localStorage.getItem('accessToken');
+        if (!accessToken) {
+          console.error("Access token is missing");
+          return;
         }
-      };
-  
-      fetchCallerDetails(); // Call the function
-    } else {
-      console.error("Invalid incomingCall or callerId");
-    }
+
+        console.log("Fetching caller details for callerId:", incomingCall.callerId);
+        const response = await api.get(`/api/users/${incomingCall.callerId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.data) {
+          console.error("No user data returned for callerId:", incomingCall.callerId);
+          return;
+        }
+
+        console.log("Fetched caller details:", response.data);
+        setCaller(response.data);
+      } catch (error) {
+        setError('Failed to fetch caller details.')
+        console.error("Error fetching caller details:", error);
+      }
+    };
+
+    fetchCallerDetails(); // Call the function
   }, [incomingCall]);
-  
-  useEffect(() => {
-    console.log("Caller Details::::", caller);
-  }, [caller]);
+
 
   // to go the end/last messages of users
   useEffect(() => {
@@ -607,7 +689,7 @@ export const useChat = (selectedUser, currentUser) => {
     error,
     showProfileInfo,
     isTyping,
-    isOtherUsertyping,
+    isOtherUserTyping,
     isCalling,
     incomingCall,
     caller,
@@ -620,10 +702,10 @@ export const useChat = (selectedUser, currentUser) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
-    handleInitiateCall,
-    handleAcceptCall,
-    handleRejectCall,
-    handleEndCall,
+    handleInitiateCall: initiateCall,
+    handleAcceptCall: acceptCall,
+    handleRejectCall: rejectCall,
+    handleEndCall: endCall,
     localStream,
     remoteStream,
     toggleProfileInfo,

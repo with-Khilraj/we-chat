@@ -13,17 +13,17 @@ import media_icon from "../assets/image-gallery.png";
 import FloatingCallWindow from "./FloatingCallWindow";
 import ActiveCall from "./ActiveCall";
 import IncomingCall from "./Incoming_call";
-import CallInitiation from "./CallInitiation"; 
+import CallInitiation from "./CallInitiation";
 import { AnimatePresence } from "framer-motion";
 
 
-const ChatContainer = ({ selectedUser, currentUser }) => {
+const ChatContainer = ({ selectedUser, currentUser, initiateCall }) => {
   const {
     messages,
     newMessage,
     isUploading,
     showProfileInfo,
-    isOtherUsertyping,
+    isOtherUserTyping,
     isCalling,
     incomingCall,
     caller,
@@ -46,6 +46,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   } = useChat(selectedUser, currentUser);
 
   const onlineUsers = useOnlineUsers();
+  // const isOnline = React.useMemo(() => onlineUsers.includes(selectedUser._id), [onlineUsers, selectedUser._id]);
   // adding class to the chat-container based on the state of the showProfileInfo
   const chatContainerClass = showProfileInfo ? 'chat-container shrink' : 'chat-container';
 
@@ -88,6 +89,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             {/* Call Buttons */}
             <button
               onClick={handleInitiateCall}
+              // onClick={() => initiateCall(selectedUser._id)}
               disabled={isCalling}
               className="audio-call-icon"
             >
@@ -208,7 +210,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           })}
 
           {/* Add typing indicator */}
-          {isOtherUsertyping && (
+          {isOtherUserTyping && (
             <div className="typing-indicator received">
               <div className="typing-dots">
                 <span></span>
@@ -240,7 +242,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             placeholder="Type your message..."
           />
 
-          <button onClick={handleSendMessage} disabled={isUploading}>
+          <button onClick={() => handleSendMessage()} disabled={isUploading}>
             {isUploading ? "Sending" : "Send"}
           </button>
 
@@ -280,6 +282,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         <p>Additional details about the current user...</p>
       </div>
 
+
       {/* Call Components */}
       <AnimatePresence>
         {/* Call Initiation UI (for caller) */}
@@ -305,16 +308,17 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
               user={selectedUser}
               onEndCall={handleEndCall}
               onToggleMute={(muted) => {
-                if (localStream) {
-                  localStream.getAudioTracks().forEach(track => {
-                    track.enabled = !muted;
-                  });
-                }
+                // if (localStream) {
+                //   localStream.getAudioTracks().forEach(track => {
+                //     track.enabled = !muted;
+                //   });
+                // }
               }}
             />
           </FloatingCallWindow>
         )}
       </AnimatePresence>
+
     </>
   );
 };

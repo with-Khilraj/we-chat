@@ -7,7 +7,7 @@ import "../styles/dashboard.css";
 import ChatContainer from "../component/chatContainer";
 import Sidebar from "../component/sidebar";
 
-const Dashboard = () => {
+const Dashboard = ({initialCall}) => {
   const [userInfo, setUserInfo] = useState(null);
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -50,3 +50,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

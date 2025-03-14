@@ -52,6 +52,10 @@ const onlineUsers = new Map();
 // Store active calls
 const activeCalls = new Map();
 
+const isValidUUID = (id) => {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
+};
+
 // setup socket.io
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
@@ -82,20 +86,19 @@ io.on("connection", (socket) => {
     try {
       // Validate Ojbect fields
       if (
-        !mongoose.Types.ObjectId.isValid(data._id) ||
+        !isValidUUID(data._id) || // Updated to UUID
         !mongoose.Types.ObjectId.isValid(data.senderId) ||
         !mongoose.Types.ObjectId.isValid(data.receiverId)
       ) {
-        console.error("Invalid ObjectId in send-message event:", data)
+        console.error('Invalid ID in send-message event:', data);
+        return; // Avoid throwing error, just log and skip
       }
 
       // update the message status to 'sent' in the database
       await Message.findByIdAndUpdate(data._id, { status: "sent" });
 
-      // emit the event to the room
+      // emit the event to the room. and both sender and receiver
       io.to(data.roomId).emit("receive-message", data);
-
-      // // emit the 'message-sent' event to both sender and receiver
       io.to(data.senderId).emit("message-sent", { messageId: data._id, status: "sent" });
       io.to(data.receiverId).emit("message-sent", { messageId: data._id, status: "sent" });
     } catch (error) {
@@ -104,6 +107,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("online-user", async (userId) => {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.error('Invalid userId:', userId);
+      return;
+    }
     socket.join(userId);
     try {
       // Update the user status in the database
@@ -116,13 +123,9 @@ io.on("connection", (socket) => {
 
       // Add the user to the onlineUsers Map
       onlineUsers.set(userId, socket.id);
-      onlineUsers.set(socket.id, userId);
 
       //Emit the updated online users list to all the connected users
-      io.emit(
-        "onlineUsers",
-        Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
-      );
+      io.emit('onlineUsers', Array.from(onlineUsers.keys()));
     } catch (error) {
       console.error("Invalid updating online-user:", error);
     }
@@ -132,9 +135,9 @@ io.on("connection", (socket) => {
   socket.on("message-seen", async (data) => {
     const { messageIds, roomId } = data;
 
-    // Validate all messageIds are valid ObjectIds
-    if (!Array.isArray(messageIds) || messageIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
-      console.error("Invalid ObjectId in message-seen event:", data);
+    // Validate all messageIds are valid UUIDs
+    if (!Array.isArray(messageIds) || messageIds.some((id) => !isValidUUID(id))) {
+      console.error('Invalid UUID in message-seen event:', data);
       return;
     }
 
@@ -154,16 +157,41 @@ io.on("connection", (socket) => {
   // Handle call initiation
   socket.on('initiate-call', (data) => {
     const { callerId, receiverId, roomId } = data;
+    if (
+      !mongoose.Types.ObjectId.isValid(callerId) ||
+      !mongoose.Types.ObjectId.isValid(receiverId)
+    ) {
+      console.error('Invalid user ID in initiate-call:', data);
+      return;
+    }
+
+    if (activeCalls.has(roomId) || [...activeCalls.values()].some(call => call.receiverId === receiverId)) {
+      socket.emit('call-busy', { receiverId });
+    }
+
+    const receiverSocketId = onlineUsers.get(receiverId);
+    if (!receiverSocketId) {
+      socket.emit('call-failed', { message: 'Receiver is offline' });
+      return;
+    }
+
     console.log(`Call initiated by ${callerId} to ${receiverId}`);
 
     // notifying the receiver
-    socket.to(receiverId).emit("incoming-call", { callerId, roomId });
-    console.log("Emitting incoming-call event:", { callerId, roomId });
+    socket.to(receiverSocketId).emit("incoming-call", { callerId, roomId });
   })
 
   // Handle call acceptance
   socket.on('accept-call', (data) => {
     const { callerId, receiverId, roomId } = data;
+    if (
+      !mongoose.Types.ObjectId.isValid(callerId) ||
+      !mongoose.Types.ObjectId.isValid(receiverId)
+    ) {
+      console.error('Invalid user ID in initiate-call:', data);
+      return;
+    }
+
     console.log(`Call accepted by ${receiverId} from ${callerId}`);
 
     // notify the caller
@@ -176,6 +204,14 @@ io.on("connection", (socket) => {
   // Handle call rejection
   socket.on('reject-call', (data) => {
     const { callerId, receiverId } = data;
+    if (
+      !mongoose.Types.ObjectId.isValid(callerId) ||
+      !mongoose.Types.ObjectId.isValid(receiverId)
+    ) {
+      console.error('Invalid user ID in initiate-call:', data);
+      return;
+    }
+
     console.log(`Call rejected by ${receiverId} from ${callerId}`);
 
     // notify the caller
@@ -214,30 +250,28 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", async () => {
     try {
-      const userId = onlineUsers.get(socket.id);
+      // const userId = onlineUsers.get(socket.id);
+      const userId = [...onlineUsers.entries()].find(([_, sid]) => sid === socket.id)?.[0];
+
       if (userId) {
         // Mark the user as offline when they disconnect
         await User.findByIdAndUpdate(userId, {
           isOnline: false,
           lastActive: new Date(),
         });
-        console.log(`User disconnected: ${userId}`);
 
         // update the user status of undelivered messages to 'sent'
         await Message.updateMany(
           { receiverId: userId, status: "delivered" },
           { status: "sent" }
         );
+        console.log(`User disconnected: ${userId}`);
 
         // Remove the association from memory
-        onlineUsers.delete(socket.id);
         onlineUsers.delete(userId);
 
         //Emit the updated online users list to all the connected users
-        io.emit(
-          "onlineUsers",
-          Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
-        );
+        io.emit('onlineUsers', Array.from(onlineUsers.keys()));
       }
     } catch (error) {
       console.error("Error updating user status on disconnect:", error);

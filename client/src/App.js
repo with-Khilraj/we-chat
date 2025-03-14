@@ -1,4 +1,5 @@
-import React from "react";
+import React, {useState} from "react";
+import { AnimatePresence } from "framer-motion";
 import Home from "./pages/home";
 import Login from "./pages/login";
 import Signup from "./pages/signup";
@@ -8,22 +9,15 @@ import Sidebar from "./component/sidebar";
 import { OnlineUsersProvider } from ".//context/onlineUsersContext";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import EmailVerification from "./component/EmailVerification";
+import IncomingCall from "./component/Incoming_call";
+import CallInitiation from "./component/CallInitiation";
+import FloatingCallWindow from "./component/FloatingCallWindow";
+import ActiveCall from "./component/ActiveCall";
+import { useChat } from "./hooks/useChat";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+
 
 const App = () => {
-  // const [message, setMessage] = useState("");
-
-  // useEffect(() => {
-  //   fetch("/api")
-  //     .then((response) => {
-  //       if(!response.ok) {
-  //         throw new Error(`HTTP error! status: ${response.status}`)
-  //       }
-  //       return response.text();
-  //     })
-  //     .then((data) => setMessage(data))
-  //     .catch((err) => console.log("Error fetching data:", err));
-  // }, []);
-
   return (
     <OnlineUsersProvider>
       <Router>
@@ -41,6 +35,6 @@ const App = () => {
       </Router>
     </OnlineUsersProvider>
   );
-};
+}
 
 export default App;

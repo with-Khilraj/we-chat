@@ -12,6 +12,7 @@ const upload = multer({ storage: storage });
 // send message
 router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
   const {
+    _id,
     roomId,
     receiverId,
     content,
@@ -30,6 +31,11 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
    // Validate receiverId is a valid MongoDB ObjectId
    if (!mongoose.Types.ObjectId.isValid(receiverId)) {
     return res.status(400).json({ error: "Invalid receiverId" });
+  }
+
+  // Validate _id if provided (must be a valid UUID)
+  if (_id && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(_id)) {
+    return res.status(400).json({ error: 'Invalid message ID (must be a UUID)' });
   }
 
   // Handle file upload
@@ -64,28 +70,32 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
   }
 
   try {
-    const newMessage = new Message({
+    const messageData = new Message({
+      _id: _id || undefined,
       roomId,
       senderId: req.user.id,
       receiverId,
       content: messageType === "text" ? content : null,
       messageType,
-      fileUrl,
-      fileName,
-      fileSize,
-      fileType,
-      duration,
+      messageType,
+      ...(messageType === 'text' ? { content } : {}), // Only include content for text
+      ...(messageType !== 'text' && fileUrl
+        ? { fileUrl, fileName, fileSize, fileType, duration }
+        : {}), // Only include file fields for non-text
       caption,
       status,
       lastMessageTimestamp: new Date(),
       createdAt: new Date(),
     });
+
+    const newMessage = new Message(messageData);
     const savedMessage = await newMessage.save();
 
     //emit 'new_message' event whenever a new message is sent (for real-time updates)
     const io = req.app.get("io");
     if (io) {
       io.emit("new_message", {
+        _id: savedMessage._id,
         receiverId: receiverId,
         senderId: req.user.id,
         content: content,
@@ -109,10 +119,10 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
 });
 
 
-// validate ObjectId
-const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
-}
+// Validate UUID instead of ObjectId
+const isValidUUID = (id) => {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
+};
 
 // update the specific message status
 router.put('/:messageId/status', verifyAccessToken, async (req, res) => {
@@ -162,8 +172,8 @@ router.put('/:messageId/status', verifyAccessToken, async (req, res) => {
 router.put('/status/bulk', verifyAccessToken, async (req, res) => {
   const { messageIds, status } = req.body;
 
-  // Validate all messageIds are valid ObjectIds
-  if (!Array.isArray(messageIds) || messageIds.some((id) => !isValidObjectId(id))) {
+  // Validate all messageIds are valid UUIDs
+  if (!Array.isArray(messageIds) || messageIds.some((id) => !isValidUUID(id))) {
     return res.status(400).json({ error: "Invalid messagesIds" });
   }
 
@@ -174,7 +184,7 @@ router.put('/status/bulk', verifyAccessToken, async (req, res) => {
 
   try {
     const result = await Message.updateMany(
-      { _id: {$in: messageIds }},
+      { _id: {$in: messageIds }},  // works with strings
       { status }
     );
 

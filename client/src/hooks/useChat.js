@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../Api';
 import socket from '../utils/socket';
 import { v4 as uuidv4 } from 'uuid';
-import mongoose from 'mongoose';
 import { isValidObjectId, getMediaDuration } from '../utils/chatUtils';
+import { useCall } from '../context/CallContext';
 
 export const useChat = (selectedUser, currentUser) => {
   const [messages, setMessages] = useState([]);
@@ -18,19 +18,20 @@ export const useChat = (selectedUser, currentUser) => {
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
-  const [isCalling, setIsCalling] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(null);
-  const [callState, setCallState] = useState('idle')  // 'idle', 'ringing', 'active'
-  const [callRoomId, setCallRoomId] = useState(null);
-  const [caller, setCaller] = useState(null);
-  const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
-  const [peerConnection, setPeerConnection] = useState(null);
+  // const [isCalling, setIsCalling] = useState(false);
+  // const [incomingCall, setIncomingCall] = useState(null);
+  // const [callState, setCallState] = useState('idle')  // 'idle', 'ringing', 'active'
+  // const [callRoomId, setCallRoomId] = useState(null);
+  // const [caller, setCaller] = useState(null);
+  // const [localStream, setLocalStream] = useState(null);
+  // const [remoteStream, setRemoteStream] = useState(null);
+  // const [peerConnection, setPeerConnection] = useState(null);
 
   const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const { handleInitiateCall } = useCall();
 
   // Centralized roomId generator
   const getRoomId = useCallback(() => {
@@ -126,9 +127,26 @@ export const useChat = (selectedUser, currentUser) => {
   }, [selectedUser])
 
 
+  // function to handle the typing event
+  const handleTypingEvent = useCallback((e) => {
+    setNewMessage(e.target.value);
+    const roomId = getRoomId();
+    if (!roomId) return;
 
-  // Trigger file input when an icon is clicked
-  const handleMediaClick = (type) => {
+    if (!isTyping) {
+      socket.emit('typing', { roomId, isTyping: true });
+      setIsTyping(true);
+    }
+
+    clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => {
+      socket.emit('typing', { roomId, isTyping: false });
+      setIsTyping(false);
+    }, 1000);
+  }, [isTyping, getRoomId]);
+
+   // Trigger file input when an icon is clicked
+   const handleMediaClick = (type) => {
     fileInputRef.current?.click();
   }
 
@@ -165,11 +183,10 @@ export const useChat = (selectedUser, currentUser) => {
     }
   };
 
+
   // Handle send messages button
   const handleSendMessage = async (fileToSend = file) => {
     if (!newMessage.trim() && !fileToSend) return;
-
-    // Validate receiverId
     const roomId = getRoomId();
     if (!roomId || !selectedUser?._id || !isValidObjectId(selectedUser._id)) {
       setError("Invalid receiver ID. Please select a valid user.");
@@ -184,7 +201,6 @@ export const useChat = (selectedUser, currentUser) => {
     }
 
     const messageId = uuidv4();
-
     // Determine messageType based on whether a file is being sent
     const messageType = fileToSend
       ? fileToSend.type.startsWith('audio')
@@ -195,9 +211,6 @@ export const useChat = (selectedUser, currentUser) => {
             ? 'photo'
             : 'file'
       : 'text';
-
-    // log for debugging
-    console.log('Sending Messages::::', { newMessage, fileToSend, messageType });
 
     const messageData = {
       _id: messageId,
@@ -226,7 +239,6 @@ export const useChat = (selectedUser, currentUser) => {
       if (!accessToken) throw new Error('No access token found')
 
       const formData = new FormData();
-
       // Append only required fields to FormData
       Object.entries(messageData).forEach(([key, value]) => {
         if (value !== null && value !== undefined) formData.append(key, value);
@@ -305,7 +317,7 @@ export const useChat = (selectedUser, currentUser) => {
         roomId,
       });
     }
-  }, [messages, getRoomId]);
+  }, [messages, getRoomId, currentUser]);
 
 
   // Add the useEffect to listen for typing events
@@ -327,344 +339,10 @@ export const useChat = (selectedUser, currentUser) => {
   }, [selectedUser, currentUser, getRoomId]);
 
 
-  // function to handle the typing event
-  const handleTypingEvent = useCallback((e) => {
-    setNewMessage(e.target.value);
+  const handleInitiateCallLocal = () => {
     const roomId = getRoomId();
-    if (!roomId) return;
-
-    if (!isTyping) {
-      socket.emit('typing', { roomId, isTyping: true });
-      setIsTyping(true);
-    }
-
-    clearTimeout(typingTimeout.current);
-    typingTimeout.current = setTimeout(() => {
-      socket.emit('typing', { roomId, isTyping: false });
-      setIsTyping(false);
-    }, 1000);
-  }, [isTyping, getRoomId]);
-
-
-  // IMPLEMENTATION FOR AUDIO CALL FUNCTIONALITY ..............................
-
-  // WebRTC Setup
-  const setupWebRTC = useCallback(async (roomId) => {
-    const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-    const pc = new RTCPeerConnection(configuration);
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setLocalStream(stream);
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-    } catch (err) {
-      setError('Failed to access microphone. Please check permissions.');
-      console.error('WebRTC setup error:', err);
-      return null;
-    }
-
-    pc.ontrack = (event) => setRemoteStream(event.streams[0]);
-    pc.onicecandidate = (event) => {
-      if (event.candidate) socket.emit("ice-candidate", { roomId, candidate: event.candidate });
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        console.error("WebRTC connection failed");
-        cleanupWebRTC();
-        setCallState("idle");
-        setError("Call connection failed. Please try again.");
-      }
-    };
-
-    setPeerConnection(pc);
-    return pc;
-  }, []);
-
-  // Start Call (Caller)
-  const startCall = useCallback(async (roomId) => {
-    try {
-      const pc = await setupWebRTC(roomId);
-      if (!pc) return;
-
-      // Create offer
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      // Send offer to the other user
-      socket.emit('offer', { roomId, offer });
-    } catch (error) {
-      console.error('WebRTC error:', error);
-      setError('Failed to start call');
-      // endCall();
-    }
-
-  }, [setupWebRTC]);
-
-  // Handle Offer (Receiver)
-  const handleOffer = useCallback(async (roomId, offer) => {
-    const pc = await setupWebRTC(roomId);
-    if (!pc) return;
-
-    // Set remote description
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-
-    // Create answer
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-
-    // Send answer to the other user
-    socket.emit('answer', { roomId, answer });
-  }, [setupWebRTC]);
-
-  // Handle Answer (Caller)
-  const handleAnswer = useCallback(async (roomId, answer) => {
-    if (peerConnection) {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-    }
-  }, [peerConnection]);
-
-  // Handle ICE Candidate
-  const handleIceCandidate = useCallback(async (roomId, candidate) => {
-    if (peerConnection) {
-      await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-    }
-  }, [peerConnection]);
-
-  // Clean up WebRTC resources
-  const cleanupWebRTC = useCallback(() => {
-    if (peerConnection) {
-      peerConnection.close();
-      setPeerConnection(null);
-    }
-    if (localStream) {
-      localStream.getTracks().forEach((track) => {
-        track.stop();
-        track.enabled = false; // Extra precaution
-      });
-      setLocalStream(null);
-    }
-    setRemoteStream(null);
-    setCallRoomId(null); // Reset room ID too
-  }, [peerConnection, localStream]);
-
-  // Call Management
-  const initiateCall = useCallback(() => {
-    const roomId = getRoomId();
-    if (!roomId) return;
-
-    socket.emit('initiate-call', {
-      callerId: currentUser._id,
-      receiverId: selectedUser._id,
-      roomId,
-    });
-    setCallRoomId(roomId);
-    setCallState('ringing');
-  }, [getRoomId, currentUser, selectedUser]);
-
-  const acceptCall = useCallback((roomId) => {
-    const expectedRoomId = getRoomId();
-    if (roomId !== expectedRoomId) {
-      console.error('Room ID mismatch:', { roomId, expectedRoomId });
-      cleanupWebRTC();
-      return;
-    }
-    try {
-      socket.emit('accept-call', {
-        callerId: currentUser._id,
-        receiverId: selectedUser._id,
-        roomId,
-      });
-      setCallState('active');
-      startCall(roomId);
-    } catch (error) {
-      console.error('Error accepting call:', error);
-      setCallState('idle');
-      cleanupWebRTC();
-    }
-  }, [startCall, getRoomId, cleanupWebRTC, currentUser, selectedUser]);
-
-  const rejectCall = useCallback(() => {
-    const roomId = getRoomId();
-    if (!roomId) return;
-
-    socket.emit('reject-call', {
-      callerId: currentUser._id,
-      receiverId: selectedUser._id,
-      roomId,
-    });
-    setCallState('idle');
-    setIncomingCall(null);
-    cleanupWebRTC();
-  }, [getRoomId, cleanupWebRTC, currentUser, selectedUser]);
-
-  const endCall = useCallback(() => {
-    const roomId = getRoomId();
-    if (!roomId) return;
-
-    socket.emit('end-call', { roomId });
-    setCallState('idle');
-    setCallRoomId(null);
-    setIncomingCall(null);
-    cleanupWebRTC();
-  }, [getRoomId, cleanupWebRTC]);
-
-  // Call Event Listeners
-  useEffect(() => {
-    // Listen for incoming call
-    const handleIncomingCall = (data) => {
-      setIncomingCall(data);
-      setCaller({ _id: data.callerId });
-      setCallState('ringing');
-      setCallRoomId(data.roomId);
-    };
-
-    // Listen for call acceptance
-    const handleCallAccepted = (data) => {
-      setIsCalling(true);
-      setCallState('active');
-      setCallRoomId(data.roomId);
-      startCall(data.roomId)
-    }
-
-    // Listen for call rejection
-    const handleCallRejected = () => {
-      setIsCalling(false);
-      setCallState('idle');
-      setIncomingCall(null);
-      cleanupWebRTC();
-    };
-
-    // Listen for call end
-    const handleCallEnded = () => {
-      setIsCalling(false);
-      setCallState('idle');
-      setIncomingCall(null);
-      setCallRoomId(null);
-      cleanupWebRTC();
-    };
-
-    socket.on('incoming-call', handleIncomingCall);
-    socket.on('call-accepted', handleCallAccepted);
-    socket.on('call-rejected', handleCallRejected);
-    socket.on('call-ended', handleCallEnded);
-
-    return () => {
-      socket.off('incoming-call');
-      socket.off('call-accepted');
-      socket.off('call-rejected');
-      socket.off('call-ended');
-    };
-  }, [cleanupWebRTC, startCall]);
-
-  useEffect(() => {
-    socket.on('call-busy', () => {
-      setCallState('idle');
-      setError('User is already in a call')
-    });
-    return () => socket.off('call-busy');
-  }, []);
-
-  // time out
-  useEffect(() => {
-    let timeout;
-    if (callState === 'ringing' && !incomingCall) {
-      timeout = setTimeout(() => {
-        endCall();
-        setError('Call timed out')
-      }, 30000);
-    }
-    return () => clearTimeout(timeout);
-  }, [callState, incomingCall, endCall]);
-
-  // handle call intitation
-  // const handleInitiateCall = () => {
-  //   const roomId = [currentUser._id, selectedUser._id].sort().join("-");
-  //   setCallRoomId(roomId);
-  //   setCallState('ringing');
-  //   initiateCall();
-  // };
-
-  // // Handle call acceptance
-  // const handleAcceptCall = (roomId) => {
-  //   setCallState('active');
-  //   acceptCall(roomId);
-  //   startCall(roomId);
-  // };
-
-  // // Handle call rejection
-  // const handleRejectCall = () => {
-  //   setCallState('idle');
-  //   rejectCall();
-  //   cleanupWebRTC();
-  // };
-
-  // // Handle call end
-  // const handleEndCall = () => {
-  //   setCallState('idle');
-  //   endCall(callRoomId);
-  //   cleanupWebRTC();
-  // }
-
-
-  useEffect(() => {
-    // Listen for WebRTC events
-    socket.on('offer', (data) => {
-      handleOffer(data.roomId, data.offer);
-    });
-
-    socket.on('answer', (data) => {
-      handleAnswer(data.roomId, data.answer);
-    });
-
-    socket.on('ice-candidate', (data) => {
-      handleIceCandidate(data.roomId, data.candidate);
-    });
-
-    return () => {
-      socket.off('offer');
-      socket.off('answer');
-      socket.off('ice-candidate');
-      cleanupWebRTC();
-    };
-  }, [handleAnswer, handleOffer, handleIceCandidate, cleanupWebRTC]);
-
-  // fetch caller details 
-  useEffect(() => {
-    if (!incomingCall?.callerId) return;
-
-
-    const fetchCallerDetails = async () => {
-      try {
-        const accessToken = await localStorage.getItem('accessToken');
-        if (!accessToken) {
-          console.error("Access token is missing");
-          return;
-        }
-
-        console.log("Fetching caller details for callerId:", incomingCall.callerId);
-        const response = await api.get(`/api/users/${incomingCall.callerId}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        if (!response.data) {
-          console.error("No user data returned for callerId:", incomingCall.callerId);
-          return;
-        }
-
-        console.log("Fetched caller details:", response.data);
-        setCaller(response.data);
-      } catch (error) {
-        setError('Failed to fetch caller details.')
-        console.error("Error fetching caller details:", error);
-      }
-    };
-
-    fetchCallerDetails(); // Call the function
-  }, [incomingCall]);
-
+    if (roomId && selectedUser) handleInitiateCall(selectedUser._id, roomId, selectedUser);
+  }
 
   // to go the end/last messages of users
   useEffect(() => {
@@ -690,11 +368,11 @@ export const useChat = (selectedUser, currentUser) => {
     showProfileInfo,
     isTyping,
     isOtherUserTyping,
-    isCalling,
-    incomingCall,
-    caller,
-    callState,
-    callRoomId,
+    // isCalling,
+    // incomingCall,
+    // caller,
+    // callState,
+    // callRoomId,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -702,12 +380,13 @@ export const useChat = (selectedUser, currentUser) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
-    handleInitiateCall: initiateCall,
-    handleAcceptCall: acceptCall,
-    handleRejectCall: rejectCall,
-    handleEndCall: endCall,
-    localStream,
-    remoteStream,
+    handleInitiateCallLocal,
+    // handleInitiateCall: initiateCall,
+    // handleAcceptCall: acceptCall,
+    // handleRejectCall: rejectCall,
+    // handleEndCall: endCall,
+    // localStream,
+    // remoteStream,
     toggleProfileInfo,
   }
 }

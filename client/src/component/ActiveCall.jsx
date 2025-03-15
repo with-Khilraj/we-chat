@@ -16,7 +16,7 @@ const ActiveCall = ({ user, onEndCall, onToggleMute }) => {
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${minutes}:${secs < 10 ? '0' : ''}`;
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   return (
@@ -31,7 +31,7 @@ const ActiveCall = ({ user, onEndCall, onToggleMute }) => {
         <div className="user-info">
           <div className="avatar">
             {user?.avatar ? (
-              <img src={user.avatar} alt={user?.avatar} />
+              <img src={user.avatar} alt={user?.username} />
             ) : (
               <span>{user?.username.charAt(0).toUpperCase()}</span>
             )}

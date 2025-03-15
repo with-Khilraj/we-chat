@@ -15,7 +15,6 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         return;
       }
-
       try {
         const user = await fetchUserData(token);
         setCurrentUser(user); // { _id, username, ... }
@@ -30,31 +29,9 @@ export const AuthProvider = ({ children }) => {
     fetchCurrentUser();
   }, []);
 
-  const login = async (credentials) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/users/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Login failed');
-      localStorage.setItem('accessToken', data.token);
-      const user = await fetchUserData(data.token);
-      setCurrentUser(user);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    setCurrentUser(null);
-  };
 
   return (
-    <AuthContext.Provider value={{ currentUser, loading, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

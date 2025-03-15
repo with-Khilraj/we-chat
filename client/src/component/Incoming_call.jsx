@@ -1,7 +1,18 @@
 import { motion } from "framer-motion";
 import "../styles/Calls.css";
+import PropTypes from "prop-types";
+import { useEffect, useState } from "react";
 
 const IncomingCall = ({ user, onAccept, onReject }) => {
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots((prev) => prev.length < 3 ? prev + "." : "");
+    }, 500);
+    return () => clearInterval(interval);
+  });
+
   return (
     <motion.div
       className="incoming-call"
@@ -13,14 +24,14 @@ const IncomingCall = ({ user, onAccept, onReject }) => {
         <div className="user-info">
           <div className="avatar">
             {user?.avatar ? (
-              <img src={user.avatar} alt={user?.avatar} />
+              <img src={user.avatar} alt={user?.username} />
             ) : (
               <span>{user?.username.charAt(0).toUpperCase() || "?"}</span>
             )}
             <div className="ring-animation"></div>
           </div>
           <h3>{user.username}</h3>
-          <p>Incoming call...</p> {/* Fixed typo: "Incomming" -> "Incoming" */}
+          <p>Incoming call{dots}</p> 
         </div>
         <div className="call-actions">
           <motion.button
@@ -43,6 +54,15 @@ const IncomingCall = ({ user, onAccept, onReject }) => {
       </div>
     </motion.div>
   );
+};
+
+IncomingCall.propTypes = {
+  user: PropTypes.shape({
+    username: PropTypes.string.isRequired,
+    avatar: PropTypes.string,
+  }).isRequired,
+  onAccept: PropTypes.func.isRequired,
+  onReject: PropTypes.func.isRequired
 };
 
 export default IncomingCall;

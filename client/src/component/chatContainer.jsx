@@ -10,25 +10,16 @@ import video_call from "../assets/video-camera.png";
 import info_icon from "../assets/info.png";
 import audio_icon from "../assets/mic.png";
 import media_icon from "../assets/image-gallery.png";
-import FloatingCallWindow from "./FloatingCallWindow";
-import ActiveCall from "./ActiveCall";
-import IncomingCall from "./Incoming_call";
-import CallInitiation from "./CallInitiation";
-import { AnimatePresence } from "framer-motion";
+import { useCall } from "../context/CallContext";
 
 
-const ChatContainer = ({ selectedUser, currentUser, initiateCall }) => {
+const ChatContainer = ({ selectedUser, currentUser }) => {
   const {
     messages,
     newMessage,
     isUploading,
     showProfileInfo,
     isOtherUserTyping,
-    isCalling,
-    incomingCall,
-    caller,
-    callState,
-    callRoomId,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -36,14 +27,11 @@ const ChatContainer = ({ selectedUser, currentUser, initiateCall }) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
-    handleInitiateCall,
-    handleAcceptCall,
-    handleRejectCall,
-    handleEndCall,
-    localStream,
-    remoteStream,
+    handleInitiateCallLocal,
     toggleProfileInfo,
   } = useChat(selectedUser, currentUser);
+
+  const { isCalling, localStream, remoteStream } = useCall();
 
   const onlineUsers = useOnlineUsers();
   // const isOnline = React.useMemo(() => onlineUsers.includes(selectedUser._id), [onlineUsers, selectedUser._id]);
@@ -88,7 +76,7 @@ const ChatContainer = ({ selectedUser, currentUser, initiateCall }) => {
 
             {/* Call Buttons */}
             <button
-              onClick={handleInitiateCall}
+              onClick={handleInitiateCallLocal}
               // onClick={() => initiateCall(selectedUser._id)}
               disabled={isCalling}
               className="audio-call-icon"
@@ -283,41 +271,7 @@ const ChatContainer = ({ selectedUser, currentUser, initiateCall }) => {
       </div>
 
 
-      {/* Call Components */}
-      <AnimatePresence>
-        {/* Call Initiation UI (for caller) */}
-        {callState === 'ringing' && !incomingCall && !isCalling && (
-          <CallInitiation
-            user={selectedUser}
-            onCallCancel={handleEndCall}
-          />
-        )}
-
-        {/* Incoming Call UI (for receiver) */}
-        {callState === 'ringing' && incomingCall && (
-          <IncomingCall
-            user={caller}
-            onAccept={() => handleAcceptCall(callRoomId)}
-            onReject={handleRejectCall}
-          />
-        )}
-
-        {callState === 'active' && (
-          <FloatingCallWindow>
-            <ActiveCall
-              user={selectedUser}
-              onEndCall={handleEndCall}
-              onToggleMute={(muted) => {
-                // if (localStream) {
-                //   localStream.getAudioTracks().forEach(track => {
-                //     track.enabled = !muted;
-                //   });
-                // }
-              }}
-            />
-          </FloatingCallWindow>
-        )}
-      </AnimatePresence>
+      {/* kjbknkn */}
 
     </>
   );

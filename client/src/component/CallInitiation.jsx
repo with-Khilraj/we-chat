@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import "../styles/Calls.css";
+import { useCall } from '../context/CallContext';
 
-const CallInitiation = ({ user, onCallCancel }) => {
+// const CallInitiation = ({ user, onCallCancel }) => {
+const CallInitiation = () => {
+  const { remoteUser, endCall } = useCall();
+
   const [isHovered, setIsHovered] = useState(false);
   const [dots, setDots] = useState("");
 
@@ -12,10 +16,12 @@ const CallInitiation = ({ user, onCallCancel }) => {
       setDots((prev) => prev.length < 3 ? prev + '.' : "")
     }, 500);
     return () => clearInterval(interval);
-  });
+  },[]);
+
+  if(!remoteUser) return null;
 
   return (
-    <motion.div 
+    <motion.div
       className="call-initiation"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -23,14 +29,14 @@ const CallInitiation = ({ user, onCallCancel }) => {
     >
       <div className="user-info">
         <div className="avatar">
-          {user?.avatar ? (
-            <img src={user.avatar} alt={user?.username} />
+          {remoteUser?.avatar ? (
+            <img src={remoteUser.avatar} alt={remoteUser?.username} />
           ) : (
-            <span>{user?.username.charAt(0).toUpperCase()}</span>
+            <span>{remoteUser?.username.charAt(0).toUpperCase()}</span>
           )}
           <div className="status-indicator"></div>
         </div>
-        <h3>{user.username}</h3>
+        <h3>{remoteUser.username || "Unknown User" }</h3>
         <p>Connecting{dots}</p>
       </div>
       <motion.button
@@ -39,7 +45,7 @@ const CallInitiation = ({ user, onCallCancel }) => {
         whileTap={{ scale: 0.95 }}
         onHoverStart={() => setIsHovered(true)}
         onHoverEnd={() => setIsHovered(false)}
-        onClick={onCallCancel}
+        onClick={endCall}
       >
         <motion.span
           className="call-icon"
@@ -55,12 +61,12 @@ const CallInitiation = ({ user, onCallCancel }) => {
 };
 
 // to ensure user and onCallCancel are provided correctly
-CallInitiation.propTypes = {
-  user: PropTypes.shape({
-    username: PropTypes.string.isRequired,
-    avatar: PropTypes.string,
-  }).isRequired,
-  onCallCancel: PropTypes.func.isRequired,
-};
+// CallInitiation.propTypes = {
+//   user: PropTypes.shape({
+//     username: PropTypes.string.isRequired,
+//     avatar: PropTypes.string,
+//   }).isRequired,
+//   onCallCancel: PropTypes.func.isRequired,
+// };
 
 export default CallInitiation;

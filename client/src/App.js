@@ -17,42 +17,35 @@ import CallInitiation from "./component/CallInitiation";
 import { AnimatePresence } from "framer-motion";
 
 const CallComponents = () => {
-  const { isCalling, callState, incomingCall, recipient, caller, callerLoading, callRoomId, localStream, handleAcceptCall, handleRejectCall, handleEndCall } =
-    useCall();
+  const {
+    isCalling,
+    callState,
+    remoteUser,
+    acceptCall,
+    rejectCall,
+    endCall,
+  } = useCall();
 
   return (
-    // Call Components
     <AnimatePresence>
-      {/* Call Initiation UI (for caller) */}
-      {callState === 'ringing' && !incomingCall && !isCalling && (
-        <CallInitiation
-          user={recipient}
-          onCallCancel={handleEndCall}
-        />
-      )}
-
-      {/* Incoming Call UI (for receiver) */}
-      {callState === 'ringing' && incomingCall && caller?.username && !callerLoading && (
-        <IncomingCall
-          user={caller}
-          onAccept={() => handleAcceptCall(callRoomId)}
-          onReject={handleRejectCall}
-        />
-      )}
-
-      {callState === 'active' && caller?.username && !callerLoading && (
+      {/* Outgoing call UI */}
+      {callState === "ringing_outgoing" && remoteUser && (
         <FloatingCallWindow>
-          <ActiveCall
-            user={caller || recipient}
-            onEndCall={handleEndCall}
-            onToggleMute={(muted) => {
-              if (localStream) {
-                localStream.getAudioTracks().forEach(track => {
-                  track.enabled = !muted;
-                });
-              }
-            }}
-          />
+          <CallInitiation />
+        </FloatingCallWindow>
+      )}
+
+      {/* Incoming call UI */}
+      {callState === "ringing_incoming" && remoteUser && (
+        <FloatingCallWindow>
+          <IncomingCall />
+        </FloatingCallWindow>
+      )}
+
+      {/* Active call UI */}
+      {callState === "active" && remoteUser && (
+        <FloatingCallWindow>
+          <ActiveCall onEndCall={endCall} />
         </FloatingCallWindow>
       )}
     </AnimatePresence>

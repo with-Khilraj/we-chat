@@ -22,12 +22,14 @@ const FloatingCallWindow = ({ children }) => {
     };
   };
 
+  const [constraints, setConstraints] = useState(getConstraints());
+
   return (
     <motion.div
       className="floating-window"
       style={{ x, y, rotate }}
       drag
-      dragConstraints={getConstraints} 
+      dragConstraints={constraints} 
       dragElastic={0.1}
       whileDrag={{ scale: 1.05 }}
       onDragStart={() => setIsDragging(true)}
@@ -49,7 +51,7 @@ const FloatingCallWindow = ({ children }) => {
 };
 
 // to ensure children is provided
-FloatingCallWindow.prototype = {
+FloatingCallWindow.propTypes = {
   children: PropTypes.node.isRequired,
 };
 

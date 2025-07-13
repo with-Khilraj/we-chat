@@ -1,10 +1,18 @@
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../styles/Calls.css"
+import { useCall } from "../context/CallContext";
 
-const ActiveCall = ({ user, onEndCall, onToggleMute }) => {
+const ActiveCall = ({ onEndCall }) => {
+  const { localStream, remoteStream, remoteUser } = useCall();
+
   const [isMuted, setIsMuted] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const[isMinimized, setIsMinimized] = useState(false);
+
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -12,6 +20,40 @@ const ActiveCall = ({ user, onEndCall, onToggleMute }) => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Assign local stream to video element
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  // Assign remote stream to video element
+  useEffect(() => {
+    if (remoteStream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
+
+  const handleToggleMute = () => {
+    if (localStream) {
+      const audioTracks = localStream.getAudioTracks();
+      audioTracks.forEach(track => {
+        track.enabled = isMuted;
+      });
+      setIsMuted(!isMuted);
+    }
+  };
+
+  // Toggle video on/off
+  const handleToggleVideo = () => {
+    if (localStream) {
+      localStream.getVideoTracks().forEach((track) => {
+        track.enabled = !videoEnabled;
+      });
+      setVideoEnabled(!videoEnabled)
+    }
+  };
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -30,28 +72,59 @@ const ActiveCall = ({ user, onEndCall, onToggleMute }) => {
       <div className="call-header">
         <div className="user-info">
           <div className="avatar">
-            {user?.avatar ? (
-              <img src={user.avatar} alt={user?.username} />
+            {remoteUser?.avatar ? (
+              <img src={remoteUser.avatar} alt={remoteUser?.username} />
             ) : (
-              <span>{user?.username.charAt(0).toUpperCase()}</span>
+              <span>{remoteUser?.username.charAt(0).toUpperCase()}</span>
             )}
             <div className="status-indicator"></div>
           </div>
-          <h3>{user.username}</h3>
+          <h3>{remoteUser.username || 'Caller'}</h3>
           <div className="call-timer">{formatTime(callDuration)}</div>
         </div>
       </div>
+      <div className="video-controlls">
+        <video
+          ref={remoteVideoRef}
+          className="remote-video"
+          autoPlay
+          playsInline
+          muted={false}
+        />
+
+        {/* local video preview */}
+        <video
+          ref={localVideoRef}
+          className="local-video"
+          autoPlay
+          playsInline
+          muted
+        />
+      </div>
+
       <div className="call-controls">
         <motion.div
           className="control-button"
           whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            setIsMuted(!isMuted);
-            onToggleMute(!isMuted);
-          }}
+          onClick={handleToggleMute}
+          aria-label={isMuted ? "unmute microphone" : "mute microphone"}
+        // onClick={() => {
+        //   setIsMuted(!isMuted);
+        //   onToggleMute(!isMuted);
+        // }}
         >
           {isMuted ? '🔇' : '🎤'}
+          {/* 🎤 Mute */}
         </motion.div>
+
+        <motion.button
+          className="control-button"
+          whileTap={{ scale: 0.9 }}
+          onClick={handleToggleVideo}
+          aria-label={videoEnabled ? "Turn off camera" : "Turn on camera"}
+        >
+          {videoEnabled ? "📷 Camera On" : "📷 Camera Off"}
+        </motion.button>
 
         <motion.div
           className="end-call-button"

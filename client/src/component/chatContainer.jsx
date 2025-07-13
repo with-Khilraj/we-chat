@@ -11,6 +11,7 @@ import info_icon from "../assets/info.png";
 import audio_icon from "../assets/mic.png";
 import media_icon from "../assets/image-gallery.png";
 import { useCall } from "../context/CallContext";
+// import { useCall } from "../context/CallContextInitial";
 
 
 const ChatContainer = ({ selectedUser, currentUser }) => {
@@ -31,7 +32,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
     toggleProfileInfo,
   } = useChat(selectedUser, currentUser);
 
-  const { isCalling, localStream, remoteStream } = useCall();
+  const { isCalling, localStream, remoteStream, initiateCall } = useCall();
 
   const onlineUsers = useOnlineUsers();
   // const isOnline = React.useMemo(() => onlineUsers.includes(selectedUser._id), [onlineUsers, selectedUser._id]);
@@ -76,7 +77,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
 
             {/* Call Buttons */}
             <button
-              onClick={handleInitiateCallLocal}
+              onClick={() => initiateCall(selectedUser)}
               // onClick={() => initiateCall(selectedUser._id)}
               disabled={isCalling}
               className="audio-call-icon"

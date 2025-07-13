@@ -4,6 +4,15 @@ export const isValidObjectId = (id) => {
   return /^[0-9a-fA-F]{24}$/.test(id);
 };
 
+export const isValidUUID = (id) => {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
+};
+
+// if (!roomId || !selectedUser?._id || !isValidObjectId(selectedUser._id) || (messageData._id && !isValidUUID(messageData._id))) {
+//   setError("Invalid receiver ID or message ID. Please select a valid user.");
+//   return;
+// }
+
 
 // Get duration of audio/video files
 export const getMediaDuration = (file) => {

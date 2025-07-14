@@ -268,17 +268,31 @@ export const CallProvider = ({ children, currentUser }) => {
   useEffect(() => {
     const handleIncomingCall = async ({ callerId, roomId }) => {
       try {
+        // const accessToken = localStorage.get('accessToken');
+        // if(!accessToken) throw new Error('No access token!');
+
+        // // Dipatch initial state with partial remoteUser
+        // dispatch({
+        //   type: ACTIONS.RECEIVE_CALL,
+        //   roomId,
+        //   remoteUser: { _Id: callerId }
+        // });
+
+        // fetch full caller details
         const res = await api.get(`api/users/${callerId}`);
-        dispatch({
-          type: ACTIONS.RECEIVE_CALL,
-          roomId,
-          remoteUser: res.data
-        });
+
+        // update with full remoteUser details
+        // dispatch({
+        //   type: ACTIONS.RECEIVE_CALL,
+        //   roomId,
+        //   remoteUser: res.data
+        // });
       } catch (err) {
         dispatch({
           type: ACTIONS.ERROR,
           error: 'Failed to load caller details'
         });
+        endCall();
       }
     };
 
@@ -288,11 +302,35 @@ export const CallProvider = ({ children, currentUser }) => {
       }
     };
 
+    const handleOffer = async ({ roomId, offer }) => {
+      if(state.roomId === roomId && state.status === callStates.RINGING_INCOMING) {
+        try {
+          const pc = state.peerConnection || (await setupWebRTC(roomId));
+          if(!pc) throw new Error("Failed to setup WebRTC");
+
+          await pc.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          socket.emit('offer', {
+            roomId,
+            answer,
+          })
+        } catch (error) {
+          dispatch({
+            type: ACTIONS.ERROR,
+            error: error.message || "Failed to handle offer"
+          });
+          endCall();
+        }
+      }
+    }
+
     const handleAnswer = ({ roomId, answer }) => {
       if(state.peerConnection && state.roomId === roomId && state.status === callStates.RINGING_OUTGOING) {
         state.peerConnection.setRemoteDescription(new RTCSessionDescription(answer)).catch(err => {
           dispatch({
-            type: ACTIONS.ERROR,
+            type: ACTIONS.ERROR, 
             error: "Failed to set remote description "
           });
           endCall();
@@ -302,6 +340,7 @@ export const CallProvider = ({ children, currentUser }) => {
 
     socket.on('incoming-call', handleIncomingCall);
     socket.on('ice-candidate', handleIceCandidate);
+    socket.on('offer', handleOffer);
     socket.on('answer', handleAnswer);
     socket.on('call-accepted', () => {
       if (state.status === callStates.RINGING_OUTGOING) {
@@ -328,6 +367,7 @@ export const CallProvider = ({ children, currentUser }) => {
     return () => {
       socket.off('incoming-call', handleIncomingCall);
       socket.off('ice-candidate', handleIceCandidate);
+      socket.off('offer', handleOffer);
       socket.off('answer', handleAnswer);
       socket.off('call-accepted');
       socket.off('call-rejected');
@@ -409,6 +449,8 @@ export const CallProvider = ({ children, currentUser }) => {
   // ======================
   // Context Value
   // ======================
+  
+  
   const contextValue = useMemo(() => ({
     callState: state.status,
     localStream: state.localStream,

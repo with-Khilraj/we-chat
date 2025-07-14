@@ -19,14 +19,6 @@ export const useChat = (selectedUser, currentUser) => {
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
-  // const [isCalling, setIsCalling] = useState(false);
-  // const [incomingCall, setIncomingCall] = useState(null);
-  // const [callState, setCallState] = useState('idle')  // 'idle', 'ringing', 'active'
-  // const [callRoomId, setCallRoomId] = useState(null);
-  // const [caller, setCaller] = useState(null);
-  // const [localStream, setLocalStream] = useState(null);
-  // const [remoteStream, setRemoteStream] = useState(null);
-  // const [peerConnection, setPeerConnection] = useState(null);
 
   const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
@@ -49,6 +41,7 @@ export const useChat = (selectedUser, currentUser) => {
     if (!roomId) return;
 
     socket.emit('join-room', roomId);
+    console.log('Sender joined room:', roomId);
 
     const fetchChatHistory = async () => {
       try {
@@ -60,7 +53,9 @@ export const useChat = (selectedUser, currentUser) => {
             Authorization: `Bearer ${accessToken}`,
           },
         });
+        console.log("Fetched chat history:", response.data);
         setMessages(response.data.messages || []);
+
 
         // Mark all unread messages as 'seen'
         const unreadMessages = response.data.messages.filter(
@@ -84,6 +79,7 @@ export const useChat = (selectedUser, currentUser) => {
     };
     fetchChatHistory();
 
+
     const handleReceiveMessage = (data) => {
       setMessages((prevMessages) => {
         if (data.senderId !== currentUser._id && !prevMessages.some((msg) => msg._id === data._id)) {
@@ -105,17 +101,62 @@ export const useChat = (selectedUser, currentUser) => {
   }, [selectedUser, currentUser, getRoomId]);
 
 
+  useEffect(() => {
+    console.log("Messages state after fetch:", messages);
+  }, [messages]);
+
+  socket.onAny((event, ...args) => {
+    console.log(`Socket event received: ${event}`, args);
+  });
+
+
   // Handle message status update
   useEffect(() => {
     if (!selectedUser) return;
 
     const handleMessageStatus = (data) => {
+      console.log('Received message status update:', data);
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
-          msg._id === data.messageId ? { ...msg, status: data.status } : msg
+          msg.tempId === data.messageId
+            ? { ...msg, _id: data.serverId, status: data.status, tempId: undefined }
+            : data.messageIds?.includes(msg._id)
+              ? { ...msg, status: data.status }
+              : msg
         )
       );
     };
+
+    //   const handleMessageStatus = (data) => {
+    //     console.log('Received message status update:', data);
+    //     setMessages((prevMessages) => {
+    //       const updateMessages = prevMessages.map((msg) =>
+    //         data.messageIds?.includes(msg._id)
+    //           ? { ...msg, status: data.status }
+    //           : data.messageId === msg._id
+    //             ? { ...msg, status: data.status }
+    //             : msg
+    //       );
+    //       console.log('Updated Messages:', updateMessages.map(m => ({ id: m._id, status: m.status })));
+    //       return updateMessages;
+    //     });
+
+    //   // if (data.messageIds) {
+    //   //   // Handle bulk message status update
+    //   //   setMessages((prevMessages) =>
+    //   //     prevMessages.map((msg) =>
+    //   //       data.messageIds.includes(msg._id) ? { ...msg, status: data.status } : msg
+    //   //     )
+    //   //   );
+    //   // } else if (data.messageId) {
+    //   //   // Handle single message status update
+    //   //   setMessages((prevMessages) =>
+    //   //     prevMessages.map((msg) =>
+    //   //       msg._id === data.messageId ? { ...msg, status: data.status } : msg
+    //   //     )
+    //   //   );
+    //   // }
+    // };
 
     socket.on('message-sent', handleMessageStatus);
     socket.on('message-seen', handleMessageStatus);
@@ -146,8 +187,8 @@ export const useChat = (selectedUser, currentUser) => {
     }, 1000);
   }, [isTyping, getRoomId]);
 
-   // Trigger file input when an icon is clicked
-   const handleMediaClick = (type) => {
+  // Trigger file input when an icon is clicked
+  const handleMediaClick = (type) => {
     fileInputRef.current?.click();
   }
 
@@ -201,7 +242,9 @@ export const useChat = (selectedUser, currentUser) => {
       return;
     }
 
-    const messageId = uuidv4();
+    // const messageId = uuidv4(); // ------ old way to handle IDs
+    const tempId = uuidv4(); // ------ new way to handle optimistic update
+
     // Determine messageType based on whether a file is being sent
     const messageType = fileToSend
       ? fileToSend.type.startsWith('audio')
@@ -214,7 +257,8 @@ export const useChat = (selectedUser, currentUser) => {
       : 'text';
 
     const messageData = {
-      _id: messageId,
+      // _id: messageId, ----- old way
+      tempId,  // ----- new way to handle IDs
       roomId,
       senderId: currentUser._id,
       receiverId: selectedUser._id,
@@ -271,12 +315,12 @@ export const useChat = (selectedUser, currentUser) => {
       });
 
       // Emit messages
-      socket.emit("send-message", { ...messageData, _id: response.data.message._id });
+      socket.emit("send-message", { ...messageData, _id: response.data.message._id, tempId });
 
       // Update message with actual ID from server response
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
-          msg._id === messageId ? { ...msg, _id: response.data.message._id } : msg
+          msg.tempId === tempId ? { ...msg, _id: response.data.message._id, tempId: undefined } : msg
         )
       );
     } catch (error) {
@@ -286,7 +330,7 @@ export const useChat = (selectedUser, currentUser) => {
         navigate('/login');
       }
       // Rollback optimistic update on failure
-      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+      setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
     } finally {
       setIsUploading(false);
     }
@@ -338,6 +382,10 @@ export const useChat = (selectedUser, currentUser) => {
       socket.off('typing', handleTyping);
     }
   }, [selectedUser, currentUser, getRoomId]);
+
+  useEffect(() => {
+    return () => clearTimeout(typingTimeout.current);
+  }, []);
 
 
   const handleInitiateCallLocal = () => {

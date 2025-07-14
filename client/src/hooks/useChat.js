@@ -26,6 +26,10 @@ export const useChat = (selectedUser, currentUser) => {
   const navigate = useNavigate();
   const { handleInitiateCall } = useCall();
 
+  const isValidUUID = (id) => {
+    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
+  };
+
   // Centralized roomId generator
   const getRoomId = useCallback(() => {
     return selectedUser && currentUser
@@ -59,18 +63,22 @@ export const useChat = (selectedUser, currentUser) => {
 
         // Mark all unread messages as 'seen'
         const unreadMessages = response.data.messages.filter(
-          (msg) => msg.receiverId === currentUser._id && msg.status === 'sent'
+          (msg) => msg.receiverId === currentUser._id && msg.status === 'sent' && isValidUUID(msg._id)
         );
         if (unreadMessages.length > 0) {
-          await api.put('/api/messages/status/bulk', {
-            messageIds: unreadMessages.map((msg) => msg._id), status: 'seen'
-          },
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
-          );
+          socket.emit('message-seen', {
+            messageIds: unreadMessages.map((msg) => msg._id),
+            roomId,
+          });
+          // await api.put('/api/messages/status/bulk', {
+          //   messageIds: unreadMessages.map((msg) => msg._id), status: 'seen'
+          // },
+          //   {
+          //     headers: {
+          //       Authorization: `Bearer ${accessToken}`,
+          //     },
+          //   }
+          // );
         }
       } catch (error) {
         setError('Failed to load the chat history. Please try again.');
@@ -84,6 +92,13 @@ export const useChat = (selectedUser, currentUser) => {
       setMessages((prevMessages) => {
         if (data.senderId !== currentUser._id && !prevMessages.some((msg) => msg._id === data._id)) {
           const updateMessages = [...prevMessages, data];
+          // If receiver is actively viewing the chat, mark the message as 'seen'
+          if(data.receiverId === currentUser._id && selectedUser?._id === data.senderId) {
+            socket.emit('message-seen', {
+              messageIds: [data._id],
+              roomId: data.roomId,
+            })
+          }
           return updateMessages;
         }
         return prevMessages;
@@ -116,16 +131,24 @@ export const useChat = (selectedUser, currentUser) => {
 
     const handleMessageStatus = (data) => {
       console.log('Received message status update:', data);
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg.tempId === data.messageId
-            ? { ...msg, _id: data.serverId, status: data.status, tempId: undefined }
-            : data.messageIds?.includes(msg._id)
-              ? { ...msg, status: data.status }
-              : msg
-        )
-      );
-    };
+      setMessages((prevMessages) => {
+        const updatedMessages = prevMessages.map((msg) => {
+          // Handle message-sent (single message)
+          if (data.messageId && msg.tempId === data.messageId) {
+            console.log(`Mapping tempId ${data.messageId} to serverId ${data.serverId} for status ${data.status}`);
+            return { ...msg, _id: data.serverId, status: data.status, tempId: undefined };
+          }
+          // Handle message-seen (bulk update)
+          if (data.messageIds && data.messageIds.includes(msg._id)) {
+            console.log(`Updating status to ${data.status} for message _id ${msg._id}`);
+            return { ...msg, status: data.status };
+          }
+          return msg;
+        });
+        console.log('Updated messages:', updatedMessages.map(m => ({ _id: m._id, tempId: m.tempId, status: m.status })));
+        return updatedMessages;
+      });
+    }
 
     //   const handleMessageStatus = (data) => {
     //     console.log('Received message status update:', data);
@@ -290,22 +313,6 @@ export const useChat = (selectedUser, currentUser) => {
       });
       if (fileToSend instanceof File) formData.append('file', fileToSend);
 
-      // formData.append("roomId", messageData.roomId);
-      // formData.append("senderId", messageData.senderId);
-      // formData.append("receiverId", messageData.receiverId); // Explicitly append receiverId
-      // formData.append("content", messageData.content);
-      // formData.append("messageType", messageData.messageType);
-      // formData.append("caption", messageData.caption);
-      // formData.append("status", messageData.status);
-
-      // if (fileToSend && fileToSend instanceof File) {
-      //   formData.append("file", fileToSend);
-      //   formData.append("fileName", messageData.fileName);
-      //   formData.append("fileSize", messageData.fileSize);
-      //   formData.append("fileType", messageData.fileType);
-      //   if (messageData.duration) formData.append("duration", messageData.duration);
-      // }
-
       // Send message to server
       const response = await api.post("/api/messages/", formData, {
         headers: {
@@ -315,7 +322,11 @@ export const useChat = (selectedUser, currentUser) => {
       });
 
       // Emit messages
-      socket.emit("send-message", { ...messageData, _id: response.data.message._id, tempId });
+      socket.emit("send-message", {
+        ...messageData,
+        _id: response.data.message._id,
+        tempId
+      });
 
       // Update message with actual ID from server response
       setMessages((prevMessages) =>

@@ -147,7 +147,6 @@ io.on("connection", (socket) => {
 
   // handel message seen
   socket.on("message-seen", async (data) => {
-    console.log('Emitting message-seen event with data:', data);
     const { messageIds, roomId } = data;
 
     // Validate all messageIds are valid UUIDs

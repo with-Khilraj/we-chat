@@ -44,7 +44,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // routes
 app.use("/api/users", userRoutes);
-app.use("/api/messages", messageRoutes, chatRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/chat", chatRoutes);
 
 // using Map to store online users
 const onlineUsers = new Map();
@@ -63,6 +64,10 @@ io.on("connection", (socket) => {
   // Join a room for real-time chat
   socket.on("join-room", (roomId) => {
     try {
+      if (!roomId || !/^[0-9a-fA-F]{24}-[0-9a-fA-F]{24}$/.test(roomId)) {
+        socket.emit("error", { message: "Invalid room ID" });
+        return;
+      }
       socket.join(roomId);
       console.log(`User joined room: ${roomId}`);
     } catch (error) {
@@ -86,21 +91,30 @@ io.on("connection", (socket) => {
     try {
       // Validate Ojbect fields
       if (
-        !isValidUUID(data._id) || // Updated to UUID
+        !isValidUUID(data._id) ||
         !mongoose.Types.ObjectId.isValid(data.senderId) ||
         !mongoose.Types.ObjectId.isValid(data.receiverId)
       ) {
         console.error('Invalid ID in send-message event:', data);
-        return; // Avoid throwing error, just log and skip
+        socket.emit("error", { message: "Invalid message or user ID" });
+        return;
       }
 
       // update the message status to 'sent' in the database
-      await Message.findByIdAndUpdate(data._id, { status: "sent" });
+      // await Message.findByIdAndUpdate(data._id, { status: "sent" });  ----- old way
 
-      // emit the event to the room. and both sender and receiver
+      // emit the event to the room and individual users
       io.to(data.roomId).emit("receive-message", data);
-      io.to(data.senderId).emit("message-sent", { messageId: data._id, status: "sent" });
-      io.to(data.receiverId).emit("message-sent", { messageId: data._id, status: "sent" });
+      io.to(data.senderId).emit("message-sent", {
+        messageId: data.tempId, // use tempId for frontend mapping
+        serverId: data._id, // Use server-generated ID
+        status: "sent"
+      });
+      io.to(data.receiverId).emit("message-sent", {
+        messageId: data.tempId,
+        serverId: data._id,
+        status: "sent"
+      });
     } catch (error) {
       console.error(`Error sending message to room ${data.roomId}:`, error);
     }
@@ -133,6 +147,7 @@ io.on("connection", (socket) => {
 
   // handel message seen
   socket.on("message-seen", async (data) => {
+    console.log('Emitting message-seen event with data:', data);
     const { messageIds, roomId } = data;
 
     // Validate all messageIds are valid UUIDs
@@ -149,6 +164,7 @@ io.on("connection", (socket) => {
       );
       // emite the event to both sender and receiver
       io.to(roomId).emit('message-seen', { messageIds, status: "seen" });
+      console.log(`Message seen event emitted for room ${roomId} with messageIds:`, messageIds);
     } catch (error) {
       console.error("Error updating message status:", error);
     }
@@ -249,6 +265,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", async () => {
+    socket.rooms.forEach((roomId) => {
+      if (roomId !== socket.id) socket.leave(roomId);
+    });
+
     try {
       // const userId = onlineUsers.get(socket.id);
       const userId = [...onlineUsers.entries()].find(([_, sid]) => sid === socket.id)?.[0];
@@ -287,11 +307,14 @@ io.on("connection", (socket) => {
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI, { maxPoolSize: 10 })
   .then(() => {
     console.log(`MongoDB connected`);
     server.listen(PORT, () => {
-      console.log(`server is running on port ${PORT}`);
+      console.log(`Server is running on port ${PORT}`);
     });
   })
-  .catch((err) => console.log("Error connecting to MongoDB:", err));
+  .catch((err) => {
+    console.error("Error connecting to MongoDB:", err);
+    process.exit(1); // Exit process on failure
+  });

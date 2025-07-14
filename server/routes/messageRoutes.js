@@ -12,7 +12,7 @@ const upload = multer({ storage: storage });
 // send message
 router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
   const {
-    _id,
+    // _id, ---- old way
     roomId,
     receiverId,
     content,
@@ -33,10 +33,10 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
     return res.status(400).json({ error: "Invalid receiverId" });
   }
 
-  // Validate _id if provided (must be a valid UUID)
-  if (_id && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(_id)) {
-    return res.status(400).json({ error: 'Invalid message ID (must be a UUID)' });
-  }
+  // Validate _id if provided (must be a valid UUID)  ---- while using uuid as _id in client side
+  // if (_id && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(_id)) {
+  //   return res.status(400).json({ error: 'Invalid message ID (must be a UUID)' });
+  // }
 
   // Handle file upload
   const fileUrl = req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}` : null;
@@ -71,7 +71,7 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
 
   try {
     const messageData = new Message({
-      _id: _id || undefined,
+      // _id: _id || undefined, ---- old way
       roomId,
       senderId: req.user.id,
       receiverId,
@@ -83,7 +83,7 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
         ? { fileUrl, fileName, fileSize, fileType, duration }
         : {}), // Only include file fields for non-text
       caption,
-      status,
+      status: status || 'sent', // Default status to 'sent'
       lastMessageTimestamp: new Date(),
       createdAt: new Date(),
     });
@@ -124,10 +124,10 @@ const isValidUUID = (id) => {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
 };
 
+
 // update the specific message status
 router.put('/:messageId/status', verifyAccessToken, async (req, res) => {
   const { messageId } = req.params;  // messageId is a string here not OjbectId
-
 
   // Validate messageId is a valid ObjectId
   if(!isValidObjectId(messageId)) {

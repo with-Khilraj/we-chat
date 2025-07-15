@@ -103,6 +103,7 @@ router.post("/", verifyAccessToken, upload.single('file'), async (req, res) => {
         messageType: savedMessage.messageType,
         fileType: savedMessage.fileType,
         lastMessageTimestamp: savedMessage.lastMessageTimestamp,
+        stauts: savedMessage.status,
       });
     } else {
       console.warn("Socket.IO instance not found");
@@ -238,8 +239,18 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
           fileUrl: { $first: "$fileUrl" },
           fileType: { $first: "$fileType" },
           messageType: { $first: "$messageType" },
-          // thumbnailUrl: { $first: "$thumbnailUrl" },
+          lastMessage: { $first: '$$ROOT' },
           lastMessageTimestamp: { $first: "$lastMessageTimestamp" }, // Get the most recent timestamp
+
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ['$receiverId', loggedInUserId] }, { $eq: ['$status', 'sent'] }] },
+                1,
+                0,
+              ],
+            },
+          },
         },
       },
       {
@@ -255,16 +266,17 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
       },
       {
         $project: {
-          _id: 0, // Exclude default MongoDB ID
-          receiverId: "$_id",
-          senderId: 1,
-          username: "$userInfo.username",
-          message: 1,
-          fileUrl: 1,
-          fileType: 1,
-          messageType: 1,
-          // thumbnailUrl: 1,
-          lastMessageTimestamp: 1,
+          _id: '$lastMessage._id',
+          senderId: '$lastMessage.senderId',
+          receiverId: '$lastMessage.receiverId',
+          message: {
+            $ifNull: ['$lastMessage.content', '$lastMessage.fileUrl'],
+          },
+          messageType: '$lastMessage.messageType',
+          lastMessageTimestamp: '$lastMessage.lastMessageTimestamp',
+          status: '$lastMessage.status',
+          user: '$user',
+          unreadCount: 1,
         },
       },
       {
@@ -272,7 +284,7 @@ router.get("/recent-messages", verifyAccessToken, async (req, res) => {
       },
     ]);
 
-    res.status(200).json({ recentMessages });
+    res.status(200).json({ recentMessages});
   } catch (error) {
     console.error("Error fetching recent messages:", error);
     res.status(500).json({ error: "Internal server error" });

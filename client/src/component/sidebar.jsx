@@ -93,40 +93,51 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
           const receiverID = message.receiverId.toString(); // userId = receiverId
           const otherUserID =
             senderID === loggedInUser._id.toString() ? receiverID : senderID;
-            const isSeen = message.seen || false;
+          // const isSeen = message.seen || false;
+          const isSeen = message.status === 'seen';
 
-            // Determine the display message based on the messageType
-            let displayMessage;
-            if(message.messageType === 'text') {
-              // we call message.message not message.content because in server-side, 
-              // we save the content and file both on 'message' while sending the message to the client
-              const messageContent = message.message || "";   
-              console.log("message::::", message);
-              console.log("messageContent::::", messageContent);
-              displayMessage =
-                senderID === loggedInUser._id.toString()
-                  ? `You: ${messageContent}`
-                  : messageContent;
-            } else if (message.messageType) {
-              const messageTypeMap = {
-                "photo": 'a photo',
-                "video": 'a video',
-                "file": 'a file',
-                "audio": 'an audio',
-              };
-              const messageTypeText = messageTypeMap[message.messageType];
-              displayMessage =
-                senderID === loggedInUser._id.toString()
+          // Determine the display message based on the messageType
+          let displayMessage;
+          if (message.messageType === 'text') {
+            // we call message.message not message.content because in server-side, 
+            // we save the content and file both on 'message' while sending the message to the client
+            const messageContent = message.message || "";
+            console.log("message::::", message);
+            console.log("messageContent::::", messageContent);
+            displayMessage =
+              senderID === loggedInUser._id.toString()
+                ? `You: ${messageContent}`
+                : messageContent;
+          } else {
+            const messageTypeMap = {
+              "photo": 'a photo',
+              "video": 'a video',
+              "file": 'a file',
+              "audio": 'an audio',
+            };
+            const messageTypeText = messageTypeMap[message.messageType];
+            displayMessage =
+              senderID === loggedInUser._id.toString()
                 ? `You sent ${messageTypeText}`
                 : `Sent you ${messageTypeText}`;
-            } else {
-              displayMessage = 'New message';
-            }
-          
+          }
+
+          // Calculate unread count (only for messages received by current user)
+          let newUnreadCount = prevMessages[otherUserID]?.unreadCount || 0;
+         if (receiverID === loggedInUser._id.toString() && !isSeen) {
+            newUnreadCount += 1; // Increment for unseen received messages
+          } else if (isSeen) {
+            newUnreadCount = 0; // Reset if seen
+          } else if (senderID === loggedInUser._id.toString()) {
+            newUnreadCount = 0; // No unread count for sent messages
+          }
+
           updatedMessages[otherUserID] = {
             message: displayMessage,
             timestamp: new Date(message.lastMessageTimestamp).getTime(),
-            seen: isSeen
+            seen: senderID === loggedInUser._id.toString() ? true : isSeen,
+            unreadCount: newUnreadCount,
+            lastMessageId: message._id,
           };
           // updatedMessages[message.userId] = displayMessage;
         });
@@ -156,7 +167,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
     }
   }, [loggedInUser, updateRecentMessages]);
 
-  
+
 
   // useEffect for the socket events
   useEffect(() => {
@@ -170,6 +181,34 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
       socket.off("new_message", handleNewMessage);
     };
   }, [updateRecentMessages]);
+
+
+  // Update reentMessages when messages are seen
+  useEffect(() => {
+    const handleMessageStatus = (data) => {
+      if (data.status === "seen" && data.messageIds) {
+        setRecentMessages((prevMessages) => {
+          const updatedMessages = { ...prevMessages };
+          Object.keys(updatedMessages).forEach((userId) => {
+            if (data.messageIds.includes(updatedMessages[userId]?.lastMessageId) &&
+              updatedMessages[userId]?.seen === false) {
+              updatedMessages[userId] = {
+                ...updatedMessages[userId],
+                seen: true,
+                unreadCount: 0, // reset unread count when messages are seen
+              };
+            }
+          });
+          return updatedMessages;
+        });
+      }
+    };
+
+    socket.on("message-seen", handleMessageStatus);
+    return () => {
+      socket.off("message-seen", handleMessageStatus);
+    };
+  }, [])
 
 
   // Helper: turncate the message content
@@ -241,7 +280,6 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
     try {
       // await logout();
       await api.post("/api/users/logout");
-      // Clear all user-related data from local storage
       localStorage.clear();
 
       // clear recent messages
@@ -249,10 +287,9 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
 
       // disconect the socket connection
       socket.disconnect();
-
       toast.success("Logout successful!", {
         position: "top-right",
-        autoClose: 2000,
+        autoClose: 1500,
       });
 
       // Redirect to the login page immediately
@@ -264,7 +301,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
       });
     }
   };
-    
+
   const toggleDropup = (event) => {
     event.stopPropagation();
     setIsDropupOpen((prev) => !prev);
@@ -272,7 +309,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
 
 
   const handleClickOutside = useCallback((event) => {
-    if(dropupRef.current && 
+    if (dropupRef.current &&
       !dropupRef.current.contains(event.target) &&
       !moreMenuRef.current.contains(event.target)) {
       setIsDropupOpen(false);
@@ -305,7 +342,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
         <div className="more-menu" onClick={toggleDropup} ref={moreMenuRef}>
           <img className="more-menu-img" src={menu} alt="more" />
         </div>
-          <div ref={dropupRef} className= {`dropup-menu ${isDropupOpen ? 'open' : ''}`} >
+        <div ref={dropupRef} className={`dropup-menu ${isDropupOpen ? 'open' : ''}`} >
           <ul>
             <li onClick={() => navigate('')}>Settings</li>
             <li onClick={() => navigate('')}>Report a problem</li>
@@ -332,9 +369,9 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
             filteredUsers.map((user) => (
               <div
                 key={user._id}
-                className={`user-item ${
-                  selectedUser?._id === user._id ? "selected" : ""
-                }`}
+                className={`user-item ${selectedUser?._id === user._id ? "selected" : ""} 
+                  ${!recentMessages[user._id]?.seen && recentMessages[user._id] ? "unread" : ""
+                  }`}
                 onClick={() => setSelectedUser(user)} // passing selected user
               >
                 <div className="user-avatar">
@@ -352,22 +389,30 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
                 <div className="user-info-sidebar">
                   <h4 className="user-name">{user.username}</h4>
                   <div className="user-message-container">
-                    <p className= {`user-message ${!recentMessages[user._id]?.seen ? 'unseen' : ''}`}>
-                      {truncateMessage(recentMessages[user._id]?.message) ||
-                        "No messages yet"}
-                    </p>
+                    {recentMessages[user._id]?.unreadCount > 2 ? (
+                      <span className="unread-count">
+                        {recentMessages[user._id].unreadCount} new messages
+                      </span>
+                    ) : (
+                      // <p className={`user-message ${!recentMessages[user._id]?.seen ? 'unseen' : ''}`}>
+                      <p className="user-message">
+                        {truncateMessage(recentMessages[user._id]?.message) ||
+                          "No messages yet"}
+                      </p>
+                    )}
+
                     {recentMessages[user._id] && (
                       <>
                         <span className="message-timestamp">
                           {formatTimestamp(recentMessages[user._id].timestamp)}
                         </span>
-                        {/* {!recentMessages[user._id]?.seen && (
-                          <span className="unseen-indicator"></span>
-                        )} */}
                       </>
                     )}
                   </div>
                 </div>
+                {!recentMessages[user._id]?.seen && recentMessages[user._id] && (
+                  <span className="blue-dot"></span>
+                )}
               </div>
             ))
           ) : (

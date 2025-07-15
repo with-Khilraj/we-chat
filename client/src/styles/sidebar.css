@@ -120,11 +120,17 @@
   border-radius: 10px;
   margin-bottom: 10px;
   transition: background-color 0.3s ease;
+  position: relative;
 }
 
 .sidebar .user-item:hover {
   background-color: rgb(237, 222, 252);
   /* background-color: rgba(57, 57, 209, 0.13); */
+}
+
+.sidebar .user-item.unread {
+  background-color: #f0f8ff;
+  font-weight: bold;
 }
 
 .sidebar .user-item.selected {
@@ -134,7 +140,6 @@
 .user-list {
   margin-top: 20px;
 }
-
 
 .user-avatar {
   width: 50px;
@@ -168,13 +173,8 @@
   border-radius: 50%;
 }
 
-
-/* .user-item:hover {
-  background-color: #4caf50;
-} */
-
 .user-name {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   margin-bottom: 5px;
   margin-top: 0;
@@ -184,7 +184,9 @@
 }
 
 .user-message-container {
+  flex: 1;
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 6px;
   margin-top: 4px;
@@ -192,19 +194,18 @@
 
 .user-message {
   font-size: 16px;
-  color: #7e7e7e;
+  color: #2f2f2f;
   margin: 1px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
-  font-weight: normal;
 }
 
-/* .user-message.unseen {
+.unread-count {
+  color: #2f2f2f;
+  font-size: 13px;
   font-weight: bold;
-  color: #000;
-} */
+}
 
 .unseen-indicator {
   display: inline-block;
@@ -227,6 +228,17 @@
   position: absolute;
   left: -8px;
   color: #7e7e7e;
+}
+
+.blue-dot {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: traslateY(-50%);
+  width: 6px;
+  height: 6px;
+  background-color: #007bff;
+  border-radius: 50%;
 }
 
 .last-active {

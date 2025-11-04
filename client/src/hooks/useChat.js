@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../Api';
-import socket from '../utils/socket';
+import socket from '../services/socket';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidObjectId, getMediaDuration } from '../utils/chatUtils';
 import { useCall } from '../context/CallContext';

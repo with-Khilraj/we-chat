@@ -1,7 +1,7 @@
 import React from "react";
 import moment from "moment";
 import "../styles/chatContainer.css";
-import "../styles/Calls.css"
+// import "../styles/Calls.css"
 import { useOnlineUsers } from "../context/onlineUsersContext";
 import { useChat } from "../hooks/useChat";
 import { shouldDisplayTimeStamp, shouldStartNewGroup, renderStatusIndicator } from "../utils/chatUtils";
@@ -100,12 +100,16 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
             const isCurrentUser = message.senderId === currentUser._id;
             const senderUser = isCurrentUser ? currentUser : selectedUser;
             const previousMessage = messages[index - 1];
-            // const nextMessage = messages[index + 1];
+            const nextMessage = messages[index + 1];
+
+            const isLastMessageInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
             const showTimeStamp = shouldDisplayTimeStamp(
               message,
               previousMessage,
             );
             const startNewGroup = shouldStartNewGroup(message, previousMessage);
+
+            console.log(`Message: ${message.content}, Sender: ${message.senderId}, Is Last: ${isLastMessageInGroup}, New Group: ${startNewGroup}`)
 
             return (
               <div key={index}>
@@ -122,9 +126,8 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                   className={`message-group ${isCurrentUser ? "sent" : "received"
                     }`}
                 >
-                  {!isCurrentUser && startNewGroup && (
+                  {!isCurrentUser && isLastMessageInGroup && (
                     <div className="avatar-content">
-                      {/* Avatar or Initial char of username */}
                       <div className="message-avatar">
                         {senderUser.avatar ? (
                           <img src={senderUser.avatar} alt="" />
@@ -183,8 +186,6 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                           </div>
                         )}
                       </div>
-
-
                     </div>
                     {/* status indicator */}
                     {message.senderId === currentUser._id && (

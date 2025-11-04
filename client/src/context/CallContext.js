@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer, useCallback, useMemo } from "react";
-import socket from "../utils/socket";
+import socket from "../services/socket";
 import api from "../Api";
 
 // ======================

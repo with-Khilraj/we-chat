@@ -1,6 +1,6 @@
 // context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { fetchUserData } from '../utils/userStore';
+import { fetchUserData } from '../services/userService';
 
 const AuthContext = createContext();
 

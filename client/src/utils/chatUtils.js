@@ -43,7 +43,7 @@ export const shouldStartNewGroup = (currentMessage, previousMessage) => {
 
   return (
     currentMessage.senderId !== previousMessage.senderId ||
-    currentTime.diff(previousTime, "minutes") >= 1
+    currentTime.diff(previousTime, "minutes") >= 5
   );
 };
 

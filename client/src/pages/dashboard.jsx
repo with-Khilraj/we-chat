@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import { useAuth } from "../context/AuthContext";
-import socket from "../services/socket";
+import socket from "../hooks/useSocket";
 import "../styles/dashboard.css";
 import ChatContainer from "../component/chatContainer";
 import Sidebar from "../component/sidebar";
+import "../index.css"
 
 const Dashboard = () => {
   const {currentUser, loading} = useAuth();

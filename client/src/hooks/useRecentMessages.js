@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getRecentMessages } from "../services/chatService";
-import socket from "../services/socket";
+import socket from "./useSocket";
 
 export const useRecentMessages = (loggedInUser, accessToken) => {
   const [recentMessages, setRecentMessages] = useState({});
@@ -76,6 +76,7 @@ export const useRecentMessages = (loggedInUser, accessToken) => {
         try {
           const messages = await getRecentMessages(accessToken);
           updateRecentMessages(messages);
+          socket.emit("online-user", loggedInUser._id);
         } catch (error) {
           console.error(`Error fetching recent messages: ${error}`);
         }

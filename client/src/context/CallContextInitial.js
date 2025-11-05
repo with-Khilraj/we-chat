@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useContext, useState, useCallback } from "react";
-import socket from "../services/socket";
+import socket from "../hooks/useSocket";
 import api from "../Api";
 
 const CallContext = createContext();

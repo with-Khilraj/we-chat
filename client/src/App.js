@@ -15,6 +15,7 @@ import ActiveCall from "./component/ActiveCall";
 import IncomingCall from "./component/Incoming_call";
 import CallInitiation from "./component/CallInitiation";
 import { AnimatePresence } from "framer-motion";
+import "./index.css"
 
 const CallComponents = () => {
   const {

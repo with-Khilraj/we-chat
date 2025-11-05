@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import socket from "../services/socket.js";
+import socket from "../hooks/useSocket.js";
 
 const OnlineUsersContext = createContext();
 

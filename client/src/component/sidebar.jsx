@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import "../styles/sidebar.css";
-import { useUserStore } from "../stores/userStore";
-import { useRecentMessages } from "../stores/useRecentMessages";
+import { useUserStore } from "../hooks/useUserStore";
+import { useRecentMessages } from "../hooks/useRecentMessages";
 import api from "../Api";
-import socket from "../services/socket";
+import socket from "../hooks/useSocket";
 import { debounce, } from "lodash";
 import { useOnlineUsers } from "../context/onlineUsersContext";
 import { toast } from "react-toastify";

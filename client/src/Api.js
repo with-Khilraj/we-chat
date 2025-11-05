@@ -24,7 +24,7 @@ api.interceptors.response.use(
   },
   async (error) => {
     // const navigate = useNavigate();
-    console.log("API Error:", error.response);
+    // console.log("API Error:", error.response);
     if (
       error.response?.status === 403 &&
       error.response.data.error === "Unauthorized"

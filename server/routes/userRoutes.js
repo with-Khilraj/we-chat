@@ -53,9 +53,9 @@ router.post("/signup", async (req, res) => {
       email,
       username,
       phone,
-      password: hashedPassword, 
+      password: hashedPassword,
       emailverificationOTP: otp,
-      OTPExprires: Date.now() + 10 * 60 * 1000, // valid for 10 minutes
+      OTPExprires: Date.now() + 2 * 60 * 1000, // valid for 2 minutes
       isEmailVerified: false,
     });
 
@@ -65,7 +65,7 @@ router.post("/signup", async (req, res) => {
       // Attempt to send verification email
       await sendVerificationOTP(email, otp);
 
-      res.status(201).json({ 
+      res.status(201).json({
         message: " Please check your email to verify your account",
         email: email
       });
@@ -78,7 +78,7 @@ router.post("/signup", async (req, res) => {
         message: "Account created but verification email failed to send",
         email: email
       });
-    }   
+    }
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -87,19 +87,28 @@ router.post("/signup", async (req, res) => {
 
 // verify OTP route
 router.post("/verify-otp", async (req, res) => {
-  const { email, otp} = req.body;
+  const { email, otp } = req.body;
 
   try {
     const user = await User.findOne({
       email,
-      emailverificationOTP: otp,
-      OTPExprires: { $gt: Date.now() }
+      // emailverificationOTP: otp,
+      // OTPExprires: { $gt: Date.now() }
     });
 
-    if(!user) {
-      return res.status(400).json({
-        error: "Invalid or expired OTP"
-      });
+     // Find the user by email only
+     if (!user) {
+      return res.status(400).json({ error: "User not found to verify OTP" });
+    }
+
+    // Check if OTP is expired
+    if (!user.OTPExprires || user.OTPExprires < Date.now()) {
+      return res.status(400).json({ error: "OTP has expired. Please request a new one." });
+    }
+
+    // Check if OTP is incorrect
+    if (user.emailverificationOTP !== otp) {
+      return res.status(400).json({ error: "Invalid verification code. Please try again." });
     }
 
     // update user verification status
@@ -113,7 +122,7 @@ router.post("/verify-otp", async (req, res) => {
     const { accessToken, refreshToken } = generateToken(user);
 
     // save refresh token to database
-    const refreshTokenEntry = new RefreshToken ({
+    const refreshTokenEntry = new RefreshToken({
       userId: user._id,
       token: refreshToken,
       expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // which is basically 7 days expiry
@@ -126,7 +135,7 @@ router.post("/verify-otp", async (req, res) => {
       secure: true,
     });
 
-    res.status(200).json ({
+    res.status(200).json({
       message: "Email verified successfully",
       accessToken,
       user: {
@@ -135,7 +144,7 @@ router.post("/verify-otp", async (req, res) => {
         username: user.username,
       }
     })
-    
+
   } catch (error) {
     console.error("Verification OTP error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -156,7 +165,7 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
 
     // check if email is verified
-    if(!user.isEmailVerified) {
+    if (!user.isEmailVerified) {
       return res.status(401).json({
         error: "Please verify your email first"
       })
@@ -186,8 +195,8 @@ router.post("/login", async (req, res) => {
       sameSite: "strict",
     });
 
-    res.status(200).json({ 
-      message: "Login Successful", 
+    res.status(200).json({
+      message: "Login Successful",
       accessToken,
       user: {
         id: user._id,
@@ -205,12 +214,12 @@ router.post("/login", async (req, res) => {
 
 // Resend OTP Route
 router.post("/resend-otp", async (req, res) => {
-  const { email} = req.body;
+  const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email, isEmailVerified: false});
+    const user = await User.findOne({ email, isEmailVerified: false });
 
-    if(!user) {
+    if (!user) {
       return res.status(404).json({ error: "User not found or already verified" });
     }
 
@@ -218,7 +227,7 @@ router.post("/resend-otp", async (req, res) => {
 
     // update user with new OTP
     user.emailverificationOTP = otp;
-    user.OTPExprires = Date.now() + 10 * 60 * 1000; // valid for 10 minutes
+    user.OTPExprires = Date.now() + 2 * 60 * 1000; // valid for 10 minutes
     await user.save();
 
     // send new OTP
@@ -246,7 +255,7 @@ router.post("/refresh", async (req, res) => {
   }
 
   try {
-    
+
     // Verify the refresh token
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
@@ -257,14 +266,14 @@ router.post("/refresh", async (req, res) => {
       return res.status(403).json({ error: "Invalid or expired refresh token" });
     }
 
-    if(new Date(tokenEntry.expiry) <= new Date()) {
-      return res.status(403).json({ error: "Refresh token expired. Please login again."})
+    if (new Date(tokenEntry.expiry) <= new Date()) {
+      return res.status(403).json({ error: "Refresh token expired. Please login again." })
     }
 
     // Generate a new refresh token and access token
     const { accessToken, refreshToken: newRefreshToken } = generateToken({ _id: decoded.id });
 
-    
+
     // Revoke the old refresh token and save the new one
     tokenEntry.revoked = true;
     await tokenEntry.save();

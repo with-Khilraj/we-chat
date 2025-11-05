@@ -1,186 +1,142 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import api from '../Api';
-import '../styles/emailVerification.css';
-import { joinOTP, isValidDigit, formatTime } from '../services/emailVerificationService';
+import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useOTPVerification } from "../hooks/useOTPVerification";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEnvelope, faSpinner, faCheckCircle, faComment, faUsers, faBell } from "@fortawesome/free-solid-svg-icons";
+import "../styles/emailVerification.css";
+import { useState } from "react";
 
-
-const EmailVerification = () => {
-  const [otp, setOTP] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(2 * 60); // in seconds
-  const [error, setError] = useState('');
-  const [state, setState] = useState('pending'); // pending | processing | success | error
+const EmailVerification = (userEmail, onContinue) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email || '';
+  const email = location.state?.email;
+  const {
+    otp, enteredOTP, timer, errorMsg, successMsg, loading,
+    handleChange, handleKeyDown, handleResend, handleVerifyOTP
+  } = useOTPVerification(email);
 
-  useEffect(() => {
-    if (!email) {
-      navigate('/signup');
-      return;
-    }
+  const [isVerified, setIsVerified] = useState(false);
 
-    if (state === 'pending') {
-      const interval = setInterval(() => {
-        setTimer(prev => prev > 0 ? prev - 1 : 0);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [email, navigate, state]);
+  if (!email) {
+    navigate("/signup");
+    return null;
+  }
 
-  const handleChange = (index, value) => {
-    if (!isValidDigit(value)) return;
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOTP(newOtp);
-
-    // auto-focus next input
-    if (value && index < otp.length - 1) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
+  const formatTime = ms => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const min = Math.floor(totalSeconds / 60);
+    const sec = totalSeconds % 60;
+    return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const handleKeyDown = (index, event) => {
-    if (event.key === 'Backspace' && !otp[index] && index > 0) {
-      document.getElementById(`otp-${index - 1}`)?.focus();
+  const handleVerify = async () => {
+    if (enteredOTP.length !== 6) return;
+
+    const result = await handleVerifyOTP(email, enteredOTP);
+    if (result?.success) {
+      setIsVerified(true);
     }
-  };
-
-  const handleResendOTP = async () => {
-    try {
-      await api.post('/api/users/resend-otp', { email });
-      setTimer(2 * 60);
-      setError('');
-      toast.success('OTP resent successfully!', { position: 'top-center', autoClose: 2000 });
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to resend OTP');
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setState('processing');
-    const otpString = joinOTP(otp);
-
-    try {
-      const response = await api.post('/api/users/verify-otp', { email, otp: otpString });
-
-      // store token
-      localStorage.setItem('token', response.data.accessToken);
-
-      toast.success(response.data.message, { position: 'top-center', autoClose: 2000 });
-
-      // simulate processing animation delay
-      setTimeout(() => setState('success'), 1800);
-
-    } catch (err) {
-      setError(err.response?.data?.error || 'Verification failed');
-      setState('error');
-    }
-  };
-
-  const handleContinue = () => {
-    navigate('/login');
   };
 
   return (
     <div className="gradient-bg flex items-center justify-center min-h-screen p-4">
-      <div className="verification-container glass animate-slide-up">
-        {/* Pending State */}
-        {state === 'pending' && (
-          <div className="text-center animate-fade-in">
+
+      <div className="verification-container glass rounded-3xl p-8 w-full max-w-md animate-slide-up">
+        {!isVerified ? (
+
+          <div className="text-center">
             <div className="pending-state p-6 rounded-2xl inline-block mb-4">
-              <i className="fas fa-envelope text-white text-4xl animate-fade-in"></i>
+              {/* <i className="fas fa-envelope text-white text-4xl animate-fade-in"></i> */}
+              <FontAwesomeIcon icon={faEnvelope} className="text-white text-3xl animate-fade-in" />
             </div>
-            <h1 className="text-2xl font-bold text-black mb-2">Check Your Email</h1>
-            <p className="text-black text-opacity-70">Enter the 6-digit code sent to</p>
-            <p className="text-blue-400 font-medium">{email}</p>
+            <h2 className="text-3xl font-bold text-white mb-4">Email Verification</h2>
+            <p className="text-white text-opacity-70 mb-6">Enter the 6-digit code sent to <span className="text-blue-400 font-medium">{email}</span></p>
 
-            <form onSubmit={handleSubmit} className="mt-4">
-              <div className="otp-inputs mb-3">
-                {otp.map((digit, index) => (
-                  <input
-                    key={index}
-                    id={`otp-${index}`}
-                    type="text"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                  />
-                ))}
-              </div>
+            <div className="otp-inputs mb-4">
+              {otp.map((digit, idx) => (
+                <input
+                  key={idx}
+                  id={`otp-${idx}`}
+                  type="text"
+                  maxLength="1"
+                  value={digit}
+                  onChange={e => handleChange(idx, e.target.value)}
+                  onKeyDown={e => handleKeyDown(idx, e)}
+                  className="otp-input"
+                />
+              ))}
+            </div>
 
-              {error && <div className="error-message">{error}</div>}
-
-              <button
-                type="submit"
-                className="btn-primary w-full py-3 rounded-xl text-white font-medium mt-2"
-                disabled={otp.some(d => !d)}
-              >
-                Verify Email
-              </button>
-            </form>
-
-            <div className="timer mt-3 text-lg font-semibold">{formatTime(timer)}</div>
-            {timer === 0 && (
-              <button
-                onClick={handleResendOTP}
-                className="btn-secondary w-full py-2 rounded-xl mt-2"
-              >
-                Resend OTP
-              </button>
+             {/* === Error Message === */}
+            {errorMsg && <div className="error-message mb-4">{errorMsg}</div>}
+            {successMsg && !isVerified && (
+              <div className="success-message mb-4">{successMsg}</div>
             )}
-          </div>
-        )}
 
-        {/* Processing State */}
-        {state === 'processing' && (
-          <div className="text-center animate-fade-in">
-            <div className="pending-state p-6 rounded-2xl inline-block mb-4">
-              <i className="fas fa-spinner spinner text-white text-4xl"></i>
-            </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Verifying Email...</h1>
-            <p className="text-white text-opacity-70">Please wait while we verify your email</p>
-          </div>
-        )}
-
-        {/* Success State */}
-        {state === 'success' && (
-          <div className="text-center animate-bounce-in">
-            <div className="success-state p-6 rounded-2xl inline-block mb-4">
-              <i className="fas fa-check-circle text-white text-4xl"></i>
-            </div>
-            <h1 className="text-2xl font-bold text-black mb-2">Email Verified!</h1>
-            <p className="text-black text-opacity-70 mb-4">Welcome to We-Chat, start chatting with your friends!</p>
             <button
-              className="btn-primary w-full py-3 rounded-xl text-white font-medium animate-fade-in"
-              onClick={handleContinue}
+              className={`btn-primary w-full py-3 rounded-xl text-white font-medium flex justify-center items-center`}
+              disabled={otp.some(d => !d) || loading}
+              onClick={handleVerify}
+            >
+              {loading ? (
+                <>
+                  Verifying Email
+                  <FontAwesomeIcon icon={faSpinner} spin className="ml-2" />
+                </>
+              ) : "Verify Email"}
+            </button>
+
+            <div className="mt-4 flex justify-between items-center">
+              {timer > 0 ? (
+                <span className="text-white text-opacity-50">Time Remaining: {formatTime(timer)}</span>
+              ) : (
+                <button className="btn-secondary py-2 px-4 rounded-xl" onClick= { () => handleResend(email) }>Resend OTP</button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="success-card text-center animate-bounce-in">
+            {/* Top success message */}
+            <div className="mb-8">
+              <div className="success-state p-6 rounded-2xl inline-block mb-4">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-white text-4xl checkmark-animation" />
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-2">Email Verified!</h1>
+              <p className="text-white text-opacity-70">
+                Your account has been successfully verified
+              </p>
+            </div>
+
+            {/* Welcome message card */}
+            <div className="glass-dark rounded-xl p-6 mb-6 animate-fade-in">
+              <h3 className="font-medium text-white mb-4">Welcome to We-Chat!</h3>
+              <div className="space-y-3 text-sm text-white text-opacity-80 text-left">
+                <div className="flex items-start gap-3">
+                  <FontAwesomeIcon icon={faComment} className="text-blue-400 mt-0.5" />
+                  <span>Start chatting with your friends in real-time</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <FontAwesomeIcon icon={faUsers} className="text-purple-400 mt-0.5" />
+                  <span>Collaborate in group chats and communities</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <FontAwesomeIcon icon={faBell} className="text-green-400 mt-0.5" />
+                  <span>Get notifications for messages and calls instantly</span>
+                </div>
+              </div>
+            </div>
+
+
+            <button
+              className="btn-primary w-full py-3 rounded-xl text-white font-medium"
+              onClick={() => navigate("/login")}
             >
               Continue to Login
             </button>
           </div>
         )}
-
-        {/* Error State */}
-        {state === 'error' && (
-          <div className="text-center animate-fade-in">
-            <div className="error-state p-6 rounded-2xl inline-block mb-4">
-              <i className="fas fa-times-circle text-white text-4xl"></i>
-            </div>
-            <h1 className="text-2xl font-bold text-black mb-2">Verification Failed</h1>
-            <p className="text-white text-opacity-70">{error}</p>
-            <button
-              onClick={handleResendOTP}
-              className="btn-primary w-full py-3 rounded-xl text-white font-medium mt-2"
-            >
-              Resend Email
-            </button>
-          </div>
-        )}
       </div>
+
     </div>
   );
 };

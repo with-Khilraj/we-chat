@@ -32,7 +32,7 @@ router.post("/signup", async (req, res) => {
   const { email, username, phone, password } = req.body;
 
   if (!email || !username || !phone || !password) {
-    res.status(400).json({ message: "Please enter all the fields" });
+    return res.status(400).json({ message: "Please enter all the fields" });
   }
 
   try {
@@ -48,6 +48,9 @@ router.post("/signup", async (req, res) => {
     // Generate email verification token for Email Verification only
     const otp = generateOTP();
 
+    // sending verification email before saving user to database
+
+
     // Create a new user
     const newUser = new User({
       email,
@@ -62,25 +65,38 @@ router.post("/signup", async (req, res) => {
     await newUser.save();
 
     try {
-      // Attempt to send verification email
       await sendVerificationOTP(email, otp);
-
       res.status(201).json({
-        message: " Please check your email to verify your account",
+        message: "Please check your email to verify your account",
         email: email
       });
-
     } catch (error) {
-      console.error("Error while sending verification email:", error);
-
-      // Even if email fails, user is created
-      return res.status(201).json({
-        message: "Account created but verification email failed to send",
-        email: email
-      });
+      // email failed -> delete the created user
+      await User.findByIdAndDelete(newUser._id);
+      console.error("Email send failed:", error);
+      res.status(500).json({ error: "Failed to send verification email." });
     }
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Signup error:", error);
+    res.status(500).json({ error: "Failed to sign up. Please try again." });
+  }
+});
+
+
+// check username availability route
+router.get("/check-username", async (req, res) => {
+  const { username } = req.query;
+
+  try {
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(200).json({ available: false });
+    } else {
+      return res.status(200).json({ available: true });
+    }
+  } catch (error) {
+    console.error("Error checking username:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -96,8 +112,8 @@ router.post("/verify-otp", async (req, res) => {
       // OTPExprires: { $gt: Date.now() }
     });
 
-     // Find the user by email only
-     if (!user) {
+    // Find the user by email only
+    if (!user) {
       return res.status(400).json({ error: "User not found to verify OTP" });
     }
 

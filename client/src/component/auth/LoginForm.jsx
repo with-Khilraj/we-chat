@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { useUserAuth } from "../hooks/useUserAuth";
+import { useUserAuth } from "../../hooks/useUserAuth";
 import { ToastContainer } from "react-toastify";
-import InputField from "./shared/InputField";
+import InputField from "../shared/InputField";
 
 
 const LoginForm = () => {

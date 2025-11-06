@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer, useCallback, useMemo } from "react";
 import socket from "../hooks/useSocket";
-import api from "../Api";
+import {api} from "../Api";
 
 // ======================
 // Constants & Types

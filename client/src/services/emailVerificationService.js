@@ -1,4 +1,4 @@
-import api from '../Api';
+import {api} from '../Api';
 
 // Verify OTP API call
 export const verifyOTP = async (email, otp) => {

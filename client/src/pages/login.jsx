@@ -3,7 +3,7 @@ import "react-toastify/ReactToastify.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightToBracket } from "@fortawesome/free-solid-svg-icons";
 import "../styles/auth.css";
-import LoginForm from "../component/LoginForm";
+import LoginForm from "../component/auth/LoginForm";
 
 const Login = () => {
 

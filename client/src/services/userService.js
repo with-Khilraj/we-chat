@@ -1,10 +1,10 @@
-import api from "../Api";
+import { api, publicApi } from "../Api";
 
 export const loginUser = async (email, password) => {
   return await api.post('/api/users/login', { email, password });
 }
 
-export const singupUser = async (userData) => {
+export const signupUser = async (userData) => {
   return await api.post('/api/users/signup', userData);
 }
 
@@ -38,4 +38,12 @@ export const fetchUserData = async (accessToken) => {
     throw error; // You can throw the error to handle it in the component
   }
 };
+
+// Function to check username availability
+export const checkUsernameAvailability = async (username) => {
+  const response = await publicApi.get('/api/users/check-username', { 
+    params: {username},
+  });
+  return response.data.available;
+}
 

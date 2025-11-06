@@ -3,7 +3,7 @@ import "../styles/sidebar.css";
 import { useUserStore } from "../hooks/useUserStore";
 import { useAuth } from "../context/AuthContext";
 import { useRecentMessages } from "../hooks/useRecentMessages";
-import api from "../Api";
+import {api} from "../Api";
 import socket from "../hooks/useSocket";
 import { debounce, } from "lodash";
 import { useOnlineUsers } from "../context/onlineUsersContext";

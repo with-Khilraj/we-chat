@@ -1,9 +1,13 @@
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: "http://localhost:5000",
   withCredentials: true, // send cookies with requests
+});
+
+export const publicApi = axios.create({
+  baseURL: "http://localhost:5000",
 });
 
 // Function to clear storage and redirect to login
@@ -56,4 +60,3 @@ api.interceptors.response.use(
   }
 );
 
-export default api;

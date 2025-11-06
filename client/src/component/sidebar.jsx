@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import "../styles/sidebar.css";
 import { useUserStore } from "../hooks/useUserStore";
+import { useAuth } from "../context/AuthContext";
 import { useRecentMessages } from "../hooks/useRecentMessages";
 import api from "../Api";
 import socket from "../hooks/useSocket";
@@ -12,7 +13,8 @@ import menu from '../assets/menu.png';
 
 const Sidebar = ({ selectedUser, setSelectedUser }) => {
   const accessToken = localStorage.getItem("accessToken");
-  const { currentUser: loggedInUser, users, loading } = useUserStore(accessToken);
+  const { currentUser: loggedInUser } = useAuth();
+  const { users: otherUsers, loading } = useUserStore(accessToken);
   const { recentMessages } = useRecentMessages(loggedInUser, accessToken);
 
   const [search, setSearch] = useState("");
@@ -33,7 +35,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
 
   // Filter users based on the search input and sort the chat list based on the timestamp
   const filteredUsers = useMemo(() => {
-    return users
+    return otherUsers
       .filter((user) =>
         user.username.toLowerCase().includes(search.toLowerCase())
       )
@@ -42,7 +44,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
         const timeB = recentMessages[b._id]?.timestamp || 0;
         return timeB - timeA;
       });
-  }, [users, search, recentMessages]);
+  }, [otherUsers, search, recentMessages]);
 
   // take a timestamp and return a formatted string based on the time difference
   const formatTimestamp = (timestamp) => {

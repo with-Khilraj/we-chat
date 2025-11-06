@@ -1,5 +1,13 @@
 import api from "../Api";
 
+export const loginUser = async (email, password) => {
+  return await api.post('/api/users/login', { email, password });
+}
+
+export const singupUser = async (userData) => {
+  return await api.post('/api/users/signup', userData);
+}
+
 // Function to fetch all users except the currently logged-in user
 export const fetchUserExceptCurrent = async (accessToken) => {
   try {

@@ -1,46 +1,41 @@
-import React, { useState } from "react";
-import api from "../Api";
-import { toast, ToastContainer } from "react-toastify";
+import React from "react";
 import "react-toastify/ReactToastify.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightToBracket } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
 import "../styles/auth.css";
+import LoginForm from "../component/LoginForm";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await api.post(
-        "/api/users/login",
-        { email, password },
-        { withCredentials: true }
-      );
-      localStorage.setItem("accessToken", response.data.accessToken);
+  // const handleLogin = async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const response = await api.post(
+  //       "/api/users/login",
+  //       { email, password },
+  //       { withCredentials: true }
+  //     );
+  //     localStorage.setItem("accessToken", response.data.accessToken);
 
-      console.log("Access Token while login:::", response.data.accessToken);
+  //     console.log("Access Token while login:::", response.data.accessToken);
 
-      // sucess message using toastify
-      toast.success("Welcome to we-chat", {
-        position: "top-center",
-        autoClose: 2000,
-      });
+  //     // sucess message using toastify
+  //     toast.success("Welcome to we-chat", {
+  //       position: "top-center",
+  //       autoClose: 2000,
+  //     });
 
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 2500);
-    } catch (error) {
-      // alert( error.response?.data.erorr || "Login failed!" );
-      toast.error(error.response?.data.error || "Login failed!", {
-        position: "top-center",
-        autoClose: 2100,
-      });
-    }
-  };
+  //     setTimeout(() => {
+  //       navigate("/dashboard");
+  //     }, 2500);
+  //   } catch (error) {
+  //     // alert( error.response?.data.erorr || "Login failed!" );
+  //     toast.error(error.response?.data.error || "Login failed!", {
+  //       position: "top-center",
+  //       autoClose: 2100,
+  //     });
+  //   }
+  // };
 
   return (
     <div className="gradient-bg auth-page">
@@ -53,52 +48,14 @@ const Login = () => {
           <p className="text-gray-500 text-sm">Please login to continue</p>
         </div>
 
-        <form onSubmit={handleLogin}>
-          <div className="input-container">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              name="email"
-              required
-            />
-            <label htmlFor="email">Email</label>
-          </div>
-
-          <div className="input-container">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              name="password"
-              required
-            />
-            <label htmlFor="password">Password</label>
-          </div>
-
-          <div className="flex justify-between items-center text-sm ask">
-            <p>
-              Don’t have an account?{" "}
-              <a href="/signup" className="no-underline text-indigo-400 hover:text-red">
-                Signup
-              </a>
-            </p>
-            <a href="/forgot-password" className="no-underline text-indigo-400 hover:underline">
-              Forgot password?
-            </a>
-          </div>
-
-          <button className="login-btn" type="submit">
-            Login
-          </button>
-        </form>
-        <ToastContainer />
+        <LoginForm />
       </div>
     </div>
   );
 };
 
 export default Login;
+
 
 // const handleLogout = async () => {
 //   try {

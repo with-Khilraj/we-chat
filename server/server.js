@@ -30,7 +30,7 @@ const io = new Server(server, {
 // Apply CORS middleware for the regular http requests
 app.use(
   cors({
-    origin: "http://localhost:3000", // allows request from the origin
+    origin: "http://localhost:3000", // allows request from this origin/domain ---> frontend url
     credentials: true, // allow cookies to be sent
   })
 );

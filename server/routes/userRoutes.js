@@ -5,7 +5,9 @@ const User = require("../models/User");
 const verifyAccessToken = require("../middlewares/authMiddleware");
 const RefreshToken = require("../models/refreshTokens");
 const sendVerificationOTP = require('../service/emailConfig')
-
+const config = require('../config');
+const passwordResetLimiter = require('../middlewares/passwordResetLimiter');
+const crypto = require('crypto');
 const router = express.Router();
 
 // Generate Access and Refresh Token - For Authentication
@@ -145,7 +147,7 @@ router.post("/verify-otp", async (req, res) => {
     });
 
     // set refresh token as an HTTP-only cookie
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('refreshToken', refreshTokenEntry, {
       httpOnly: true,
       sameSite: "strict",
       secure: true,
@@ -256,6 +258,78 @@ router.post("/resend-otp", async (req, res) => {
   } catch (error) {
     console.error("Error while resending OTP:", error);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Forgot Password Route
+router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'If a user with this email exits, you will receive a password reset link shortly.'
+      });
+    }
+
+    // generate one time (unique) password reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // hash token before saving to database
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // set token and expiry on user model
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = Date.now() + 1 * 60 * 60 * 1000; // 1 hour from now
+
+    // create reset link
+    const resetURL = `${config.frontendUrl}/reset-password/${resetToken}`;
+
+    await sendResetPasswordEmail(email, resetURL);
+
+    res.status(200).json({
+      message: 'If a user with this email exists, you will receive a password reset link shortly.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: "Error processing your request" });
+  }
+});
+
+
+// Reset password Route
+router.post('/reset-password/:token', async (req, res) => {
+  try {
+    const { password, confirmPassword } = req.body;
+    const { token } = req.params;
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired reset toekn" });
+    }
+
+    // udate password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully"});
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: "Error resetting your password" });
   }
 });
 

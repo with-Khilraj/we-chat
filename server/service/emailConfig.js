@@ -52,7 +52,9 @@ const sendVerificationOTP = async (email, otp) => {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Welcome to our chat app!!</h2>
           <p>Your email verification OTP is:</p>
-          <h1 style="font-size: 30px; letter-spacing: 5px; text-align: center; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">${otp}</h1>
+          <h1 style="font-size: 30px; letter-spacing: 5px; text-align: center; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+            ${otp}
+          </h1>
           <p>The OTP will expire in 2 minutes.</p>
           <p>If you did not request this, please ignore this email.</p>
         </div>
@@ -68,4 +70,41 @@ const sendVerificationOTP = async (email, otp) => {
   }
 };
 
-module.exports = sendVerificationOTP;
+
+const sendResetPasswordEmail = async (email, resetLink) => {
+  try {
+    if (!email || !resetLink) {
+      throw new Error('Email and reset link are required');
+    }
+
+    const mailOptions = {
+      from: `"we-chat" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Password Reset Request',
+      html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Password Reset Request</h2>
+          <p>You requested to reset your password. Click the button below to reset it:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" 
+               style="background-color: #4CAF50; color: white; padding: 14px 28px; 
+                      text-decoration: none; border-radius: 5px; display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+          <p>This link will expire in 1 hour.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+        </div>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Password reset email sent successfully:', info.response);
+    return info;
+  } catch (error) {
+    console.error('Error while sending password reset email:', error);
+    throw error;
+  };
+};
+
+module.exports = { sendVerificationOTP, sendResetPasswordEmail };

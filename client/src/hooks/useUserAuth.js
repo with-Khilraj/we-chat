@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { loginUser, signupUser, checkUsernameAvailability } from "../services/userService";
 import { showSuccessToast, showErrorToast } from "../utils/toastConfig";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +16,6 @@ export const useUserAuth = () => {
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const navigate = useNavigate();
-  const typingTimeoutRef = useRef(null);
 
   const handleLogin = async (email, password) => {
     setLoading(true);

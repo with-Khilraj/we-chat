@@ -1,5 +1,5 @@
 import React from "react";
-import InputField from "../shared/InputField";
+import InputField from "./shared/InputField";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { ToastContainer } from "react-toastify";
 

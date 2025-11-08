@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import "../styles/sidebar.css";
+import "../../styles/sidebar.css";
 import { useUserStore } from "../../hooks/useUserStore";
 import { useAuth } from "../../context/AuthContext";
 import { useRecentMessages } from "../../hooks/useRecentMessages";
@@ -9,7 +9,7 @@ import { debounce, } from "lodash";
 import { useOnlineUsers } from "../../context/onlineUsersContext";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import menu from '../assets/menu.png';
+import menu from '../../assets/menu.png';
 
 const Sidebar = ({ selectedUser, setSelectedUser }) => {
   const accessToken = localStorage.getItem("accessToken");

@@ -4,18 +4,19 @@ import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
-import Sidebar from "./component/sidebar";
+import Sidebar from "./component/dash/sidebar";
 import { OnlineUsersProvider } from ".//context/onlineUsersContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CallProvider, useCall } from "./context/CallContext";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import EmailVerification from "./component/EmailVerification";
+import EmailVerification from "./pages/EmailVerification";
 import FloatingCallWindow from "./component/FloatingCallWindow";
 import ActiveCall from "./component/ActiveCall";
 import IncomingCall from "./component/Incoming_call";
 import CallInitiation from "./component/CallInitiation";
 import { AnimatePresence } from "framer-motion";
 import "./index.css"
+import ForgotPasswordPage from "./pages/ForgotPassword";
 
 const CallComponents = () => {
   const {
@@ -71,6 +72,7 @@ const AppContent = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/sidebar" element={<Sidebar />} />
             <Route path="/verify-email" element={<EmailVerification />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           </Routes>
           <CallComponents />
         </main>

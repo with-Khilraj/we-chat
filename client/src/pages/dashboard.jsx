@@ -4,8 +4,8 @@ import "react-toastify/ReactToastify.css";
 import { useAuth } from "../context/AuthContext";
 import socket from "../hooks/useSocket";
 import "../styles/dashboard.css";
-import ChatContainer from "../component/chatContainer";
-import Sidebar from "../component/sidebar";
+import ChatContainer from "../component/dash/chatContainer";
+import Sidebar from "../component/dash/sidebar";
 import "../index.css"
 
 const Dashboard = () => {

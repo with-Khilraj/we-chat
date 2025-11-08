@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useOTPVerification } from "../hooks/useOTPVerification";
 import "../styles/emailVerification.css";
-import VerificationForm from "../Component/EmailVerification/VerificationForm";
-import SuccessCard from "../Component/EmailVerification/SuccessCard";
+import VerificationForm from "../component/emailVerification/VerificationForm";
+import SuccessCard from "../component/emailVerification/SuccessCard";
 
 const EmailVerification = () => {
   const navigate = useNavigate();

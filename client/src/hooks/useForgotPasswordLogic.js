@@ -43,16 +43,14 @@ const useForgotPasswordReducer = () => {
        // RATE LIMIT detection (429)
       if (status === 429) {
         const retryAfterSeconds =
-          error.response?.data?.retryAfter / 1000 ||
-          parseInt(error.response?.headers["retry-after"], 10) ||
-          60;
+          error.response?.data?.retryAfter;
 
       dispatch({
           type: "RATE_LIMIT",
           payload: {
             message: error.response?.data?.message || "Too many attempts. Try again later.",
-            retryAfter: retryAfterSeconds * 1000, // convert to ms
-          },
+            retryAfter: retryAfterSeconds
+          }
         });
         return;
       }

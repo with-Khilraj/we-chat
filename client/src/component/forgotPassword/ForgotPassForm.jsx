@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import useForgotPasswordReducer from "../../hooks/useForgotPasswordLogic";
 import { FORGOT_STATUS } from "../../constant/ForgotStatus";
+import { useForgotPasswordEffect } from "../../hooks/useForgotPasswordEffect";
 
 import InputField from "../forgotPassword/shared/InputField";
 import Button from "./shared/Button";
@@ -25,55 +26,48 @@ const Toast = ({ message, visible }) => {
   );
 };
 
+const formatTime = (sec) => {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+};
+
 const ForgotPassForm = () => {
   const navigate = useNavigate();
-  const { state, handleForgotPassword, resetState } = useForgotPasswordReducer();
-  const { status, error, message, email: sentEmail, remainingTime, retryAfter } = state;
+  const { state, handleForgotPassword, resetForgotPassword } = useForgotPasswordReducer();
+  const { status, error, email: sentEmail, remainingTime } = state;
+
+  // all side effects are wired up
+  const { initialCountdownRef, showToast } = useForgotPasswordEffect({
+    status,
+    navigate,
+    remainingTime,
+  });
 
   const [email, setEmail] = useState("");
   const [fieldError, setFieldError] = useState("");
-  const [showToast, setShowToast] = useState(false);
 
-  // store initial countdown seconds to compute progress
-  const initialCountdownRef = useRef(null);
+  // progress calculations
+  const initialSeconds = initialCountdownRef.current ?? remainingTime ?? 0;
+  const currentSeconds = remainingTime ?? 0;
+  const progressPercent =
+    initialSeconds > 0 ? Math.max(0, Math.round(((initialSeconds - currentSeconds) / initialSeconds) * 100)) : 100;
 
-  // keep previous status to detect transitions
-  const prevStatusRef = useRef(status);
-  useEffect(() => { prevStatusRef.current = status; }, [status]);
 
-  // when entering RATE_LIMIT capture initial remaining seconds
+  // derive UI states
+  const isSubmitting = status === FORGOT_STATUS.SUBMITTING;
+  const isRateLimited = status === FORGOT_STATUS.RATE_LIMIT;
+  const isSuccess = status === FORGOT_STATUS.SUCCESS;
+  const hasError = status === FORGOT_STATUS.ERROR && !!error;
+
   useEffect(() => {
-    if (status === FORGOT_STATUS.RATE_LIMIT) {
-      // capture initial value (only the first time)
-      if (!initialCountdownRef.current || initialCountdownRef.current < remainingTime) {
-        initialCountdownRef.current = remainingTime;
-      }
-    } else {
-      // clear initial when not rate-limited
-      initialCountdownRef.current = null;
+    if (hasError) {
+      const target = document.getElementById("forgot-email");
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      target?.focus();
     }
-  }, [status, remainingTime]);
-
-  // trigger subtle toast / button animation when countdown ends
-  useEffect(() => {
-    const prev = prevStatusRef.current;
-    if (prev === FORGOT_STATUS.RATE_LIMIT && status === FORGOT_STATUS.IDLE) {
-      // countdown finished (hook dispatches RESET -> IDLE)
-      // show a subtle toast
-      setShowToast(true);
-      const t = setTimeout(() => setShowToast(false), 2200);
-      return () => clearTimeout(t);
-    }
-  }, [status]);
-
-  // Escape to go back
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") navigate("/login");
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [navigate]);
+  }, [hasError]);
 
   // Validate email quickly on client side
   const validateEmail = (val) => {
@@ -97,20 +91,8 @@ const ForgotPassForm = () => {
   const handleTryDifferent = () => {
     setEmail("");
     setFieldError("");
-    resetState();
+    resetForgotPassword();
   };
-
-  // progress calculations
-  const initialSeconds = initialCountdownRef.current || remainingTime || 0;
-  const currentSeconds = remainingTime || 0;
-  const progressPercent =
-    initialSeconds > 0 ? Math.max(0, Math.round(((initialSeconds - currentSeconds) / initialSeconds) * 100)) : 100;
-
-  // derive UI states
-  const isSubmitting = status === FORGOT_STATUS.SUBMITTING;
-  const isRateLimited = status === FORGOT_STATUS.RATE_LIMIT;
-  const isSuccess = status === FORGOT_STATUS.SUCCESS;
-  const hasError = status === FORGOT_STATUS.ERROR && !!error;
 
   // If success state, render SuccessState (keeps component tree simple)
   if (isSuccess) {
@@ -134,13 +116,14 @@ const ForgotPassForm = () => {
         <p className="text-white text-opacity-70">No worries — we'll send you reset instructions.</p>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-4" aria-live="polite">
+      <form onSubmit={onSubmit} className="space-y-4">
         <InputField
           id="forgot-email"
           label="Email Address"
           type="email"
           placeholder="Enter your email"
           value={email}
+          disabled={isSubmitting || isRateLimited}
           onChange={(e) => {
             setEmail(e.target.value);
             if (fieldError) setFieldError(validateEmail(e.target.value));
@@ -171,14 +154,9 @@ const ForgotPassForm = () => {
 
             <div className="flex items-center justify-between text-sm text-white text-opacity-80">
               <span>
-                Try again in <strong className="text-white">{currentSeconds}s</strong>
+                Try again in <strong className="text-white">{formatTime(currentSeconds)}</strong>
               </span>
-              <div className="mt-8 animate-fade-in">
-                <a href="/login" id="backToLoginRateLimit" className="text-blue-400 hover:text-blue-300 transition-colors text-sm flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faArrowLeft} />
-                  Back to Login
-                </a>
-              </div>
+
             </div>
           </div>
         )}
@@ -190,7 +168,7 @@ const ForgotPassForm = () => {
             disabled={isSubmitting || isRateLimited}
             className={`btn-primary w-full py-3 rounded-xl text-white font-medium transition-all ${isSubmitting ? "transform -translate-y-0.5 shadow-md" : ""
               }`}
-            aria-disabled={isSubmitting || isRateLimited}
+            // aria-disabled={isSubmitting || isRateLimited}
             aria-live="polite"
           >
             {isSubmitting ? (
@@ -198,7 +176,7 @@ const ForgotPassForm = () => {
                 <FontAwesomeIcon icon={faSpinner} spin /> Sending...
               </span>
             ) : isRateLimited ? (
-              `Try Again in ${currentSeconds}s`
+              `Try Again in ${formatTime(currentSeconds)}s`
             ) : (
               "Send Reset Instructions"
             )}

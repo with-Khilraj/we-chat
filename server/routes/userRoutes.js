@@ -50,9 +50,6 @@ router.post("/signup", async (req, res) => {
     // Generate email verification token for Email Verification only
     const otp = generateOTP();
 
-    // sending verification email before saving user to database
-
-
     // Create a new user
     const newUser = new User({
       email,
@@ -265,28 +262,47 @@ router.post("/resend-otp", async (req, res) => {
 router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
 
-    if (!user) {
-      return res.status(404).json({
-        message: 'If a user with this email exits, you will receive a password reset link shortly.'
-      });
+    // Validate email
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: 'Email is required' });
     }
 
-    // generate one time (unique) password reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
 
-    // hash token before saving to database
-    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    // apply anti-timing base delay 300-600ms
+    await new Promise(resolve => {
+      setTimeout(resolve, 300 + Math.random() * 300)
+    });
 
-    // set token and expiry on user model
-    user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpires = Date.now() + 1 * 60 * 60 * 1000; // 1 hour from now
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
-    // create reset link
-    const resetURL = `${config.frontendUrl}/reset-password/${resetToken}`;
+    // generate token only if user exist
+    if (user) {
+      // generate one time (unique) password reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
 
-    await sendResetPasswordEmail(email, resetURL);
+      // hash token before saving to database
+      const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+      user.resetPasswordToken = hashedToken;
+      user.resetPasswordExpires = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
+      await user.save();
+
+      const resetURL = `${config.frontendUrl}/reset-password/${resetToken}`;
+
+      try {
+        await sendResetPasswordEmail(email, resetURL);
+      } catch (emailError) {
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+        return res.status(500).json({ error: "Failed to send password reset email" });
+      }
+    }
 
     res.status(200).json({
       message: 'If a user with this email exists, you will receive a password reset link shortly.'
@@ -316,7 +332,7 @@ router.post('/reset-password/:token', async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).json({ error: "Invalid or expired reset toekn" });
+      return res.status(400).json({ error: "Invalid or expired reset token" });
     }
 
     // udate password
@@ -326,7 +342,7 @@ router.post('/reset-password/:token', async (req, res) => {
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    res.status(200).json({ message: "Password reset successfully"});
+    res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: "Error resetting your password" });

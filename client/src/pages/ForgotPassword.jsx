@@ -2,11 +2,11 @@ import React from "react";
 import ForgotPassForm from "../component/forgotPassword/ForgotPassForm";
 import SuccessState from "../component/forgotPassword/SuccessState";
 import FloatingCard from "../component/forgotPassword/FloatingCard";
-import useForgotPassword from "../hooks/useForgotPassword";
+import useForgotPassword from "../hooks/useForgotPasswordLogic";
 import '../styles/forgotPassword.css';
 
 const ForgotPasswordPage = () => {
-  const { successMsg, submitEmail, resetState } = useForgotPassword();
+  const { successMessage, submitEmail, resetState } = useForgotPassword();
 
   const handleTryDifferent = () => {
     resetState();
@@ -22,8 +22,8 @@ const ForgotPasswordPage = () => {
 
       {/* Main Container */}
       <div className="forgot-container glass rounded-3xl p-8 w-full max-w-md animate-slide-up">
-        {!successMsg && <ForgotPassForm />}
-        {successMsg && <SuccessState email={submitEmail} onTryDifferent={handleTryDifferent} />}
+        {!successMessage && <ForgotPassForm />}
+        {successMessage && <SuccessState email={submitEmail} onTryDifferent={handleTryDifferent} />}
 
         <div className="mt-8 text-center animate-fade-in">
           <p className="text-white text-opacity-50 text-sm">

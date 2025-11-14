@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useOTPVerification } from "../hooks/useOTPVerification";
 import "../styles/emailVerification.css";
@@ -16,8 +16,17 @@ const EmailVerification = () => {
 
   const [isVerified, setIsVerified] = useState(false);
 
+  useEffect(() => {
+    if (!email) {
+      const timer = setTimeout(() => {
+        navigate("/signup", { replace: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [email, navigate]);
+
+  // If no email, don't render anything
   if (!email) {
-    navigate("/signup");
     return null;
   }
 

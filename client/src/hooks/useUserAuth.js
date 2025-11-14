@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 export const useUserAuth = () => {
   const [loading, setLoading] = useState(false);
+  const [shouldNavigate, setShouldNavigate] = useState(null);
 
   const [userData, setUserData] = useState({
     email: "",
@@ -17,6 +18,16 @@ export const useUserAuth = () => {
   const [checkingUsername, setCheckingUsername] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (shouldNavigate) {
+      const timer = setTimeout(() => {
+        navigate(shouldNavigate.path, shouldNavigate.state);
+        setShouldNavigate(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldNavigate, navigate]);
+
   const handleLogin = async (email, password) => {
     setLoading(true);
     try {
@@ -25,10 +36,7 @@ export const useUserAuth = () => {
 
       // sucess message using toastify
       showSuccessToast("Welcome to we-chat");
-
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 2000);
+      setShouldNavigate({ path: "/dashboard", state: {} });
     } catch (error) {
       // alert( error.response?.data.erorr || "Login failed!" );
       showErrorToast(error.response?.data.error || "Login failed!");
@@ -43,9 +51,10 @@ export const useUserAuth = () => {
       const response = await signupUser(userData);
       showSuccessToast(response.data.message || "Signup successful! Please verify your email.");
 
-      setTimeout(() => {
-        navigate("/verify-email");
-      }, 2000);
+      setShouldNavigate({ 
+        path: "/verify-email", 
+        state: { state: { email: userData.email } } 
+      });
     } catch (error) {
       showErrorToast(error.response?.data.error || "Signup failed!");
     } finally {

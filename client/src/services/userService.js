@@ -1,11 +1,11 @@
 import { api, publicApi } from "../Api";
 
 export const loginUser = async (email, password) => {
-  return await api.post('/api/users/login', { email, password });
+  return await publicApi.post('/api/users/login', { email, password });
 }
 
 export const signupUser = async (userData) => {
-  return await api.post('/api/users/signup', userData);
+  return await publicApi.post('/api/users/signup', userData);
 }
 
 // Function to fetch all users except the currently logged-in user

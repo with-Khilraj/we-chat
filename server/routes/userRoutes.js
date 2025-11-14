@@ -144,7 +144,7 @@ router.post("/verify-otp", async (req, res) => {
     });
 
     // set refresh token as an HTTP-only cookie
-    res.cookie('refreshToken', refreshTokenEntry, {
+    res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       sameSite: "strict",
       secure: true,
@@ -464,13 +464,13 @@ router.post("/logout", async (req, res) => {
     );
 
     // clear the refresh token cookie
-    res.clearCookie("refreshToken", refreshToken, {
+    res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE.ENV === "production",
       sameSite: "strict",
     });
 
-    res.status(200).json({ message: "Loggout successfully" });
+    res.status(200).json({ message: "Logout successfully" });
   } catch (error) {
     console.error("Error during logout:", error);
     res.status(500).json({ error: "Internal server error" });

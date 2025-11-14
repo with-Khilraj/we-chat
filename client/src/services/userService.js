@@ -1,21 +1,17 @@
 import { api, publicApi } from "../Api";
 
 export const loginUser = async (email, password) => {
-  return await publicApi.post('/api/users/login', { email, password });
+  return await api.post('/api/users/login', { email, password });
 }
 
 export const signupUser = async (userData) => {
-  return await publicApi.post('/api/users/signup', userData);
+  return await api.post('/api/users/signup', userData);
 }
 
 // Function to fetch all users except the currently logged-in user
-export const fetchUserExceptCurrent = async (accessToken) => {
+export const fetchUserExceptCurrent = async () => {
   try {
-    const response = await api.get('/api/users/all', {
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-      },
-    });
+    const response = await api.get('/api/users/all')
     return response.data.users;
   } catch (error) {
     console.error("Error fetching user data:", error);
@@ -25,13 +21,9 @@ export const fetchUserExceptCurrent = async (accessToken) => {
 
 
 // Function to fetch the profile of the logged-in user
-export const fetchUserData = async (accessToken) => {
+export const fetchUserData = async () => {
   try {
-    const response = await api.get('/api/users/profile', {
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-      },
-    });
+    const response = await api.get('/api/users/profile')
     return response.data.user;
   } catch (error) {
     console.error("Error fetching user data:", error);

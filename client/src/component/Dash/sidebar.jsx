@@ -3,7 +3,7 @@ import "../../styles/sidebar.css";
 import { useUserStore } from "../../hooks/useUserStore";
 import { useAuth } from "../../context/AuthContext";
 import { useRecentMessages } from "../../hooks/useRecentMessages";
-import {api} from "../../Api";
+import { api, publicApi } from "../../Api";
 import socket from "../../hooks/useSocket";
 import { debounce, } from "lodash";
 import { useOnlineUsers } from "../../context/onlineUsersContext";
@@ -93,7 +93,7 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
   const handleLogout = async () => {
     try {
       // await logout();
-      await api.post("/api/users/logout");
+      await api.post("/api/users/logout")
       localStorage.clear();
 
       // disconect the socket connection

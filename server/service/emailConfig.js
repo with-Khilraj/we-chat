@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
-// require('dotenv').config({ path: './.env.local' });
+require('dotenv').config({ path: './.env' });
 
 // Validate email credentials
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-  throw new Error('Email credentials are missing. Please check your .env.production file');
+  throw new Error('Email credentials are missing. Please check your .env file');
 }
 
 console.log(

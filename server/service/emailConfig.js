@@ -1,17 +1,21 @@
 const nodemailer = require('nodemailer');
-require('dotenv').config({ path: './.env.local' });
+// require('dotenv').config({ path: './.env.local' });
 
 // Validate email credentials
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-  throw new Error('Email credentials are missing. Please check your .env.local file');
+  throw new Error('Email credentials are missing. Please check your .env.production file');
 }
+
+console.log(
+  '[EMAIL CHECK]',
+  process.env.EMAIL_USER,
+  process.env.EMAIL_PASSWORD?.length
+);
+
 
 // Create transporter with enhanced configuration
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD

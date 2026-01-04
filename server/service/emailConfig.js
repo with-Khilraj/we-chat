@@ -6,13 +6,6 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
   throw new Error('Email credentials are missing. Please check your .env file');
 }
 
-console.log(
-  '[EMAIL CHECK]',
-  process.env.EMAIL_USER,
-  process.env.EMAIL_PASSWORD?.length
-);
-
-
 // Create transporter with enhanced configuration
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -96,7 +89,7 @@ const sendResetPasswordEmail = async (email, resetLink) => {
               Reset Password
             </a>
           </div>
-          <p>This link will expire in 1 hour.</p>
+          <p>This link will expire in 2 minutes.</p>
           <p>If you didn't request this, please ignore this email.</p>
         </div>
       `

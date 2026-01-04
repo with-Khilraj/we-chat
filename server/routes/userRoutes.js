@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const verifyAccessToken = require("../middlewares/authMiddleware");
 const RefreshToken = require("../models/refreshTokens");
-const {sendVerificationOTP, sendResetPasswordEmail} = require('../service/emailConfig')
+const { sendVerificationOTP, sendResetPasswordEmail } = require('../service/emailConfig')
 const config = require('../config');
 const passwordResetLimiter = require('../middlewares/passwordResetLimiter');
 const crypto = require('crypto');
@@ -36,6 +36,11 @@ router.post("/signup", async (req, res) => {
   if (!email || !username || !phone || !password) {
     return res.status(400).json({ message: "Please enter all the fields" });
   }
+
+  if (!password || password.length < 5) {
+    return res.status(400).json({ error: "Password must be at least 5 characters" });
+  }
+
 
   try {
     // check if email already exits
@@ -289,7 +294,7 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
       const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
       user.resetPasswordToken = hashedToken;
-      user.resetPasswordExpires = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
+      user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // token valid for 10 minutes
       await user.save();
 
       const resetURL = `${config.frontendUrl}/reset-password/${resetToken}`;
@@ -314,35 +319,79 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
 });
 
 
-// Reset password Route
+// helper function to validate reset token
+const validateResetToken = async (token) => {
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const user = await User.findOne({ resetPasswordToken: hashedToken });
+  
+  if (!user) {
+    return { status: "Invalid" };
+  }
+
+  if (user.resetPasswordExpires < Date.now()) {
+    return { status: "Expired" };
+  }
+
+  return { status: "Valid", user };
+};
+
+// validate reset token route 
+router.get('/reset-password/:token/validate', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const result = await validateResetToken(token);
+
+     if (result.status === 'Valid') {
+      return res.status(200).json({ valid: true });
+    }
+
+
+    return res.status(200).json({ 
+      valid: false,
+      error : result.status === 'Expired'
+        ? "TOKEN_EXPIRED"
+        : "INVALID_TOKEN"
+    });
+  } catch (error) {
+    console.error('Error validating reset token:', error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Reset Password Route
 router.post('/reset-password/:token', async (req, res) => {
   try {
     const { password, confirmPassword } = req.body;
     const { token } = req.params;
 
+    if (!password || password.length < 5) {
+      return res.status(400).json({ error: "Password must be at least 5 characters" });
+    }
+
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const result = await validateResetToken(token);
 
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
-    });
-
-    if (!user) {
-      return res.status(400).json({ error: "Invalid or expired reset token" });
+    if (result.status === 'Invalid') {
+      return res.status(400).json({ error: "INVALID_TOKEN" });
     }
 
-    // udate password
+    if (result.status === 'Expired') {
+      return res.status(400).json({ error: "TOKEN_EXPIRED" });
+    }
+
+    const user = result.user;
+
+    // udate password and clear token
     const hashedPassword = await bcrypt.hash(password, 10);
     user.password = hashedPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    res.status(200).json({ message: "Password reset successfully" });
+    res.status(200).json({ message: "Password reset successful. You can now log in with your new password." });
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: "Error resetting your password" });

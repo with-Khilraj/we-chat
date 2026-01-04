@@ -24,6 +24,7 @@ const useForgotPasswordReducer = () => {
       dispatch({ type: "RESET" });
     }
   }, [state.status, state.remainingTime]);
+  
 
   const handleForgotPassword = useCallback( async (email) => {
     dispatch({ type: 'SUBMIT_START'});

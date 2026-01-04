@@ -2,11 +2,16 @@ import React from "react";
 import ForgotPassForm from "../component/forgotPassword/ForgotPassForm";
 import SuccessState from "../component/forgotPassword/SuccessState";
 import FloatingCard from "../component/forgotPassword/FloatingCard";
-import useForgotPassword from "../hooks/useForgotPasswordLogic";
+import useForgotPasswordReducer from "../hooks/useForgotPasswordLogic";
 import '../styles/forgotPassword.css';
 
 const ForgotPasswordPage = () => {
-  const { successMessage, submitEmail, resetState } = useForgotPassword();
+  const { state, resetForgotPassword } = useForgotPasswordReducer();
+
+  // Map state to the expected value
+  const successMessage = state.status === 'success' ? state.message : null;
+  const submitEmail = state.email;
+  const resetState = resetForgotPassword;
 
   const handleTryDifferent = () => {
     resetState();

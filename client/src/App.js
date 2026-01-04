@@ -15,8 +15,9 @@ import ActiveCall from "./component/ActiveCall";
 import IncomingCall from "./component/Incoming_call";
 import CallInitiation from "./component/CallInitiation";
 import { AnimatePresence } from "framer-motion";
-import "./index.css"
+import "./global.css"
 import ForgotPasswordPage from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 const CallComponents = () => {
   const {
@@ -73,6 +74,7 @@ const AppContent = () => {
             <Route path="/sidebar" element={<Sidebar />} />
             <Route path="/verify-email" element={<EmailVerification />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
           </Routes>
           <CallComponents />
         </main>

@@ -38,6 +38,10 @@
   animation: pulse 3s ease-in-out infinite;
 }
 
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
 /* Keyframes */
 @keyframes fadeIn {
   from {
@@ -79,6 +83,33 @@
   }
 }
 
+ @keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* === Form Inputs Style === */
+.form-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #4facfe;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
 /* === Buttons === */
 .btn-primary {
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -107,4 +138,28 @@
 
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+
+/* Loading spinner */
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* === Floating Elements === */
+.floating-element {
+  position: absolute;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.floating-code {
+  font-family: 'Courier New', monospace;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 14px;
 }

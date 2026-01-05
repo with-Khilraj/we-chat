@@ -8,7 +8,8 @@ export const RESET_PASSWORD_ACTIONS = {
 };
 
 export const RESET_PASSWORD_MESSAGES = {
-  INVALID_TOKEN: 'Invalid or expired reset token. Please request a new reset link.',
+  INVALID_TOKEN: 'Invalid reset token. Please request a new reset link.',
+  TOKEN_EXPIRED: 'Your reset token has expired. Please request a new reset link.',
   RESET_SUCCESS: 'Password reset successfully! You can now log in.',
   GENERIC_ERROR: 'An error occurred. Please try again.',
 };

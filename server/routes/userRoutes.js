@@ -358,6 +358,39 @@ router.get('/reset-password/:token/validate', async (req, res) => {
   }
 });
 
+// helper function: finalize password reset token
+const finalizePasswordResetToken = async (token) => {
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({ resetPasswordToken: hashedToken });
+
+  if (!user) {
+    return; // silently return if user not found
+  }
+
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+};
+
+// finalize reset token route route
+router.post('/reset-password/finalize', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if(!token) {
+      return res.status(200).json({ success: true }); // still return true to prevent token fishing
+    }
+
+    await finalizePasswordResetToken(token);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error finalizing reset token:', error);
+    res.status(200).json({ success: true }); // still return true to prevent token fishing
+  }
+});
+
+
 // Reset Password Route
 router.post('/reset-password/:token', async (req, res) => {
   try {

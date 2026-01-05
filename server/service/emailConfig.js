@@ -89,7 +89,7 @@ const sendResetPasswordEmail = async (email, resetLink) => {
               Reset Password
             </a>
           </div>
-          <p>This link will expire in 2 minutes.</p>
+          <p>This link will expire in 10 minutes.</p>
           <p>If you didn't request this, please ignore this email.</p>
         </div>
       `

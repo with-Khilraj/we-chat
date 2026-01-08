@@ -90,25 +90,24 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
   }, [debounceSetSearch]);
 
   // handling the logout event
+  // handling the logout event
   const handleLogout = async () => {
     try {
-      // await logout();
-      await api.post("/api/users/logout")
-      localStorage.clear();
-
-      // disconect the socket connection
-      socket.disconnect();
+      await api.post("/api/users/logout");
       toast.success("Logout successful!", {
         position: "top-right",
         autoClose: 1500,
       });
-
-      navigate("/login");
     } catch (error) {
-      toast.error("Logout failed", {
-        position: "top-right",
-        autoClose: 2000,
-      });
+      console.error("Logout API failed (network or token issue):", error);
+      // We don't show an error toast to the user because we are forcing logout anyway.
+      // Or we can show a "local logout" message if needed, but standard UX is just to log them out.
+    } finally {
+      // ALWAYS perform these cleanup steps
+      localStorage.clear();
+      // disconect the socket connection
+      if (socket.connected) socket.disconnect();
+      navigate("/login");
     }
   };
 

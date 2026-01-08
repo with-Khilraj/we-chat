@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {api} from '../Api';
+import { api } from '../Api';
 import socket from './useSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidObjectId, getMediaDuration } from '../utils/chatUtils';
@@ -10,7 +10,7 @@ import { useCall } from '../context/CallContext';
 export const useChat = (selectedUser, currentUser) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [file, setFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -93,7 +93,7 @@ export const useChat = (selectedUser, currentUser) => {
         if (data.senderId !== currentUser._id && !prevMessages.some((msg) => msg._id === data._id)) {
           const updateMessages = [...prevMessages, data];
           // If receiver is actively viewing the chat, mark the message as 'seen'
-          if(data.receiverId === currentUser._id && selectedUser?._id === data.senderId) {
+          if (data.receiverId === currentUser._id && selectedUser?._id === data.senderId) {
             socket.emit('message-seen', {
               messageIds: [data._id],
               roomId: data.roomId,
@@ -133,10 +133,14 @@ export const useChat = (selectedUser, currentUser) => {
       console.log('Received message status update:', data);
       setMessages((prevMessages) => {
         const updatedMessages = prevMessages.map((msg) => {
-          // Handle message-sent (single message)
+          // Handle map tempId to serverId (initial send confirmation)
           if (data.messageId && msg.tempId === data.messageId) {
             console.log(`Mapping tempId ${data.messageId} to serverId ${data.serverId} for status ${data.status}`);
             return { ...msg, _id: data.serverId, status: data.status, tempId: undefined };
+          }
+          // Handle status update by real ID (delivered, seen, etc.)
+          if (data.messageId && msg._id === data.messageId) {
+            return { ...msg, status: data.status };
           }
           // Handle message-seen (bulk update)
           if (data.messageIds && data.messageIds.includes(msg._id)) {
@@ -145,7 +149,6 @@ export const useChat = (selectedUser, currentUser) => {
           }
           return msg;
         });
-        console.log('Updated messages:', updatedMessages.map(m => ({ _id: m._id, tempId: m.tempId, status: m.status })));
         return updatedMessages;
       });
     }
@@ -230,8 +233,8 @@ export const useChat = (selectedUser, currentUser) => {
 
         recorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          setFile(audioBlob);
-          handleSendMessage(audioBlob);
+          // Send audio immediately without staging
+          sendSingleMessage(null, audioBlob);
           setAudioChunks([]);
           stream.getTracks().forEach((track) => track.stop()); // Clean up stream
         };
@@ -249,69 +252,57 @@ export const useChat = (selectedUser, currentUser) => {
   };
 
 
-  // Handle send messages button
-  const handleSendMessage = async (fileToSend = file) => {
-    if (!newMessage.trim() && !fileToSend) return;
+  // Internal function to send a single message (text or file)
+  const sendSingleMessage = async (content, fileToSend) => {
+    if (!content && !fileToSend) return;
     const roomId = getRoomId();
     if (!roomId || !selectedUser?._id || !isValidObjectId(selectedUser._id)) {
       setError("Invalid receiver ID. Please select a valid user.");
       return;
     }
 
-    // Validate fileToSend
-    if (fileToSend && !(fileToSend instanceof File || fileToSend instanceof Blob)) {
-      console.error('Invalid fileToSend:', fileToSend);
-      setError('Invalid file input. Please select a valid file.');
-      return;
+    const tempId = uuidv4();
+
+    // Determine messageType
+    let messageType = 'text';
+    if (fileToSend) {
+      if (fileToSend.type.startsWith('audio')) messageType = 'audio';
+      else if (fileToSend.type.startsWith('video')) messageType = 'video';
+      else if (fileToSend.type.startsWith('image')) messageType = 'photo';
+      else messageType = 'file';
     }
 
-    // const messageId = uuidv4(); // ------ old way to handle IDs
-    const tempId = uuidv4(); // ------ new way to handle optimistic update
-
-    // Determine messageType based on whether a file is being sent
-    const messageType = fileToSend
-      ? fileToSend.type.startsWith('audio')
-        ? 'audio'
-        : fileToSend.type.startsWith('video')
-          ? 'video'
-          : fileToSend.type.startsWith('image')
-            ? 'photo'
-            : 'file'
-      : 'text';
-
     const messageData = {
-      // _id: messageId, ----- old way
-      tempId,  // ----- new way to handle IDs
+      tempId,
       roomId,
       senderId: currentUser._id,
       receiverId: selectedUser._id,
-      content: messageType === 'text' ? newMessage.trim() : '',
+      content: messageType === 'text' ? content : '',
       messageType,
-      ...(fileToSend && { // Only include file fields if fileToSend exists
+      ...(fileToSend && {
         fileUrl: fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null,
         fileName: fileToSend.name,
         fileSize: fileToSend.size,
         fileType: fileToSend.type,
-        duration: ['audio', 'video'].includes(messageType) ? await getMediaDuration(fileToSend) : 0,
       }),
       status: "sent",
     };
 
+    // Calculate duration for audio/video asynchronously if needed, but don't block optimistic UI
+    // For now we set 0, or could improve this by calculating before calling sendSingleMessage
+
     try {
-      setIsUploading(true);
-      setMessages((prevMessages) => [...prevMessages, messageData]); // Optimistic update
-      setNewMessage("");
-      setFile(null);
+      // Optimistic update
+      setMessages((prevMessages) => [...prevMessages, messageData]);
 
       const accessToken = localStorage.getItem("accessToken");
-      if (!accessToken) throw new Error('No access token found')
+      if (!accessToken) throw new Error('No access token found');
 
       const formData = new FormData();
-      // Append only required fields to FormData
       Object.entries(messageData).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) formData.append(key, value);
+        if (value !== null && value !== undefined && key !== 'fileUrl') formData.append(key, value);
       });
-      if (fileToSend instanceof File) formData.append('file', fileToSend);
+      if (fileToSend instanceof File || fileToSend instanceof Blob) formData.append('file', fileToSend);
 
       // Send message to server
       const response = await api.post("/api/messages/", formData, {
@@ -321,40 +312,73 @@ export const useChat = (selectedUser, currentUser) => {
         },
       });
 
-      // Emit messages
+      // Emit socket event
       socket.emit("send-message", {
         ...messageData,
         _id: response.data.message._id,
-        tempId
+        tempId,
+        // If server returns fileUrl, use it (optional, usually server returns full message object)
+        fileUrl: response.data.message.fileUrl || messageData.fileUrl
       });
 
-      // Update message with actual ID from server response
+      // Update message with actual ID
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
-          msg.tempId === tempId ? { ...msg, _id: response.data.message._id, tempId: undefined } : msg
+          msg.tempId === tempId ? { ...msg, _id: response.data.message._id, tempId: undefined, fileUrl: response.data.message.fileUrl } : msg
         )
       );
+
     } catch (error) {
-      setError('Failed to send message. Please try again.')
-      console.error("Error while sending message:", error);
+      console.error("Error sending message:", error);
       if (error.response?.status === 401) {
         navigate('/login');
       }
-      // Rollback optimistic update on failure
       setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
+      setError('Failed to send message.');
+    }
+  };
+
+
+  // Handle send messages button (Text + All Staged Files)
+  const handleSendMessage = async () => {
+    setIsUploading(true);
+    try {
+      // 1. Send text if present
+      if (newMessage.trim()) {
+        await sendSingleMessage(newMessage.trim(), null);
+        setNewMessage("");
+      }
+
+      // 2. Send all staged files
+      if (selectedFiles.length > 0) {
+        // Processing sequentially to maintain order roughly, or parallel?
+        // Parallel is better for speed, but sequential ensures order in chat roughly.
+        // Let's do sequential for now to avoid overwhelming socket/server 
+        for (const file of selectedFiles) {
+          await sendSingleMessage(null, file);
+        }
+        setSelectedFiles([]);
+      }
+    } catch (err) {
+      console.error("Error in batch send:", err);
     } finally {
       setIsUploading(false);
     }
   };
 
+  // Remove a file from staging
+  const removeSelectedFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // hande file input change
   // hande file input change
   const handleFileInputChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      handleSendMessage(selectedFile);
-    } else {
-      setFile(null);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      setSelectedFiles(prev => [...prev, ...files]);
+      // Reset input value so the same file selection triggers change again if needed
+      e.target.value = '';
     }
   };
 
@@ -421,7 +445,10 @@ export const useChat = (selectedUser, currentUser) => {
     setMessages,
     newMessage,
     setNewMessage,
-    file,
+    newMessage,
+    setNewMessage,
+    selectedFiles,
+    removeSelectedFile,
     isUploading,
     isRecording,
     error,

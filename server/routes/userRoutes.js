@@ -323,7 +323,7 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
 const validateResetToken = async (token) => {
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
   const user = await User.findOne({ resetPasswordToken: hashedToken });
-  
+
   if (!user) {
     return { status: "Invalid" };
   }
@@ -341,14 +341,14 @@ router.get('/reset-password/:token/validate', async (req, res) => {
     const { token } = req.params;
     const result = await validateResetToken(token);
 
-     if (result.status === 'Valid') {
+    if (result.status === 'Valid') {
       return res.status(200).json({ valid: true });
     }
 
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       valid: false,
-      error : result.status === 'Expired'
+      error: result.status === 'Expired'
         ? "TOKEN_EXPIRED"
         : "INVALID_TOKEN"
     });
@@ -378,7 +378,7 @@ router.post('/reset-password/finalize', async (req, res) => {
   try {
     const { token } = req.body;
 
-    if(!token) {
+    if (!token) {
       return res.status(200).json({ success: true }); // still return true to prevent token fishing
     }
 
@@ -548,7 +548,7 @@ router.post("/logout", async (req, res) => {
     // clear the refresh token cookie
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE.ENV === "production",
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
 

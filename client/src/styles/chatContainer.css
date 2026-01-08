@@ -15,7 +15,8 @@
 
 .chat-container,
 .unselected-chat {
-  background-color: #fff; /* White chat area */
+  background-color: #fefefe;
+  /* White chat area */
   display: flex;
   flex-direction: column;
   margin-top: 10px;
@@ -95,43 +96,14 @@
 
 }
 
-.chat-call-icons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-
-.video-call-icon,
-.audio-call-icon,
-.info-icon {
-  border: none;
-  background-color: transparent;
-}
-
-.info-icon {
-  margin-left: 20px;
-  filter: drop-shadow(10px -15px 5px rgba(0, 0, 0, 0.2));
-
-}
-
-.video-call-icon img,
-.audio-call-icon img,
-.info-icon img {
-  display: flex;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
 .chat-container .chat-messages {
   flex: 1;
-  padding: 10px 10px;
+  padding: 10px 20px;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   scrollbar-width: none;
-  background-color: #f8f9fa; /* Light background similar to Messenger */
+  background-color: #f8f9fa;
 }
 
 /* Main message container */
@@ -139,19 +111,24 @@
   max-width: 70%;
   border-radius: 10px;
   display: flex;
-  /* align-items: center; */
   position: relative;
   margin: 0;
   border-top-left-radius: 3px;
-  border-bottom-right-radius: 3px;
   border-bottom-left-radius: 10px;
   border-top-right-radius: 10px;
+  box-shadow: 0px 1px 3px rgba(146, 15, 182, 0.689);
+  padding: 6px 8px 18px 8px;
+}
+
+/* Remove padding for media messages so they look like full bubbles */
+.chat-container .message-container.message-type-photo,
+.chat-container .message-container.message-type-video {
+  padding: 0;
 }
 
 .chat-container .message-container.sent {
   background: linear-gradient(140deg, rgb(255, 87, 87), rgb(53, 53, 210));
   color: white;
-  /* align-items: flex-end; */
 }
 
 .chat-container .message-container.received {
@@ -174,23 +151,22 @@
   margin-right: 10px;
 }
 
+/* Received messages get padding on the left to reserve space for the avatar */
 .chat-container .message-group.received {
   align-items: flex-start;
   margin-left: 10px;
+  padding-left: 45px;
+  /* Reserve space for avatar */
+  position: relative;
+  /* Context for absolute avatar */
 }
 
 /* Individual message styling */
 .message {
   max-width: 100%;
   word-wrap: break-word;
-  border-top-left-radius: 3px;
-  border-bottom-right-radius: 3px;
-  border-bottom-left-radius: 10px;
-  border-top-right-radius: 10px;
   font-size: 14px;
   line-height: 1.4;
-  box-shadow: 0px 1px 3px rgba(146, 15, 182, 0.689);
-  padding: 4px 5px;
 }
 
 .chat-container .message p {
@@ -204,7 +180,7 @@
 
 /* Message hover icons container */
 .message-hover-icons {
-  display: none; 
+  display: none;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -249,12 +225,12 @@
 
 
 .avatar-content {
+  position: absolute;
+  left: 0;
+  bottom: 0;
   display: flex;
   align-items: flex-end;
   margin-top: 0;
-  /* position: absolute; */
-  /* bottom: -40px; */
-  /* left: 0; */
 }
 
 .message-avatar {
@@ -262,7 +238,7 @@
   height: 35px;
   border-radius: 50%;
   overflow: hidden;
-  }
+}
 
 .message-avatar img {
   width: 100%;
@@ -293,7 +269,7 @@
   width: 8px;
 }
 
-.chat-messages::-webkit-scrollbar-thumb{
+.chat-messages::-webkit-scrollbar-thumb {
   background-color: #ccc;
   border-radius: 4px;
 }
@@ -302,7 +278,7 @@
   background-color: #aaa;
 }
 
-.media-message  {
+.media-message {
   max-width: 100%;
   max-width: 200px;
   object-fit: cover;
@@ -312,8 +288,8 @@
 
 video.media-message,
 audio.media-message {
-  width: 100%; /* Make videos and audio players responsive */
-  max-height: 300px; /* Set a maximum height */
+  width: 100%;
+  max-height: 300px;
 }
 
 /* For files (e.g., PDFs, documents) */
@@ -333,56 +309,31 @@ audio.media-message {
 
 .message-status {
   font-size: 10px;
-  color: #666;
-  margin-top: 15px;
+  color: #9fdd04;
+  position: absolute;
+  bottom: 2px;
+  right: 6px;
+  z-index: 10;
 }
 
-.status-sent {
-  color: #17e900;
-  font-size: 14px;
-}
+/* Default status for text uses the global .message-status defined above */
 
+/* Overlay status for Photos/Videos */
+.message-container.message-type-photo .message-status,
+.message-container.message-type-video .message-status {
+  color: white;
+  bottom: 8px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
 
 .status-seen {
   color: #17e900;
 }
 
-/* for chat input */
-.chat-input {
-  display: flex;
-  padding: 15px;
-  border-top: 1px solid #ccc;
-  gap: 10px;
-  background-color: #fff;
-  border-radius: 10px;
-}
-
-.chat-input input {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 20px;
-  margin-right: 10px;
-  outline: none;
-}
-
-.chat-input img {
-  width: 15px;
-  height: 15px;
-}
-
-.chat-input button {
-  padding: 10px 15px;
-  background-color: #0084ff;
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-}
-
-.chat-input button:hover {
-  background-color: #005bb5;
-}
 
 /* Typing indicator */
 .typing-indicator {
@@ -424,9 +375,13 @@ audio.media-message {
 }
 
 @keyframes typing {
-  0%, 40%, 100% {
+
+  0%,
+  40%,
+  100% {
     transform: translateY(0);
   }
+
   20% {
     transform: translateY(-4px);
   }
@@ -437,7 +392,8 @@ audio.media-message {
 /* profile information */
 .profile-info {
   flex: 0 0 18.7%;
-  background-color: white; /* Very light gray */
+  background-color: white;
+  /* Very light gray */
   padding: 15px;
   overflow-y: auto;
   margin-top: 20px;
@@ -448,7 +404,7 @@ audio.media-message {
   transition: flex 0.3s ease;
 }
 
-.profile-info.show  {
+.profile-info.show {
   display: block;
 }
 
@@ -458,7 +414,7 @@ audio.media-message {
   margin-top: 2rem;
 }
 
-.profile-info .profile-pic .user-profile-pic{
+.profile-info .profile-pic .user-profile-pic {
   width: 10rch;
   height: 10rch;
   background-color: rgb(180, 180, 180);

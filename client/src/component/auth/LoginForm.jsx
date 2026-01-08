@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { ToastContainer } from "react-toastify";
 import InputField from "./shared/InputField";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -45,7 +47,10 @@ const LoginForm = () => {
       </div>
 
       <button className="login-btn" type="submit" disabled={loading}>
-        {loading ? "Logging in..." : "Login"}
+        { loading 
+          ? <FontAwesomeIcon icon={faSpinner} className="fas fa-spinner animate-spin ml-2" />
+          : "Login"
+        }
       </button>
 
       <ToastContainer />

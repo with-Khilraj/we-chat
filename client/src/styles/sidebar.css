@@ -1,5 +1,5 @@
 .sidebar {
-  flex: 0 0 18%;
+  flex: 0 0 21%;
   padding: 0 15px;
   padding-top: 15px;
   margin-top: 10px;
@@ -102,7 +102,7 @@
 }
 
 .search-input {
-  width: 90%;
+  width: 100%;
   padding: 13px;
   border-radius: 10px;
   /* background-color: rgb(237, 222, 252); */

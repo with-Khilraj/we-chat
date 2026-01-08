@@ -4,11 +4,7 @@ import "../../styles/chatContainer.css";
 import { useOnlineUsers } from "../../context/onlineUsersContext";
 import { useChat } from "../../hooks/useChat";
 import { shouldDisplayTimeStamp, shouldStartNewGroup, renderStatusIndicator } from "../../utils/chatUtils";
-import audio_call from "../../assets/call.png";
-import video_call from "../../assets/video-camera.png";
-import info_icon from "../../assets/info.png";
-import audio_icon from "../../assets/mic.png";
-import media_icon from "../../assets/image-gallery.png";
+import { Image, Mic, Send, Info, Video, Phone } from "lucide-react";
 import { useCall } from "../../context/CallContext";
 // import { useCall } from "../context/CallContextInitial";
 
@@ -69,27 +65,28 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
           </div>
 
           {/* adding video and audio call icons */}
-          <div className="chat-call-icons">
-            <button className="video-call-icon">
-              <img src={video_call} alt="" />
-            </button>
-
+          <div className="flex items-center gap-2">
             {/* Call Buttons */}
             <button
-              onClick={() => initiateCall(selectedUser)}
-              // onClick={() => initiateCall(selectedUser._id)}
-              disabled={isCalling}
-              className="audio-call-icon"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600"
             >
-              <img src={audio_call} alt="" />
+              <Video size={20} />
+            </button>
+
+            <button
+              onClick={() => initiateCall(selectedUser)}
+              disabled={isCalling}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600 disabled:opacity-50"
+            >
+              <Phone size={20} />
             </button>
 
             {/* Audio Elements */}
             {localStream && <audio ref={(ref) => ref && (ref.srcObject = localStream)} muted autoPlay />}
             {remoteStream && <audio ref={(ref) => ref && (ref.srcObject = remoteStream)} autoPlay />}
 
-            <button className="info-icon" onClick={toggleProfileInfo}>
-              <img src={info_icon} alt="" />
+            <button className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600" onClick={toggleProfileInfo}>
+              <Info size={20} />
             </button>
           </div>
         </div>
@@ -143,7 +140,7 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
                   <div
                     className={`message-container ${message.senderId === currentUser._id ?
                       "sent" : "received"
-                      }`}>
+                      } message-type-${message.messageType}`}>
                     <div className="message">
                       <div className="message-content">
                         {message.messageType === "text" && <p className="text-message">{message.content}</p>}
@@ -212,28 +209,49 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
         </div>
 
         {/* message input */}
-        <div className="chat-input">
-          <div className="media-icons">
-            <button onClick={handleMediaClick}>
-              <img src={media_icon} alt="Media" />
+        <div className="p-4 bg-white border-t border-gray-200">
+          <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2">
+
+            {/* Media Action */}
+            <button
+              onClick={handleMediaClick}
+              className="p-2 text-gray-500 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-colors"
+              title="Upload Media"
+            >
+              <Image size={20} />
             </button>
-            {/* Icon for audio (if needed) */}
-            <button onClick={handleAudioRecording}>
-              <img src={audio_icon} alt="Audio" />
+
+            {/* Audio Action */}
+            <button
+              onClick={handleAudioRecording}
+              className="p-2 text-gray-500 hover:text-red-500 hover:bg-gray-200 rounded-full transition-colors"
+              title="Record Audio"
+            >
+              <Mic size={20} />
+            </button>
+
+            {/* Text Input */}
+            <input
+              type="text"
+              value={newMessage}
+              onChange={handleTypingEvent}
+              placeholder="Type a message..."
+              className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-500 px-2"
+            />
+
+            {/* Send Button */}
+            <button
+              onClick={() => handleSendMessage()}
+              disabled={isUploading || !newMessage.trim()}
+              className={`p-2 rounded-full transition-colors ${isUploading || !newMessage.trim()
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-blue-500 hover:bg-blue-100"
+                }`}
+              title="Send Message"
+            >
+              <Send size={20} />
             </button>
           </div>
-
-          <input
-            type="text"
-            value={newMessage}
-            // onChange={(e) => setNewMessage(e.target.value)}
-            onChange={handleTypingEvent}
-            placeholder="Type your message..."
-          />
-
-          <button onClick={() => handleSendMessage()} disabled={isUploading}>
-            {isUploading ? "Sending" : "Send"}
-          </button>
 
           {/* Hidden file input for media (photos, videos, files) */}
           <input

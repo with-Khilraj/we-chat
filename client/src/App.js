@@ -5,6 +5,7 @@ import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
 import Sidebar from "./component/dash/sidebar";
+import ChatContainer from "./component/dash/chatContainer";
 import { OnlineUsersProvider } from ".//context/onlineUsersContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CallProvider, useCall } from "./context/CallContext";
@@ -69,7 +70,10 @@ const AppContent = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />}>
+              <Route index element={<div className="h-full flex items-center justify-center text-gray-400">Select a user to start chatting</div>} />
+              <Route path="chat/:userId" element={<ChatContainer />} />
+            </Route>
             <Route path="/profile" element={<Profile />} />
             <Route path="/sidebar" element={<Sidebar />} />
             <Route path="/verify-email" element={<EmailVerification />} />

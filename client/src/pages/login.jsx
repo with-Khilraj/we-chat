@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "react-toastify/ReactToastify.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightToBracket } from "@fortawesome/free-solid-svg-icons";
@@ -6,6 +8,14 @@ import "../styles/auth.css";
 import LoginForm from "../component/auth/LoginForm";
 
 const Login = () => {
+  const { currentUser, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, loading, navigate]);
 
   // const handleLogin = async (e) => {
   //   e.preventDefault();

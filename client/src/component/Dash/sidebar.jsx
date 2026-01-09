@@ -8,18 +8,19 @@ import socket from "../../hooks/useSocket";
 import { debounce, } from "lodash";
 import { useOnlineUsers } from "../../context/onlineUsersContext";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import menu from '../../assets/menu.png';
 
-const Sidebar = ({ selectedUser, setSelectedUser }) => {
+const Sidebar = () => {
   const accessToken = localStorage.getItem("accessToken");
-  const { currentUser: loggedInUser } = useAuth();
+  const { currentUser: loggedInUser, logout } = useAuth();
   const { users: otherUsers, loading } = useUserStore(accessToken);
   const { recentMessages } = useRecentMessages(loggedInUser, accessToken);
 
   const [search, setSearch] = useState("");
   const onlineUsers = useOnlineUsers();
   const navigate = useNavigate();
+  const { userId } = useParams();
   const dropupRef = useRef(null);
   const moreMenuRef = useRef(null);
   const [isDropupOpen, setIsDropupOpen] = useState(false);
@@ -90,7 +91,6 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
   }, [debounceSetSearch]);
 
   // handling the logout event
-  // handling the logout event
   const handleLogout = async () => {
     try {
       await api.post("/api/users/logout");
@@ -100,12 +100,9 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
       });
     } catch (error) {
       console.error("Logout API failed (network or token issue):", error);
-      // We don't show an error toast to the user because we are forcing logout anyway.
-      // Or we can show a "local logout" message if needed, but standard UX is just to log them out.
     } finally {
       // ALWAYS perform these cleanup steps
-      localStorage.clear();
-      // disconect the socket connection
+      logout(); // Use context logout to update state
       if (socket.connected) socket.disconnect();
       navigate("/login");
     }
@@ -178,10 +175,10 @@ const Sidebar = ({ selectedUser, setSelectedUser }) => {
             filteredUsers.map((user) => (
               <div
                 key={user._id}
-                className={`user-item ${selectedUser?._id === user._id ? "selected" : ""} 
+                className={`user-item ${userId === user._id ? "selected" : ""} 
                   ${!recentMessages[user._id]?.seen && recentMessages[user._id] ? "unread" : ""
                   }`}
-                onClick={() => setSelectedUser(user)} // passing selected user
+                onClick={() => navigate(`chat/${user._id}`)} // passing selected user
               >
                 <div className="user-avatar">
                   {/* Display initials or profile image */}

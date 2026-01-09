@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, Outlet } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import { useAuth } from "../context/AuthContext";
@@ -9,16 +10,23 @@ import Sidebar from "../component/dash/sidebar";
 import "../global.css"
 
 const Dashboard = () => {
-  const {currentUser, loading} = useAuth();
+  const { currentUser, loading } = useAuth();
   // const [userInfo, setUserInfo] = useState(null);
   // const [error, setError] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
+
 
   useEffect(() => {
     if (currentUser) {
       socket.emit('online-user', currentUser._id);
     }
   }, [currentUser]);
+
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!loading && !currentUser) {
+      navigate("/login");
+    }
+  }, [currentUser, loading, navigate])
 
   // useEffect(() => {
   //   const accessToken = localStorage.getItem("accessToken");
@@ -45,12 +53,8 @@ const Dashboard = () => {
   return (
     <>
       <div className="dashboard-container">
-        <Sidebar
-          selectedUser={selectedUser}
-          setSelectedUser={setSelectedUser}
-        />
-        
-        <ChatContainer selectedUser={selectedUser} currentUser={currentUser} />
+        <Sidebar />
+        <Outlet context={{ currentUser }} />
 
         <ToastContainer />
       </div>

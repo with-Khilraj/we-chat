@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { loginUser, signupUser, checkUsernameAvailability } from "../services/userService";
 import { showSuccessToast, showErrorToast } from "../utils/toastConfig";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 
 export const useUserAuth = () => {
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const [shouldNavigate, setShouldNavigate] = useState(null);
 
   const [userData, setUserData] = useState({
@@ -32,7 +34,8 @@ export const useUserAuth = () => {
     setLoading(true);
     try {
       const response = await loginUser(email, password);
-      localStorage.setItem("accessToken", response.data.accessToken);
+      // localStorage.setItem("accessToken", response.data.accessToken);
+      await login(response.data.accessToken);
 
       // sucess message using toastify
       showSuccessToast("Welcome to we-chat");
@@ -51,9 +54,9 @@ export const useUserAuth = () => {
       const response = await signupUser(userData);
       showSuccessToast(response.data.message || "Signup successful! Please verify your email.");
 
-      setShouldNavigate({ 
-        path: "/verify-email", 
-        state: { state: { email: userData.email } } 
+      setShouldNavigate({
+        path: "/verify-email",
+        state: { state: { email: userData.email } }
       });
     } catch (error) {
       showErrorToast(error.response?.data.error || "Signup failed!");

@@ -8,9 +8,33 @@ import { Image, Mic, Send, Info, Video, Phone, X, Plus } from "lucide-react";
 import { useCall } from "../../context/CallContext";
 // import { useCall } from "../context/CallContextInitial";
 
-
+import { useParams, useOutletContext } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { api } from "../../Api";
 import MediaCluster from "./MediaCluster";
-const ChatContainer = ({ selectedUser, currentUser }) => {
+
+const ChatContainer = () => {
+  const { currentUser } = useOutletContext();
+  const { userId } = useParams();
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(false);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!userId) return;
+      setLoadingUser(true);
+      try {
+        const response = await api.get(`/api/users/${userId}`);
+        setSelectedUser(response.data.user || response.data);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+    fetchUser();
+  }, [userId]);
+
   const {
     messages,
     newMessage,
@@ -38,6 +62,18 @@ const ChatContainer = ({ selectedUser, currentUser }) => {
   // const isOnline = React.useMemo(() => onlineUsers.includes(selectedUser._id), [onlineUsers, selectedUser._id]);
   // adding class to the chat-container based on the state of the showProfileInfo
   const chatContainerClass = showProfileInfo ? 'chat-container shrink' : 'chat-container';
+
+  if (loadingUser) {
+    return (
+      <div className="unselected-chat">Loading chat...</div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="unselected-chat">Loading user data...</div>
+    );
+  }
 
   if (!selectedUser) {
     return (

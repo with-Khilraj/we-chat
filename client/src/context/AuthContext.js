@@ -30,8 +30,23 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
 
+  const login = async (token) => {
+    localStorage.setItem('accessToken', token);
+    try {
+      const user = await fetchUserData(token);
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Failed to fetch user after login:', error);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    setCurrentUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ currentUser, loading }}>
+    <AuthContext.Provider value={{ currentUser, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

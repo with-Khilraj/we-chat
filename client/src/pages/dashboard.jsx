@@ -28,33 +28,17 @@ const Dashboard = () => {
     }
   }, [currentUser, loading, navigate])
 
-  // useEffect(() => {
-  //   const accessToken = localStorage.getItem("accessToken");
-
-  //   const getUserData = async () => {
-  //     try {
-  //       const { username, _id } = await fetchUserData(accessToken);
-  //       setUserInfo({ username, _id });
-
-  //       // Emit online status to server
-  //       socket.emit("online-user", _id);
-  //     } catch (error) {
-  //       console.log("Error fetching username:", error);
-  //       setError(error.message); // Set error state here
-  //     }
-  //   };
-  //   getUserData();
-  // }, []);
 
   // Handle loading and error states
   if (loading) return <div>Loading...</div>;
-  // if (!currentUser) return <div>Error: Unable to load user data. Please log in again.</div>;
 
   return (
     <>
       <div className="dashboard-container">
         <Sidebar />
-        <Outlet context={{ currentUser }} />
+        <div className="main-content">
+          <Outlet context={{ currentUser }} />
+        </div>
 
         <ToastContainer />
       </div>

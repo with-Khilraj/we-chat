@@ -20,11 +20,37 @@ export const useChat = (selectedUser, currentUser) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
 
+  // audio recording states
+  const [audioRecordingState, setAudioRecordingState] = useState('idle'); // 'idle' | 'recording' | 'stopped' | 'playing'
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioStream, setAudioStream] = useState(null);
+  const [audioMimeType, setAudioMimeType] = useState(''); // Store actual MIME type
+  const audioPreviewRef = useRef(null); // Audio element for playback
+  const recordingTimerRef = useRef(null); // Timer interval
+
   const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const { handleInitiateCall } = useCall();
+
+  // Cleanup audio resources when component unmounts or user changes
+  useEffect(() => {
+    return () => {
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+        audioPreviewRef.current = null;
+      }
+    };
+  }, [selectedUser, audioStream]);
 
   const isValidUUID = (id) => {
     return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
@@ -218,42 +244,156 @@ export const useChat = (selectedUser, currentUser) => {
     fileInputRef.current?.click();
   }
 
-  // Handle audio recording
-  const handleAudioRecording = async () => {
-    if (!isRecording) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream);
-        setMediaRecorder(recorder);
-        setAudioChunks([]);
 
-        recorder.ondataavailable = (e) => {
-          setAudioChunks((prev) => [...prev, e.data]);
-        };
+  // === Audio Recording Functions ===
 
-        recorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          // Send audio immediately without staging
-          sendSingleMessage(null, audioBlob);
-          setAudioChunks([]);
-          stream.getTracks().forEach((track) => track.stop()); // Clean up stream
-        };
+  // Start audio recording
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        recorder.start();
-        setIsRecording(true);
-      } catch (err) {
-        setError('Failed to start recording. Please check microphone permissions.');
-        console.error('Error starting audio recording:', err);
-      }
-    } else if (mediaRecorder) {
+      // Detect supported MIME type
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : MediaRecorder.isTypeSupported('audio/ogg')
+            ? 'audio/ogg'
+            : ''; // Fallback to default
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+
+      setAudioStream(stream);
+      setMediaRecorder(recorder);
+      setAudioChunks([]);
+      setAudioDuration(0);
+      setAudioMimeType(mimeType || recorder.mimeType); // Store the actual MIME type
+      setAudioRecordingState('recording');
+
+      // Start timer
+      const startTime = Date.now();
+      recordingTimerRef.current = setInterval(() => {
+        setAudioDuration(Math.floor((Date.now() - startTime) / 1000));
+      }, 100);
+
+      recorder.ondataavailable = (e) => {
+        setAudioChunks((prev) => [...prev, e.data]);
+      };
+
+      recorder.onstop = () => {
+        // Use the stored MIME type instead of hardcoded 'audio/wav'
+        setAudioChunks((latestChunks) => {
+          const blob = new Blob(latestChunks, { type: mimeType || recorder.mimeType });
+          setAudioBlob(blob);
+          return latestChunks;
+        });
+
+        // Stop timer
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+
+        // Stop stream
+        if (audioStream) {
+          audioStream.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      setError('Failed to start recording. Please check microphone permissions.');
+      console.error('Error starting audio recording:', err);
+    }
+  };
+
+  // Stop audio recording
+  const stopAudioRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.stop();
       setIsRecording(false);
+      setAudioRecordingState('stopped');
+    }
+  };
+
+  // Cancel audio recording
+  const cancelAudioRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+
+    // Clean up
+    if (audioStream) {
+      audioStream.getTracks().forEach(track => track.stop());
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    // Reset state
+    setIsRecording(false);
+    setAudioRecordingState('idle');
+    setAudioBlob(null);
+    setAudioDuration(0);
+    setAudioCurrentTime(0);
+    setAudioChunks([]);
+    setMediaRecorder(null);
+    setAudioStream(null);
+  };
+
+  // Play audio preview
+  const playAudioPreview = () => {
+    if (!audioBlob) return;
+
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audioPreviewRef.current = audio;
+
+    audio.ontimeupdate = () => {
+      setAudioCurrentTime(Math.floor(audio.currentTime));
+    };
+
+    audio.onended = () => {
+      setAudioRecordingState('stopped');
+      setAudioCurrentTime(0);
+    };
+
+    audio.play();
+    setAudioRecordingState('playing');
+  };
+
+  // Pause audio preview
+  const pauseAudioPreview = () => {
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      setAudioRecordingState('stopped');
+    }
+  };
+
+  // Send audio message
+  const sendAudioMessage = async () => {
+    if (!audioBlob) return;
+
+    await sendSingleMessage(null, audioBlob, audioDuration);
+
+    // Reset audio state after sending
+    cancelAudioRecording();
+  };
+
+  // Legacy function for backward compatibility (can be removed later)
+  const handleAudioRecording = async () => {
+    if (audioRecordingState === 'idle') {
+      await startAudioRecording();
+    } else if (audioRecordingState === 'recording') {
+      stopAudioRecording();
     }
   };
 
 
   // Internal function to send a single message (text or file)
-  const sendSingleMessage = async (content, fileToSend) => {
+  const sendSingleMessage = async (content, fileToSend, duration = 0) => {
     if (!content && !fileToSend) return;
     const roomId = getRoomId();
     if (!roomId || !selectedUser?._id || !isValidObjectId(selectedUser._id)) {
@@ -281,15 +421,15 @@ export const useChat = (selectedUser, currentUser) => {
       messageType,
       ...(fileToSend && {
         fileUrl: fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null,
-        fileName: fileToSend.name,
+        // Generate fileName for Blobs (like audio recordings) that don't have .name
+        fileName: fileToSend.name || `recording_${Date.now()}.${messageType === 'audio' ? 'webm' : 'mp4'}`,
         fileSize: fileToSend.size,
         fileType: fileToSend.type,
       }),
+      // Add duration for audio/video messages
+      ...((messageType === 'audio' || messageType === 'video') && { duration }),
       status: "sent",
     };
-
-    // Calculate duration for audio/video asynchronously if needed, but don't block optimistic UI
-    // For now we set 0, or could improve this by calculating before calling sendSingleMessage
 
     try {
       // Optimistic update
@@ -475,6 +615,16 @@ export const useChat = (selectedUser, currentUser) => {
     // localStream,
     // remoteStream,
     toggleProfileInfo,
+    // Instagram-style audio recording
+    audioRecordingState,
+    audioDuration,
+    audioCurrentTime,
+    startAudioRecording,
+    stopAudioRecording,
+    cancelAudioRecording,
+    playAudioPreview,
+    pauseAudioPreview,
+    sendAudioMessage,
   }
 }
 

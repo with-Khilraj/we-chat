@@ -9,6 +9,7 @@ import { debounce, } from "lodash";
 import { useOnlineUsers } from "../../context/onlineUsersContext";
 import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
+import { Search, Settings, ShieldAlert, LogOut, MoreVertical } from "lucide-react";
 import menu from '../../assets/menu.png';
 
 const Sidebar = () => {
@@ -146,13 +147,22 @@ const Sidebar = () => {
           )}
         </div>
         <div className="more-menu" onClick={toggleDropup} ref={moreMenuRef}>
-          <img className="more-menu-img" src={menu} alt="more" />
+          <MoreVertical size={24} />
         </div>
         <div ref={dropupRef} className={`dropup-menu ${isDropupOpen ? 'open' : ''}`} >
           <ul>
-            <li onClick={() => navigate('')}>Settings</li>
-            <li onClick={() => navigate('')}>Report a problem</li>
-            <li onClick={handleLogout}>Logout</li>
+            <li onClick={() => navigate('')}>
+              <Settings size={18} />
+              <span>Settings</span>
+            </li>
+            <li onClick={() => navigate('')}>
+              <ShieldAlert size={18} />
+              <span>Report a problem</span>
+            </li>
+            <li onClick={handleLogout}>
+              <LogOut size={18} />
+              <span>Logout</span>
+            </li>
           </ul>
         </div>
       </div>
@@ -160,13 +170,16 @@ const Sidebar = () => {
       <div className="sidebar">
         {/* Search Bar */}
         <div className="search-container">
-          <input
-            type="text"
-            placeholder="Search"
-            className="search-input"
-            value={search}
-            onChange={(e) => debounceSetSearch(e.target.value)}
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <input
+              type="text"
+              placeholder="Search messages..."
+              className="search-input pl-10"
+              value={search}
+              onChange={(e) => debounceSetSearch(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Users List */}
@@ -209,7 +222,7 @@ const Sidebar = () => {
 
                     {recentMessages[user._id] && (
                       <>
-                        <span className="message-timestamp">
+                        <span className="sidebar-message-timestamp">
                           {formatTimestamp(recentMessages[user._id].timestamp)}
                         </span>
                       </>

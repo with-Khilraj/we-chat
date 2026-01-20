@@ -19,6 +19,7 @@ import { AnimatePresence } from "framer-motion";
 import "./global.css"
 import ForgotPasswordPage from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import WelcomeState from "./component/dash/WelcomeState";
 
 const CallComponents = () => {
   const {
@@ -71,7 +72,7 @@ const AppContent = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<Dashboard />}>
-              <Route index element={<div className="h-full flex items-center justify-center text-gray-400">Select a user to start chatting</div>} />
+              <Route index element={<WelcomeState />} />
               <Route path="chat/:userId" element={<ChatContainer />} />
             </Route>
             <Route path="/profile" element={<Profile />} />

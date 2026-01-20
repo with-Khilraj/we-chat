@@ -57,7 +57,19 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: function () { return this.messageType !== 'text'; },
       enum: {
-        values: ['image/jpeg', 'image/png', 'video/mp4', 'audio/mpeg', 'application/pdf'],
+        values: [
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+          'video/mp4',
+          'video/webm',
+          'audio/mpeg',
+          'audio/webm',
+          'audio/mp4',
+          'audio/ogg',
+          'audio/wav',
+          'application/pdf'
+        ],
         message: '{VALUE} is not a supported file type',
       },
     },

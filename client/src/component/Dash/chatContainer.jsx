@@ -12,6 +12,7 @@ import { useParams, useOutletContext } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../Api";
 import MediaCluster from "./MediaCluster";
+import AudioRecordingBar from "./AudioRecordingBar";
 
 const ChatContainer = () => {
   const { currentUser } = useOutletContext();
@@ -54,6 +55,16 @@ const ChatContainer = () => {
     handleTypingEvent,
     handleInitiateCallLocal,
     toggleProfileInfo,
+    //audio recording
+    audioRecordingState,
+    audioDuration,
+    audioCurrentTime,
+    startAudioRecording,
+    stopAudioRecording,
+    cancelAudioRecording,
+    playAudioPreview,
+    pauseAudioPreview,
+    sendAudioMessage,
   } = useChat(selectedUser, currentUser);
 
   const { isCalling, localStream, remoteStream, initiateCall } = useCall();
@@ -134,166 +145,140 @@ const ChatContainer = () => {
 
         <div className="chat-messages">
           {(() => {
-            // Group messages by type for clustering media
-            const clusteredMessages = [];
-            let currentCluster = null;
+            // Step 1: Group messages by sender AND time proximity (5-minute window)
+            const timeBasedGroups = [];
+            let currentGroup = null;
 
             messages.forEach((msg) => {
-              const isMedia = ['photo', 'video'].includes(msg.messageType);
-
-              if (currentCluster &&
-                currentCluster.senderId === msg.senderId &&
-                isMedia && currentCluster.isMedia) {
-                currentCluster.messages.push(msg);
-              } else {
-                if (currentCluster) clusteredMessages.push(currentCluster);
-                currentCluster = {
+              // Start a new group if sender changes OR time gap >= 5 minutes
+              if (!currentGroup || shouldStartNewGroup(msg, currentGroup.messages[currentGroup.messages.length - 1])) {
+                if (currentGroup) timeBasedGroups.push(currentGroup);
+                currentGroup = {
                   id: msg._id || msg.tempId,
                   senderId: msg.senderId,
-                  isMedia, // Only true if it's photo/video
                   messages: [msg],
                   createdAt: msg.createdAt
                 };
+              } else {
+                currentGroup.messages.push(msg);
               }
             });
-            if (currentCluster) clusteredMessages.push(currentCluster);
+            if (currentGroup) timeBasedGroups.push(currentGroup);
 
-            return clusteredMessages.map((cluster, clusterIndex) => {
-              const isCurrentUser = cluster.senderId === currentUser._id;
+            // Step 2: Render each time-based group
+            return timeBasedGroups.map((group, groupIndex) => {
+              const prevGroup = timeBasedGroups[groupIndex - 1];
+              const isCurrentUser = group.senderId === currentUser._id;
               const senderUser = isCurrentUser ? currentUser : selectedUser;
-              const nextCluster = clusteredMessages[clusterIndex + 1];
-              const prevCluster = clusteredMessages[clusterIndex - 1];
 
-              // Determine if this cluster is the end of a sequence from this user
-              const isLastBlockOfGroup = !nextCluster || nextCluster.senderId !== cluster.senderId;
+              // Show timestamp if there's a 30+ minute gap
+              const showTimeStamp = shouldDisplayTimeStamp(group.messages[0], prevGroup?.messages[prevGroup.messages.length - 1]);
 
-              // Timestamp is based on the first message of the cluster vs previous cluster last message
-              const showTimeStamp = shouldDisplayTimeStamp(cluster.messages[0], prevCluster?.messages[prevCluster.messages.length - 1]);
-
-              // If it's a media cluster with MULTIPLE images -> Render Grid/Cluster
-              if (cluster.isMedia && cluster.messages.length > 1) {
-                return (
-                  <div key={cluster.id}>
-                    {showTimeStamp && (
-                      <div className="message-timestamp">
-                        {moment(cluster.createdAt || Date.now()).format("D MMM YYYY, HH:mm")}
-                      </div>
-                    )}
-
-                    <div className={`message-group ${isCurrentUser ? "sent" : "received"}`}>
-                      {/* Avatar logic for received messages */}
-                      {!isCurrentUser && (
-                        <div className={`avatar-content ${isLastBlockOfGroup ? '' : 'invisible'}`}>
-                          {isLastBlockOfGroup && (
-                            <div className="message-avatar">
-                              {senderUser.avatar ? <img src={senderUser.avatar} alt="" /> : <span className="message-initial">{senderUser.username.charAt(0).toUpperCase()}</span>}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <MediaCluster
-                        messages={cluster.messages}
-                        isCurrentUser={isCurrentUser}
-                      />
+              return (
+                <div key={group.id || groupIndex} className="message-block">
+                  {/* Centered Timestamp Divider */}
+                  {showTimeStamp && (
+                    <div className="message-timestamp">
+                      {moment(group.createdAt).format("D MMM YYYY, HH:mm")}
                     </div>
-                  </div>
-                );
-              }
+                  )}
 
-              // Standard rendering (Single messages or Non-grouped text)
-              // Note: Our clustering logic puts text one-by-one, so we just render single message here.
-              return cluster.messages.map((message, index) => {
-                // Determine internal Last Message status for this specific message in case of single items
-                const isLastMessageInCluster = index === cluster.messages.length - 1;
-                // For avatar, we need to know if this is the LAST message of the sender's block.
-                // It is if (this is the last cluster of group) AND (this is last message of cluster).
-                const showAvatar = !isCurrentUser && isLastBlockOfGroup && isLastMessageInCluster;
+                  {/* Message Group Container */}
+                  <div className={`message-group ${isCurrentUser ? "sent" : "received"}`}>
+                    {/* Render all messages in this time-based group */}
+                    {group.messages.map((message, msgIndex) => {
+                      const isLastInGroup = msgIndex === group.messages.length - 1;
 
-                return (
-                  <div key={index}>
-                    {/* show timestamp if necessary (handled by cluster above mostly, but for single items logic is same) */}
-                    {showTimeStamp && index === 0 && (
-                      <div className="message-timestamp">
-                        {moment(message.createdAt || Date.now()).format("D MMM YYYY, HH:mm")}
-                      </div>
-                    )}
-
-                    <div className={`message-group ${isCurrentUser ? "sent" : "received"}`}>
-                      {/* Avatar Slot */}
-                      {!isCurrentUser && (
-                        /* We only render the avatar container if it's the last message to maintain spacing/layout? 
-                           Our CSS uses absolute positioning for avatar, but requires padding on .received group.
-                           So we just render the avatar element itself conditionally.
-                        */
-                        showAvatar && (
-                          <div className="avatar-content">
-                            <div className="message-avatar">
-                              {senderUser.avatar ? (
-                                <img src={senderUser.avatar} alt="" />
+                      return (
+                        <div key={message._id || message.tempId || msgIndex} className="message-row">
+                          {/* Avatar Slot for Received Messages */}
+                          {!isCurrentUser && (
+                            <div className="avatar-slot">
+                              {isLastInGroup ? (
+                                <div className="message-avatar">
+                                  {senderUser.avatar ? (
+                                    <img src={senderUser.avatar} alt="" />
+                                  ) : (
+                                    <span className="message-initial">
+                                      {senderUser.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
                               ) : (
-                                <span className="message-initial">{senderUser.username.charAt(0).toUpperCase()}</span>
+                                <div className="avatar-placeholder"></div>
                               )}
                             </div>
-                          </div>
-                        )
-                      )}
+                          )}
 
-                      {/* Message bubble */}
-                      <div className={`message-container ${isCurrentUser ? "sent" : "received"} message-type-${message.messageType}`}>
-                        <div className="message">
-                          <div className="message-content">
-                            {message.messageType === "text" && <p className="text-message">{message.content}</p>}
-                            {message.messageType === "photo" && (
-                              <div className="for-photo">
-                                <img src={message.fileUrl} alt={message.fileName} className="media-message" />
-                              </div>
-                            )}
-                            {message.messageType === "video" && (
-                              <div>
-                                <video controls src={message.fileUrl} className="video-message" />
-                              </div>
-                            )}
-                            {message.messageType === "audio" && (
-                              <div>
-                                <audio controls src={message.fileUrl} className="audio-message" />
-                              </div>
-                            )}
-                            {message.messageType === "file" && (
-                              <div>
-                                <a href={message.fileUrl} download={message.fileName} className="file-message">
-                                  {message.fileName}
-                                </a>
-                              </div>
-                            )}
+                          {/* Message Bubble */}
+                          <div className={`message-container ${isCurrentUser ? "sent" : "received"} message-type-${message.messageType}`}>
+                            <div className="message">
+                              <div className="message-content">
+                                {/* Text Message */}
+                                {message.messageType === "text" && (
+                                  <p className="text-message">{message.content}</p>
+                                )}
 
-                            {/* Hover Icons for received or left */}
-                            {message.senderId !== currentUser._id && (
-                              <div className="message-hover-icons">
-                                <button className="icon-button" >
-                                  <span role="img" aria-label="React">❤️</span>
-                                </button>
-                                <button className="icon-button" >
-                                  <span role="img" aria-label="Reply">↩️</span>
-                                </button>
-                                <button className="icon-button" >
-                                  <span role="img" aria-label="More">⋮</span>
-                                </button>
+                                {/* Photo Message */}
+                                {message.messageType === "photo" && (
+                                  <div className="for-photo">
+                                    <img src={message.fileUrl} alt={message.fileName} className="media-message" />
+                                  </div>
+                                )}
+
+                                {/* Video Message */}
+                                {message.messageType === "video" && (
+                                  <div>
+                                    <video controls src={message.fileUrl} className="video-message" />
+                                  </div>
+                                )}
+
+                                {/* Audio Message */}
+                                {message.messageType === "audio" && (
+                                  <div>
+                                    <audio controls src={message.fileUrl} className="audio-message" />
+                                  </div>
+                                )}
+
+                                {/* File Message */}
+                                {message.messageType === "file" && (
+                                  <div>
+                                    <a href={message.fileUrl} download={message.fileName} className="file-message">
+                                      {message.fileName}
+                                    </a>
+                                  </div>
+                                )}
+
+                                {/* Hover Icons for Received Messages */}
+                                {!isCurrentUser && (
+                                  <div className="message-hover-icons">
+                                    <button className="icon-button">
+                                      <span role="img" aria-label="React">❤️</span>
+                                    </button>
+                                    <button className="icon-button">
+                                      <span role="img" aria-label="Reply">↩️</span>
+                                    </button>
+                                    <button className="icon-button">
+                                      <span role="img" aria-label="More">⋮</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Status Indicator (for sent messages) */}
+                            {isCurrentUser && (
+                              <div className="message-status inside">
+                                {renderStatusIndicator(message.status)}
                               </div>
                             )}
                           </div>
                         </div>
-                        {/* status indicator */}
-                        {message.senderId === currentUser._id && (
-                          <div className="message-status inside">
-                            {renderStatusIndicator(message.status)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
-                )
-              });
+                </div>
+              );
             });
           })()}
 
@@ -315,16 +300,19 @@ const ChatContainer = () => {
 
           {/* Media Staging Preview */}
           {selectedFiles.length > 0 && (
-            <div className="flex gap-2 p-2 mb-2 overflow-x-auto bg-gray-50 rounded-lg border border-gray-100">
-              <button onClick={handleMediaClick} className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-colors">
+            <div className="flex gap-2 p-2 mb-2 overflow-x-auto bg-gray-50 rounded-lg border border-gray-100 scrollbar-hide">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-colors"
+              >
                 <Plus size={24} className="text-gray-600" />
               </button>
               {selectedFiles.map((file, index) => (
-                <div key={index} className="relative flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden border border-gray-300 group">
+                <div key={index} className="relative flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden border border-gray-300 group shadow-lg">
                   {file.type.startsWith('image') ? (
                     <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-center p-1 break-words bg-white text-gray-700">
+                    <div className="w-full h-full flex items-center justify-center text-xs text-center p-1 break-words text-gray-700">
                       {file.name.slice(0, 8)}...
                     </div>
                   )}
@@ -339,53 +327,66 @@ const ChatContainer = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2">
-
-            {/* Media Action */}
-            <button
-              onClick={handleMediaClick}
-              className="p-2 text-gray-500 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-colors"
-              title="Upload Media"
-            >
-              <Image size={20} />
-            </button>
-
-            {/* Audio Action */}
-            <button
-              onClick={handleAudioRecording}
-              className="p-2 text-gray-500 hover:text-red-500 hover:bg-gray-200 rounded-full transition-colors"
-              title="Record Audio"
-            >
-              <Mic size={20} />
-            </button>
-
-            {/* Text Input */}
-            <input
-              type="text"
-              value={newMessage}
-              onChange={handleTypingEvent}
-              placeholder="Type a message..."
-              className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-500 px-2"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !isUploading && (newMessage.trim() || selectedFiles.length > 0)) {
-                  handleSendMessage();
-                }
-              }}
+          {/* Conditional Rendering: Audio Recording UI or Normal Input */}
+          {audioRecordingState !== 'idle' ? (
+            <AudioRecordingBar
+              state={audioRecordingState}
+              duration={audioDuration}
+              currentTime={audioCurrentTime}
+              onCancel={cancelAudioRecording}
+              onStop={stopAudioRecording}
+              onPlay={playAudioPreview}
+              onPause={pauseAudioPreview}
+              onSend={sendAudioMessage}
             />
+          ) : (
+            <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2">
+              {/* Media Action */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 text-gray-500 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-colors"
+                title="Upload Media"
+              >
+                <Image size={20} />
+              </button>
 
-            {/* Send Button */}
-            <button
-              onClick={() => handleSendMessage()}
-              disabled={isUploading || (!newMessage.trim() && selectedFiles.length === 0)}
-              className={`p-2 rounded-full transition-colors ${isUploading || (!newMessage.trim() && selectedFiles.length === 0)
-                ? "text-gray-400 cursor-not-allowed"
-                : "text-blue-500 hover:bg-blue-100"
-                }`}
-              title="Send Message"
-            >
-              <Send size={20} />
-            </button>
-          </div>
+              {/* Audio Action */}
+              <button
+                onClick={startAudioRecording}
+                className="p-2 text-gray-500 hover:text-red-500 hover:bg-white/5 rounded-full transition-colors"
+                title="Record Audio"
+              >
+                <Mic size={20} />
+              </button>
+
+              {/* Text Input */}
+              <input
+                type="text"
+                value={newMessage}
+                onChange={handleTypingEvent}
+                placeholder="Type a message..."
+                className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder-gray-500 px-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isUploading && (newMessage.trim() || selectedFiles.length > 0)) {
+                    handleSendMessage();
+                  }
+                }}
+              />
+
+              {/* Send Button */}
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={isUploading || (!newMessage.trim() && selectedFiles.length === 0)}
+                className={`p-2.5 rounded-full transition-colors shadow-lg ${isUploading || (!newMessage.trim() && selectedFiles.length === 0)
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-blue-500 hover:bg-blue-100"
+                  }`}
+                title="Send Message"
+              >
+                <Send size={20} />
+              </button>
+            </div>
+          )}
 
           {/* Hidden file input for media (photos, videos, files) */}
           <input
@@ -422,8 +423,8 @@ const ChatContainer = () => {
           {/* Profile content goes here */}
           <p>Additional details about the current user...</p>
         </div>
-
       </div>
+
     </>
   );
 };

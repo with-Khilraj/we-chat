@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 import SidebarMenu from "./SidebarMenu";
 import SidebarSearch from "./SidebarSearch";
 import SidebarList from "./SidebarList";
+import socket from "../../../utils/useSocket";
 
 const Sidebar = () => {
   const accessToken = localStorage.getItem("accessToken");
@@ -19,6 +20,9 @@ const Sidebar = () => {
   const [search, setSearch] = useState("");
   const onlineUsers = useOnlineUsers();
   const { userId } = useParams();
+
+  // Track typing users globally
+  const [typingUsers, setTypingUsers] = useState(new Map());
 
   // Filter users based on the search input and sort the chat list based on the timestamp
   const filteredUsers = useMemo(() => {
@@ -45,6 +49,39 @@ const Sidebar = () => {
     };
   }, [debounceSetSearch]);
 
+  // Listen for typing events from all users
+  useEffect(() => {
+    const handleTyping = (data) => {
+      if (data.isTyping && data.username) {
+        // Extract userId from roomId (format: userId1-userId2)
+        const [user1, user2] = data.roomId.split('-');
+        // Determine which user is typing (not the logged-in user)
+        const typingUserId = user1 === loggedInUser._id ? user2 : user1;
+
+        setTypingUsers(prev => {
+          const newMap = new Map(prev);
+          newMap.set(typingUserId, data.username);
+          return newMap;
+        });
+      } else if (data.roomId) {
+        // User stopped typing
+        const [user1, user2] = data.roomId.split('-');
+        setTypingUsers(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(user1);
+          newMap.delete(user2);
+          return newMap;
+        });
+      }
+    };
+
+    socket.on('typing', handleTyping);
+
+    return () => {
+      socket.off('typing', handleTyping);
+    };
+  }, [loggedInUser]);
+
   if (loading) {
     return <div className="sidebar">Loading...</div>;
   }
@@ -64,6 +101,7 @@ const Sidebar = () => {
           recentMessages={recentMessages}
           onlineUsers={onlineUsers}
           currentUserId={loggedInUser?._id}
+          typingUsers={typingUsers}
         />
       </div>
     </>

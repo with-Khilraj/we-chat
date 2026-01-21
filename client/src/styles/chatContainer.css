@@ -64,10 +64,10 @@
 
 .online-indicator {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 12px;
-  height: 12px;
+  bottom: 2px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
   background-color: #10b981;
   border-radius: 50%;
   border: 3px solid var(--primary-bg);

@@ -3,7 +3,7 @@ import { useNavigate, Outlet } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/ReactToastify.css";
 import { useAuth } from "../context/AuthContext";
-import socket from "../hooks/useSocket";
+import socket from "../utils/useSocket";
 import "../styles/dashboard.css";
 import Sidebar from "../component/dash/sidebar/Sidebar";
 import "../global.css"

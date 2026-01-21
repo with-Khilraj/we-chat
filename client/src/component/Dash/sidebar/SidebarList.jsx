@@ -6,6 +6,7 @@ const SidebarList = ({
     userId,
     recentMessages,
     onlineUsers,
+    typingUsers = new Map(), // Add typingUsers prop
 }) => {
     const navigate = useNavigate();
 
@@ -72,27 +73,32 @@ const SidebarList = ({
                         </div>
                         <div className="user-info-sidebar">
                             <h4 className="user-name">{user.username}</h4>
-                            <div className="user-message-container">
-                                {recentMessages[user._id]?.unreadCount > 2 ? (
-                                    <span className="unread-count">
-                                        {recentMessages[user._id].unreadCount} new messages
-                                    </span>
-                                ) : (
-                                    // <p className={`user-message ${!recentMessages[user._id]?.seen ? 'unseen' : ''}`}>
-                                    <p className="user-message">
-                                        {truncateMessage(recentMessages[user._id]?.message) ||
-                                            "No messages yet"}
-                                    </p>
-                                )}
 
-                                {recentMessages[user._id] && (
-                                    <>
-                                        <span className="sidebar-message-timestamp">
-                                            {formatTimestamp(recentMessages[user._id].timestamp)}
+                            {/* Show typing indicator if user is typing */}
+                            {typingUsers.has(user._id) ? (
+                                <p className="user-typing">typing...</p>
+                            ) : (
+                                <div className="user-message-container">
+                                    {recentMessages[user._id]?.unreadCount > 2 ? (
+                                        <span className="unread-count">
+                                            {recentMessages[user._id].unreadCount} new messages
                                         </span>
-                                    </>
-                                )}
-                            </div>
+                                    ) : (
+                                        <p className="user-message">
+                                            {truncateMessage(recentMessages[user._id]?.message) ||
+                                                "No messages yet"}
+                                        </p>
+                                    )}
+
+                                    {recentMessages[user._id] && (
+                                        <>
+                                            <span className="sidebar-message-timestamp">
+                                                {formatTimestamp(recentMessages[user._id].timestamp)}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         {!recentMessages[user._id]?.seen && recentMessages[user._id] && (
                             <span className="blue-dot"></span>

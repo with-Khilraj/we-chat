@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import socket from "../hooks/useSocket.js";
+import socket from "../utils/useSocket.js";
 
 const OnlineUsersContext = createContext();
 
@@ -21,7 +21,7 @@ export const OnlineUsersProvider = ({ children }) => {
 
   return (
     <OnlineUsersContext.Provider value={(onlineUsers)}>
-      {children } 
+      {children}
     </OnlineUsersContext.Provider>
   );
 };

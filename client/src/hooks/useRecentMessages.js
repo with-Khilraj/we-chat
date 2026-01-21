@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getRecentMessages } from "../services/chatService";
-import socket from "./useSocket";
+import socket from "../utils/useSocket";
 
 export const useRecentMessages = (loggedInUser, accessToken) => {
   const [recentMessages, setRecentMessages] = useState({});

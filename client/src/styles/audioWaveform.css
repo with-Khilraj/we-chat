@@ -1,0 +1,76 @@
+.audio-waveform-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    min-width: 250px;
+    max-width: 300px;
+}
+
+.audio-waveform-container.sent {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.audio-waveform-container.received {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.waveform-play-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.sent .waveform-play-button {
+    color: white;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.sent .waveform-play-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.received .waveform-play-button {
+    color: #0084ff;
+    background: rgba(0, 132, 255, 0.1);
+}
+
+.received .waveform-play-button:hover {
+    background: rgba(0, 132, 255, 0.2);
+}
+
+.waveform-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.waveform {
+    width: 100%;
+    cursor: pointer;
+}
+
+.waveform-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.sent .waveform-time {
+    color: white;
+}
+
+.received .waveform-time {
+    color: #333;
+}

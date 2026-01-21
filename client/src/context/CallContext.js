@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer, useCallback, useMemo } from "react";
-import socket from "../hooks/useSocket";
-import {api} from "../Api";
+import socket from "../utils/useSocket";
+import { api } from "../Api";
 
 // ======================
 // Constants & Types
@@ -303,10 +303,10 @@ export const CallProvider = ({ children, currentUser }) => {
     };
 
     const handleOffer = async ({ roomId, offer }) => {
-      if(state.roomId === roomId && state.status === callStates.RINGING_INCOMING) {
+      if (state.roomId === roomId && state.status === callStates.RINGING_INCOMING) {
         try {
           const pc = state.peerConnection || (await setupWebRTC(roomId));
-          if(!pc) throw new Error("Failed to setup WebRTC");
+          if (!pc) throw new Error("Failed to setup WebRTC");
 
           await pc.setRemoteDescription(new RTCSessionDescription(offer));
           const answer = await pc.createAnswer();
@@ -327,10 +327,10 @@ export const CallProvider = ({ children, currentUser }) => {
     }
 
     const handleAnswer = ({ roomId, answer }) => {
-      if(state.peerConnection && state.roomId === roomId && state.status === callStates.RINGING_OUTGOING) {
+      if (state.peerConnection && state.roomId === roomId && state.status === callStates.RINGING_OUTGOING) {
         state.peerConnection.setRemoteDescription(new RTCSessionDescription(answer)).catch(err => {
           dispatch({
-            type: ACTIONS.ERROR, 
+            type: ACTIONS.ERROR,
             error: "Failed to set remote description "
           });
           endCall();
@@ -354,7 +354,7 @@ export const CallProvider = ({ children, currentUser }) => {
       }
     });
     socket.on('call-ended', ({ roomId }) => {
-      if(state.roomId === roomId) {
+      if (state.roomId === roomId) {
         cleanupResources(state.peerConnection, state.localStream);
         dispatch({ type: ACTIONS.END_CALL });
       }
@@ -449,8 +449,8 @@ export const CallProvider = ({ children, currentUser }) => {
   // ======================
   // Context Value
   // ======================
-  
-  
+
+
   const contextValue = useMemo(() => ({
     callState: state.status,
     localStream: state.localStream,

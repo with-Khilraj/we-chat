@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../Api';
-import socket from './useSocket';
+import socket from '../utils/useSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidObjectId, getMediaDuration } from '../utils/chatUtils';
 import { useCall } from '../context/CallContext';
@@ -21,6 +21,7 @@ export const useChat = (selectedUser, currentUser) => {
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null); // State for the message being replied to
   const [activeEmojiPicker, setActiveEmojiPicker] = useState(null); // Track which message's picker is open
+  const [typingUsername, setTypingUsername] = useState(''); // Store username of typing user
 
   // audio recording states
   const [audioRecordingState, setAudioRecordingState] = useState('idle'); // 'idle' | 'recording' | 'stopped' | 'playing'
@@ -116,6 +117,12 @@ export const useChat = (selectedUser, currentUser) => {
     };
     fetchChatHistory();
 
+    // Load draft message for this room
+    const draftKey = `draft_${roomId}`;
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      setNewMessage(savedDraft);
+    }
 
     const handleReceiveMessage = (data) => {
       setMessages((prevMessages) => {
@@ -140,6 +147,8 @@ export const useChat = (selectedUser, currentUser) => {
     // clean up function
     return () => {
       socket.off("receive-message", handleReceiveMessage);
+      // Clear draft when leaving room
+      localStorage.removeItem(draftKey);
       socket.emit('leave-room', roomId);
     };
   }, [selectedUser, currentUser, getRoomId]);
@@ -266,21 +275,26 @@ export const useChat = (selectedUser, currentUser) => {
 
   // function to handle the typing event
   const handleTypingEvent = useCallback((e) => {
-    setNewMessage(e.target.value);
+    const value = e.target.value;
+    setNewMessage(value);
     const roomId = getRoomId();
-    if (!roomId) return;
+    if (!roomId || !currentUser) return;
+
+    // Save draft to localStorage (debounced)
+    const draftKey = `draft_${roomId}`;
+    localStorage.setItem(draftKey, value);
 
     if (!isTyping) {
-      socket.emit('typing', { roomId, isTyping: true });
+      socket.emit('typing', { roomId, isTyping: true, username: currentUser.username });
       setIsTyping(true);
     }
 
     clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => {
-      socket.emit('typing', { roomId, isTyping: false });
+      socket.emit('typing', { roomId, isTyping: false, username: currentUser.username });
       setIsTyping(false);
     }, 1000);
-  }, [isTyping, getRoomId]);
+  }, [isTyping, getRoomId, currentUser]);
 
   // Trigger file input when an icon is clicked
   const handleMediaClick = (type) => {
@@ -531,6 +545,12 @@ export const useChat = (selectedUser, currentUser) => {
       if (newMessage.trim()) {
         await sendSingleMessage(newMessage.trim(), null);
         setNewMessage("");
+
+        // Clear draft from localStorage
+        const roomId = getRoomId();
+        if (roomId) {
+          localStorage.removeItem(`draft_${roomId}`);
+        }
       }
 
       // 2. Send all staged files
@@ -593,6 +613,7 @@ export const useChat = (selectedUser, currentUser) => {
     const handleTyping = (data) => {
       if (data.roomId === roomId) {
         setIsOtherUserTyping(data.isTyping);
+        setTypingUsername(data.isTyping ? data.username || '' : '');
       }
     };
 
@@ -722,6 +743,7 @@ export const useChat = (selectedUser, currentUser) => {
     activeEmojiPicker,
     setActiveEmojiPicker,
     emojiPickerRef,
+    typingUsername,
   }
 }
 

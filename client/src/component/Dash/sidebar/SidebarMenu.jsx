@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../Api";
 import { toast } from "react-toastify";
-import socket from "../../../hooks/useSocket";
+import socket from "../../../utils/useSocket";
 
 const SidebarMenu = () => {
     const { currentUser: loggedInUser, logout } = useAuth();
@@ -73,7 +73,7 @@ const SidebarMenu = () => {
                 </div>
                 <div className="menu-icon" onClick={() => toast.info("Notifications feature coming soon!")}>
                     <Bell size={24} />
-                </div> 
+                </div>
             </div>
 
             <div className="more-menu" onClick={toggleDropup} ref={moreMenuRef}>

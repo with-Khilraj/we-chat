@@ -12,6 +12,7 @@ import { useParams, useOutletContext } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../Api";
 import AudioRecordingBar from "./AudioRecordingBar";
+import AudioWaveform from "./AudioWaveform";
 
 const ChatContainer = () => {
   const { currentUser } = useOutletContext();
@@ -71,6 +72,7 @@ const ChatContainer = () => {
     activeEmojiPicker,
     setActiveEmojiPicker,
     emojiPickerRef,
+    typingUsername,
   } = useChat(selectedUser, currentUser);
 
   const { isCalling, localStream, remoteStream, initiateCall } = useCall();
@@ -221,7 +223,11 @@ const ChatContainer = () => {
                           )}
 
                           {/* Message Bubble */}
-                          <div className={`message-container ${isCurrentUser ? "sent" : "received"} message-type-${message.messageType}`}>
+                          <div
+                            className={`message-container ${isCurrentUser ? "sent" : "received"} message-type-${message.messageType}`}
+                            onDoubleClick={() => handleReaction(message._id, '❤️')}
+                            style={{ cursor: 'pointer' }}
+                          >
 
                             {/* Reply Preview Bubble */}
                             {parentMessage && (
@@ -261,9 +267,10 @@ const ChatContainer = () => {
 
                                 {/* Audio Message */}
                                 {message.messageType === "audio" && (
-                                  <div>
-                                    <audio controls src={message.fileUrl} className="audio-message" />
-                                  </div>
+                                  <AudioWaveform
+                                    audioUrl={message.fileUrl}
+                                    isCurrentUser={isCurrentUser}
+                                  />
                                 )}
 
                                 {/* File Message */}
@@ -340,11 +347,7 @@ const ChatContainer = () => {
           {/* Add typing indicator */}
           {isOtherUserTyping && (
             <div className="typing-indicator received">
-              <div className="typing-dots">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+              <span className="typing-username">{typingUsername || selectedUser?.username} is typing...</span>
             </div>
           )}
           <div ref={messageEndRef}></div>

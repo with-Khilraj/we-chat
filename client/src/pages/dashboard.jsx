@@ -5,15 +5,11 @@ import "react-toastify/ReactToastify.css";
 import { useAuth } from "../context/AuthContext";
 import socket from "../hooks/useSocket";
 import "../styles/dashboard.css";
-import ChatContainer from "../component/dash/chatContainer";
-import Sidebar from "../component/dash/sidebar";
+import Sidebar from "../component/dash/sidebar/Sidebar";
 import "../global.css"
 
 const Dashboard = () => {
   const { currentUser, loading } = useAuth();
-  // const [userInfo, setUserInfo] = useState(null);
-  // const [error, setError] = useState(null);
-
 
   useEffect(() => {
     if (currentUser) {

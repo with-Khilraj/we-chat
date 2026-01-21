@@ -8,9 +8,9 @@
   z-index: 10;
   background: linear-gradient(
     180deg,
-    rgba(81, 49, 144, 0.985) 0%,
-    rgba(77, 57, 138, 0.94) 45%,
-    rgba(97, 75, 175, 0.97) 100%
+    rgba(58, 89, 217, 0.985) 0%,
+    rgba(93, 79, 137, 0.94) 45%,
+    rgba(120, 105, 173, 0.97) 100%
   );
 
 }
@@ -19,7 +19,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background-color: #4B4A78;
+  background-color: #f3f3f3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,7 +33,7 @@
 }
 
 .user-profile span {
-  color: white;
+  color: rgb(33, 33, 33);
   font-weight: 600;
   font-size: 18px;
 }

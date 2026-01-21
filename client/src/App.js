@@ -4,7 +4,7 @@ import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
-import Sidebar from "./component/dash/sidebar";
+import Sidebar from "./component/dash/sidebar/Sidebar";
 import ChatContainer from "./component/dash/chatContainer";
 import { OnlineUsersProvider } from ".//context/onlineUsersContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";

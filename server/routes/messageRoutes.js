@@ -22,4 +22,10 @@ router.put('/:messageId/status', verifyAccessToken, messageController.updateMess
 // get all messages between two users using 'roomId'
 router.get("/:roomId", verifyAccessToken, messageController.getMessagesByRoomId);
 
+// Add reaction to a message
+router.post("/:messageId/reactions", verifyAccessToken, messageController.addReaction);
+
+// Remove reaction from a message
+router.delete("/:messageId/reactions", verifyAccessToken, messageController.removeReaction);
+
 module.exports = router;

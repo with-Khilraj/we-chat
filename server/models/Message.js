@@ -88,7 +88,18 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: false
     },
-    reaction: String,
+    // reaction: String, // Old field, removing/replacing
+    reactions: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        emoji: String
+      }
+    ],
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Message',
+      default: null
+    },
     edited: { type: Boolean, default: false },
     pinned: { type: Boolean, default: false },
     forwarded: { type: Boolean, default: false },

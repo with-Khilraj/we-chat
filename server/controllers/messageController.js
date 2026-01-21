@@ -20,6 +20,7 @@ exports.sendMessage = async (req, res) => {
         duration,
         caption,
         status,
+        replyTo, // Get replyTo from body
     } = req.body;
 
     console.log("Request Body:", req.body);
@@ -76,6 +77,8 @@ exports.sendMessage = async (req, res) => {
                 : {}), // Only include file fields for non-text
             caption,
             status: status || 'sent', // Default status to 'sent'
+            status: status || 'sent', // Default status to 'sent'
+            replyTo: replyTo || null,
             lastMessageTimestamp: new Date(),
             createdAt: new Date(),
         });
@@ -95,7 +98,10 @@ exports.sendMessage = async (req, res) => {
                 messageType: savedMessage.messageType,
                 fileType: savedMessage.fileType,
                 lastMessageTimestamp: savedMessage.lastMessageTimestamp,
+                fileType: savedMessage.fileType,
+                lastMessageTimestamp: savedMessage.lastMessageTimestamp,
                 stauts: savedMessage.status,
+                replyTo: savedMessage.replyTo,
             });
         } else {
             console.warn("Socket.IO instance not found");
@@ -215,3 +221,85 @@ exports.getMessagesByRoomId = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 };
+
+exports.addReaction = async (req, res) => {
+    const { messageId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.user.id; // From verifyAccessToken
+
+    if (!isValidUUID(messageId)) {
+        return res.status(400).json({ error: "Invalid messageId" });
+    }
+
+    try {
+        const message = await Message.findById(messageId);
+        if (!message) return res.status(404).json({ error: "Message not found" });
+
+        // Check if user already reacted
+        const existingReactionIndex = message.reactions.findIndex(
+            (r) => r.userId.toString() === userId
+        );
+
+        if (existingReactionIndex > -1) {
+            // Update existing reaction
+            message.reactions[existingReactionIndex].emoji = emoji;
+        } else {
+            // Add new reaction
+            message.reactions.push({ userId, emoji });
+        }
+
+        await message.save();
+
+        // Emit socket event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('message-reaction-updated', {
+                messageId: message._id,
+                reactions: message.reactions,
+                roomId: message.roomId,
+            });
+        }
+
+        res.status(200).json({ message });
+    } catch (error) {
+        console.error("Error adding reaction:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.removeReaction = async (req, res) => {
+    const { messageId } = req.params;
+    const userId = req.user.id;
+
+    if (!isValidUUID(messageId)) {
+        return res.status(400).json({ error: "Invalid messageId" });
+    }
+
+    try {
+        const message = await Message.findById(messageId);
+        if (!message) return res.status(404).json({ error: "Message not found" });
+
+        // Remove reaction
+        message.reactions = message.reactions.filter(
+            (r) => r.userId.toString() !== userId
+        );
+
+        await message.save();
+
+        // Emit socket event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('message-reaction-updated', {
+                messageId: message._id,
+                reactions: message.reactions,
+                roomId: message.roomId,
+            });
+        }
+
+        res.status(200).json({ message });
+    } catch (error) {
+        console.error("Error removing reaction:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+

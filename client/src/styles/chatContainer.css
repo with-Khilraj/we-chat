@@ -116,7 +116,8 @@
   word-wrap: break-word;
   word-break: break-word;
   min-width: 60px;
-  max-width: 100%;
+  max-width: 65%;
+  /* Constrain bubble width */
 }
 
 /* Remove padding for media messages so they look like full bubbles */
@@ -161,17 +162,22 @@
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: 65%;
+  width: 100%;
+  /* Full width to enable row-level hover */
 }
 
 .message-group.sent .message-row {
   align-self: flex-end;
   flex-direction: row;
+  justify-content: flex-end;
+  /* Align bubble to the right */
 }
 
 .message-group.received .message-row {
   align-self: flex-start;
   flex-direction: row;
+  justify-content: flex-start;
+  /* Align bubble to the left */
 }
 
 /* Avatar Slot */

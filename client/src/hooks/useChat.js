@@ -19,6 +19,8 @@ export const useChat = (selectedUser, currentUser) => {
   const [showProfileInfo, setShowProfileInfo] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // State for the message being replied to
+  const [activeEmojiPicker, setActiveEmojiPicker] = useState(null); // Track which message's picker is open
 
   // audio recording states
   const [audioRecordingState, setAudioRecordingState] = useState('idle'); // 'idle' | 'recording' | 'stopped' | 'playing'
@@ -29,6 +31,7 @@ export const useChat = (selectedUser, currentUser) => {
   const [audioMimeType, setAudioMimeType] = useState(''); // Store actual MIME type
   const audioPreviewRef = useRef(null); // Audio element for playback
   const recordingTimerRef = useRef(null); // Timer interval
+  const emojiPickerRef = useRef(null); // Ref for emoji picker
 
   const typingTimeout = useRef(null);
   const messageEndRef = useRef(null);
@@ -219,6 +222,46 @@ export const useChat = (selectedUser, currentUser) => {
       socket.off('message-seen', handleMessageStatus);
     };
   }, [selectedUser])
+
+  // Handle message reaction updates
+  useEffect(() => {
+    if (!selectedUser) return;
+
+    const handleReactionUpdate = (data) => {
+      console.log('Received reaction update:', data);
+      setMessages((prevMessages) => {
+        return prevMessages.map((msg) => {
+          if (msg._id === data.messageId) {
+            return { ...msg, reactions: data.reactions };
+          }
+          return msg;
+        });
+      });
+    };
+
+    socket.on('message-reaction-updated', handleReactionUpdate);
+
+    return () => {
+      socket.off('message-reaction-updated', handleReactionUpdate);
+    };
+  }, [selectedUser]);
+
+  // Click outside handler for emoji picker
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setActiveEmojiPicker(null);
+      }
+    };
+
+    if (activeEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeEmojiPicker]);
 
 
   // function to handle the typing event
@@ -429,6 +472,7 @@ export const useChat = (selectedUser, currentUser) => {
       // Add duration for audio/video messages
       ...((messageType === 'audio' || messageType === 'video') && { duration }),
       status: "sent",
+      replyTo: replyingTo ? replyingTo._id : null, // Add replyTo ID
     };
 
     try {
@@ -499,6 +543,7 @@ export const useChat = (selectedUser, currentUser) => {
         }
         setSelectedFiles([]);
       }
+      setReplyingTo(null); // Clear reply state after sending
     } catch (err) {
       console.error("Error in batch send:", err);
     } finally {
@@ -580,6 +625,50 @@ export const useChat = (selectedUser, currentUser) => {
     setShowProfileInfo(!showProfileInfo);
   }
 
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleReaction = async (messageId, emoji) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+
+      // Check if user already has this exact reaction
+      const targetMessage = messages.find(m => m._id === messageId);
+      const existingReaction = targetMessage?.reactions?.find(
+        r => (r.userId === currentUser._id || r.userId._id === currentUser._id) && r.emoji === emoji
+      );
+
+      if (existingReaction) {
+        // Remove the reaction
+        await api.delete(`/api/messages/${messageId}/reactions`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+      } else {
+        // Add or update reaction
+        await api.post(`/api/messages/${messageId}/reactions`, { emoji }, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+      }
+
+      // Close picker after reacting
+      setActiveEmojiPicker(null);
+    } catch (error) {
+      console.error("Failed to handle reaction", error);
+    }
+  };
+
+  const removeReaction = async (messageId) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      await api.delete(`/api/messages/${messageId}/reactions`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+    } catch (error) {
+      console.error("Failed to remove reaction", error);
+    }
+  }
+
   return {
     messages,
     setMessages,
@@ -625,6 +714,14 @@ export const useChat = (selectedUser, currentUser) => {
     playAudioPreview,
     pauseAudioPreview,
     sendAudioMessage,
+    replyingTo,
+    setReplyingTo,
+    cancelReply,
+    handleReaction,
+    removeReaction,
+    activeEmojiPicker,
+    setActiveEmojiPicker,
+    emojiPickerRef,
   }
 }
 

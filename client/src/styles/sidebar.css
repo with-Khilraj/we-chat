@@ -1,18 +1,17 @@
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  /* justify-content: space-between;  Removed to allow stacking at top */
   width: 72px;
   padding: 24px 0;
   align-items: center;
   z-index: 10;
-  background: linear-gradient(
-    180deg,
-    rgba(58, 89, 217, 0.985) 0%,
-    rgba(93, 79, 137, 0.94) 45%,
-    rgba(120, 105, 173, 0.97) 100%
-  );
-
+  background: linear-gradient(180deg,
+      rgba(58, 89, 217, 0.985) 0%,
+      rgba(93, 79, 137, 0.94) 45%,
+      rgba(120, 105, 173, 0.97) 100%);
+  height: 100%;
+  /* Ensure it takes full height for margin-top: auto to work */
 }
 
 .user-profile {
@@ -26,6 +25,9 @@
   cursor: pointer;
   transition: all 0.3s ease;
   overflow: hidden;
+  margin-bottom: 30px;
+  /* Added spacing below profile */
+  flex-shrink: 0;
 }
 
 .user-profile:hover {
@@ -44,6 +46,36 @@
   object-fit: cover;
 }
 
+/* NEW: Menu Icons Container */
+.menu-icons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  /* flex: 1; Removed to prevent taking up all space */
+  /* justify-content: center; Removed to stop centering */
+  /* padding-top: 20px; Included in margin-bottom of profile or just gap */
+}
+
+/* NEW: Individual Menu Icon */
+.menu-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateY(-2px);
+}
+
 .more-menu {
   display: flex;
   align-items: center;
@@ -53,12 +85,15 @@
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: auto;
+  /* Push to bottom */
+  flex-shrink: 0;
 }
 
 .more-menu:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+  color: white;
 }
 
 .more-menu-img {
@@ -84,7 +119,7 @@
   width: 100%;
   padding: 12px 16px;
   border-radius: 14px;
-  background-color: rgba(69, 69, 211, 0.3);  border: 1px solid var(--glass-border);
+  box-shadow: 0 0 0 2px rgba(174, 155, 205, 0.763);
   outline: none;
   font-size: 14px;
   transition: all 0.3s ease;
@@ -124,7 +159,7 @@
 }
 
 .sidebar .user-item:hover {
-  background-color: rgba(168, 113, 222, 0.8);
+  background-color: rgba(186, 118, 238, 0.5);
 }
 
 .sidebar .user-item.selected {
@@ -142,7 +177,7 @@
   width: 45px;
   height: 45px;
   border-radius: 16px;
-  background:#c4c4c4;
+  background: #c4c4c4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -209,7 +244,8 @@
 }
 
 .sidebar-message-timestamp::before {
-  content: "·"; /* Dot separator */
+  content: "·";
+  /* Dot separator */
   position: absolute;
   left: -6px;
   color: #7e7e7e;

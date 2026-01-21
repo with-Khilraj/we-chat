@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Settings, ShieldAlert, LogOut, MoreVertical } from "lucide-react";
+import { Settings, ShieldAlert, LogOut, MoreVertical, Bell, User, MessageCircleCodeIcon, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../Api";
@@ -52,7 +52,7 @@ const SidebarMenu = () => {
 
     return (
         <div className="sidebar-menu">
-            <div className="user-profile">
+            <div className="user-profile" onClick={() => navigate('/profile')}>
                 {/* Display initials or profile image */}
                 {loggedInUser?.avatar ? (
                     <img src={loggedInUser.avatar} alt={loggedInUser?.username} />
@@ -60,6 +60,22 @@ const SidebarMenu = () => {
                     <span>{loggedInUser?.username.charAt(0).toUpperCase() || "U"}</span>
                 )}
             </div>
+
+            <div className="menu-icons">
+                <div className="menu-icon" onClick={() => toast.info("New Chat feature coming soon!")}>
+                    <MessageCircleCodeIcon size={24} />
+                </div>
+                <div className="menu-icon" onClick={() => navigate('/profile')}>
+                    <User size={24} />
+                </div>
+                <div className="menu-icon" onClick={() => toast.info("Call History feature coming soon!")}>
+                    <Phone size={24} />
+                </div>
+                <div className="menu-icon" onClick={() => toast.info("Notifications feature coming soon!")}>
+                    <Bell size={24} />
+                </div> 
+            </div>
+
             <div className="more-menu" onClick={toggleDropup} ref={moreMenuRef}>
                 <MoreVertical size={24} />
             </div>

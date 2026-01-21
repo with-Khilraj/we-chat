@@ -1,0 +1,176 @@
+.reply-preview-bubble {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    position: relative;
+    display: flex;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.message-type-photo .reply-preview-bubble,
+.message-type-video .reply-preview-bubble {
+    background-color: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    margin: 6px;
+}
+
+.sent .reply-preview-bubble {
+    background-color: rgba(0, 0, 0, 0.1);
+    /* Darker on sent bubbles for contrast */
+}
+
+.reply-preview-bar {
+    width: 3px;
+    background-color: #ccc;
+    border-radius: 2px;
+    margin-right: 8px;
+}
+
+.reply-preview-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.reply-to-name {
+    font-weight: 600;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.reply-text-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    opacity: 0.7;
+}
+
+/* Reactions Display (Bottom of Message) */
+.message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-top: 4px;
+    position: absolute;
+    bottom: -10px;
+    right: 0;
+    /* Default right alignment */
+    z-index: 5;
+}
+
+.sent .message-reactions {
+    left: 0;
+    right: auto;
+}
+
+.reaction-emoji {
+    background: #fff;
+    border-radius: 10px;
+    padding: 2px 4px;
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border: 1px solid #eee;
+}
+
+
+
+/* Hover Actions (Reply, React Buttons) */
+.message-hover-icons {
+    display: none;
+    /* Hidden by default */
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    /* Position will be handled by modifiers */
+    z-index: 10;
+}
+
+/* Trigger on row hover, but icons are inside container, so we use :hover on row to target child */
+.message-row:hover .message-hover-icons {
+    display: flex;
+}
+
+/* IMPORTANT: The original CSS had icons outside? No, inside. 
+   But the refactor put them logically "next" to visual bubble but physically inside container? 
+   let's check structure. 
+   message-container > (reply preview, message, hover icons) */
+
+/* Right side for Received messages */
+.message-hover-icons.right-side {
+    left: 100%;
+    margin-left: 8px;
+}
+
+/* Left side for Sent messages */
+.message-hover-icons.left-side {
+    right: 100%;
+    margin-right: 8px;
+    flex-direction: row-reverse;
+    /* Flip order so emoji is closer? or keep same? */
+}
+
+.hover-icon-group {
+    background: rgba(255, 255, 255, 0.9);
+    color: black;
+    border-radius: 20px;
+    padding: 2px 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Emoji Popover in Hover Menu */
+.emoji-popover-wrapper {
+    position: relative;
+}
+
+.emoji-popover {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 6px;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    white-space: nowrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.emoji-popover.active {
+    display: flex;
+}
+
+.emoji-popover span {
+    cursor: pointer;
+    font-size: 18px;
+    padding: 2px;
+    transition: transform 0.2s;
+}
+
+.emoji-popover span:hover {
+    transform: scale(1.3);
+}
+
+/* Reply Banner (Above Input) */
+.reply-banner {
+    animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

@@ -1,17 +1,16 @@
 import React from "react";
 import moment from "moment";
 import "../../styles/chatContainer.css";
+import "../../styles/chatContainerExtensions.css"
 import { useOnlineUsers } from "../../context/onlineUsersContext";
 import { useChat } from "../../hooks/useChat";
 import { shouldDisplayTimeStamp, shouldStartNewGroup, renderStatusIndicator } from "../../utils/chatUtils";
-import { Image, Mic, Send, Info, Video, Phone, X, Plus } from "lucide-react";
+import { Image, Mic, Send, Info, Video, Phone, X, Plus, Reply, Smile, MoreVertical } from "lucide-react";
 import { useCall } from "../../context/CallContext";
-// import { useCall } from "../context/CallContextInitial";
 
 import { useParams, useOutletContext } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../Api";
-import MediaCluster from "./MediaCluster";
 import AudioRecordingBar from "./AudioRecordingBar";
 
 const ChatContainer = () => {
@@ -65,6 +64,13 @@ const ChatContainer = () => {
     playAudioPreview,
     pauseAudioPreview,
     sendAudioMessage,
+    replyingTo,
+    setReplyingTo,
+    cancelReply,
+    handleReaction,
+    activeEmojiPicker,
+    setActiveEmojiPicker,
+    emojiPickerRef,
   } = useChat(selectedUser, currentUser);
 
   const { isCalling, localStream, remoteStream, initiateCall } = useCall();
@@ -189,6 +195,10 @@ const ChatContainer = () => {
                     {group.messages.map((message, msgIndex) => {
                       const isLastInGroup = msgIndex === group.messages.length - 1;
 
+                      // Find parent message for reply
+                      const parentMessage = message.replyTo ? messages.find(m => m._id === message.replyTo) : null;
+
+
                       return (
                         <div key={message._id || message.tempId || msgIndex} className="message-row">
                           {/* Avatar Slot for Received Messages */}
@@ -212,6 +222,22 @@ const ChatContainer = () => {
 
                           {/* Message Bubble */}
                           <div className={`message-container ${isCurrentUser ? "sent" : "received"} message-type-${message.messageType}`}>
+
+                            {/* Reply Preview Bubble */}
+                            {parentMessage && (
+                              <div className="reply-preview-bubble">
+                                <div className="reply-preview-bar"></div>
+                                <div className="reply-preview-content">
+                                  <span className="reply-to-name">
+                                    {parentMessage.senderId === currentUser._id ? "You" : selectedUser.username} replied
+                                  </span>
+                                  <p className="reply-text-truncate">
+                                    {parentMessage.messageType === 'text' ? parentMessage.content : `[${parentMessage.messageType}]`}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
                             <div className="message">
                               <div className="message-content">
                                 {/* Text Message */}
@@ -249,20 +275,49 @@ const ChatContainer = () => {
                                   </div>
                                 )}
 
-                                {/* Hover Icons for Received Messages */}
-                                {!isCurrentUser && (
-                                  <div className="message-hover-icons">
-                                    <button className="icon-button">
-                                      <span role="img" aria-label="React">❤️</span>
-                                    </button>
-                                    <button className="icon-button">
-                                      <span role="img" aria-label="Reply">↩️</span>
-                                    </button>
-                                    <button className="icon-button">
-                                      <span role="img" aria-label="More">⋮</span>
-                                    </button>
-                                  </div>
-                                )}
+
+                              </div>
+
+                              {/* Reactions Display */}
+                              {message.reactions && message.reactions.length > 0 && (
+                                <div className="message-reactions">
+                                  {message.reactions.map((reaction, i) => (
+                                    <span key={i} className="reaction-emoji">{reaction.emoji}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Hover Icons (For BOTH Sent and Received) */}
+                            <div className={`message-hover-icons ${isCurrentUser ? 'left-side' : 'right-side'}`}>
+                              <div className="hover-icon-group">
+                                {/* Emoji Picker Popover (Click-based) */}
+                                <div className="emoji-popover-wrapper" ref={activeEmojiPicker === message._id ? emojiPickerRef : null}>
+                                  <button
+                                    className="icon-button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveEmojiPicker(activeEmojiPicker === message._id ? null : message._id);
+                                    }}
+                                  >
+                                    <Smile size={16} />
+                                  </button>
+                                  {activeEmojiPicker === message._id && (
+                                    <div className="emoji-popover active">
+                                      {['❤️', '😂', '😮', '😢', '😡', '👍'].map(emoji => (
+                                        <span key={emoji} onClick={() => handleReaction(message._id, emoji)}>{emoji}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <button className="icon-button" onClick={() => setReplyingTo(message)}>
+                                  <Reply size={16} />
+                                </button>
+
+                                <button className="icon-button">
+                                  <MoreVertical size={16} />
+                                </button>
                               </div>
                             </div>
 
@@ -297,6 +352,25 @@ const ChatContainer = () => {
 
         {/* message input */}
         <div className="p-4 bg-white border-t border-gray-200">
+
+          {/* Reply Banner */}
+          {replyingTo && (
+            <div className="reply-banner">
+              <div className="flex justify-between items-center w-full px-4 py-2 bg-gray-50 rounded-t-lg border-b border-gray-200">
+                <div className="flex flex-col">
+                  <span className="text-xs text-blue-500 font-semibold">
+                    Replying to {replyingTo.senderId === currentUser._id ? "yourself" : selectedUser.username}
+                  </span>
+                  <span className="text-sm text-gray-600 truncate max-w-xs">
+                    {replyingTo.messageType === 'text' ? replyingTo.content : `[${replyingTo.messageType}]`}
+                  </span>
+                </div>
+                <button onClick={cancelReply} className="text-gray-500 hover:text-gray-700">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Media Staging Preview */}
           {selectedFiles.length > 0 && (

@@ -16,6 +16,7 @@ const AudioWaveform = ({ audioUrl, isCurrentUser }) => {
         if (ws && !ws.isDestroyed) {
             try {
                 ws.destroy();
+                ws.isDestroyed = true; // custom flag to prevent double destroy
             } catch (err) {
                 if (err.name !== 'AbortError') {
                     console.error('Error destroying wavesurfer:', err);
@@ -27,9 +28,10 @@ const AudioWaveform = ({ audioUrl, isCurrentUser }) => {
     useEffect(() => {
         if (!waveformRef.current || !audioUrl) return;
 
+        // cleanup old instance
         safeDestroy(wavesurfer.current);
 
-        wavesurfer.current = WaveSurfer.create({
+        const ws = WaveSurfer.create({
             container: waveformRef.current,
             waveColor: isCurrentUser ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 132, 255, 0.5)',
             progressColor: isCurrentUser ? '#fff' : '#0084ff',
@@ -42,34 +44,36 @@ const AudioWaveform = ({ audioUrl, isCurrentUser }) => {
             backend: 'WebAudio',
         });
 
-        wavesurfer.current.on('ready', () => {
+        wavesurfer.current = ws;
+
+        ws.on('ready', () => {
             setIsReady(true);
-            setDuration(formatTime(wavesurfer.current.getDuration()));
+            setDuration(formatTime(ws.getDuration()));
         });
 
         // Throttle audioprocess updates
         let lastUpdate = 0;
-        wavesurfer.current.on('audioprocess', () => {
+        ws.on('audioprocess', () => {
             const now = Date.now();
-            if (now - lastUpdate > 200) { // update every 200ms
-                setCurrentTime(formatTime(wavesurfer.current.getCurrentTime()));
+            if (now - lastUpdate > 200) {
+                setCurrentTime(formatTime(ws.getCurrentTime()));
                 lastUpdate = now;
             }
         });
 
-        wavesurfer.current.on('finish', () => {
+        ws.on('finish', () => {
             setIsPlaying(false);
             setCurrentTime('0:00');
         });
 
-        wavesurfer.current.on('error', (error) => {
+        ws.on('error', (error) => {
             console.error('WaveSurfer error:', error);
         });
 
-        wavesurfer.current.load(audioUrl);
+        ws.load(audioUrl);
 
         return () => {
-            safeDestroy(wavesurfer.current);
+            safeDestroy(ws);
         };
     }, [audioUrl, isCurrentUser]);
 

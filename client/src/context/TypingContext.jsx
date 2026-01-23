@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import socket from '../utils/useSocket';
+import { useAuth } from './AuthContext';
 
 const TypingContext = createContext();
 
@@ -12,29 +13,35 @@ export const useTyping = () => {
 };
 
 export const TypingProvider = ({ children }) => {
-    // Map of userId -> username for users who are typing
+    const { currentUser } = useAuth();
+    // Map of userId -> { username, timestamp }
     const [typingUsers, setTypingUsers] = useState(new Map());
 
     useEffect(() => {
+        if (!currentUser) return;
+
         const handleTyping = (data) => {
-            if (data.isTyping && data.username) {
-                // Extract userId from roomId (format: userId1-userId2)
-                const [user1, user2] = data.roomId.split('-');
-                // Determine which user is typing (not the current user)
-                const typingUserId = user1; // We'll refine this logic if needed
+            if (data.isTyping && data.username && data.roomId) {
+                // Extract possible userIds from roomId (format: userId1-userId2)
+                const [u1, u2] = data.roomId.split('-');
+                const otherUserId = u1 === currentUser._id ? u2 : u1;
 
                 setTypingUsers(prev => {
                     const newMap = new Map(prev);
-                    newMap.set(typingUserId, data.username);
+                    newMap.set(otherUserId, {
+                        username: data.username,
+                        timestamp: Date.now()
+                    });
                     return newMap;
                 });
-            } else {
+            } else if (data.roomId) {
                 // User stopped typing
-                const [user1, user2] = data.roomId.split('-');
+                const [u1, u2] = data.roomId.split('-');
+                const otherUserId = u1 === currentUser._id ? u2 : u1;
+
                 setTypingUsers(prev => {
                     const newMap = new Map(prev);
-                    newMap.delete(user1);
-                    newMap.delete(user2);
+                    newMap.delete(otherUserId);
                     return newMap;
                 });
             }
@@ -45,7 +52,7 @@ export const TypingProvider = ({ children }) => {
         return () => {
             socket.off('typing', handleTyping);
         };
-    }, []);
+    }, [currentUser]);
 
     return (
         <TypingContext.Provider value={{ typingUsers }}>
@@ -53,3 +60,4 @@ export const TypingProvider = ({ children }) => {
         </TypingContext.Provider>
     );
 };
+

@@ -9,6 +9,8 @@ import ChatContainer from "./component/dash/chatContainer";
 import { OnlineUsersProvider } from ".//context/onlineUsersContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CallProvider, useCall } from "./context/CallContext";
+import { TypingProvider } from "./context/TypingContext";
+import { DraftProvider } from "./context/DraftContext";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import EmailVerification from "./pages/EmailVerification";
 import FloatingCallWindow from "./component/FloatingCallWindow";
@@ -92,7 +94,11 @@ const App = () => {
   return (
     <AuthProvider>
       <OnlineUsersProvider>
-        <AppContent />
+        <TypingProvider>
+          <DraftProvider>
+            <AppContent />
+          </DraftProvider>
+        </TypingProvider>
       </OnlineUsersProvider>
     </AuthProvider>
   );

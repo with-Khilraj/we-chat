@@ -5,7 +5,7 @@ import socket from '../utils/useSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidObjectId, getMediaDuration } from '../utils/chatUtils';
 import { useCall } from '../context/CallContext';
-// import { useCall } from '../context/CallContextInitial';
+import { useDrafts } from '../context/DraftContext';
 
 export const useChat = (selectedUser, currentUser) => {
   const [messages, setMessages] = useState([]);
@@ -39,6 +39,7 @@ export const useChat = (selectedUser, currentUser) => {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const { handleInitiateCall } = useCall();
+  const { updateDraft, clearDraft, userDrafts } = useDrafts();
 
   // Cleanup audio resources when component unmounts or user changes
   useEffect(() => {
@@ -100,15 +101,6 @@ export const useChat = (selectedUser, currentUser) => {
             messageIds: unreadMessages.map((msg) => msg._id),
             roomId,
           });
-          // await api.put('/api/messages/status/bulk', {
-          //   messageIds: unreadMessages.map((msg) => msg._id), status: 'seen'
-          // },
-          //   {
-          //     headers: {
-          //       Authorization: `Bearer ${accessToken}`,
-          //     },
-          //   }
-          // );
         }
       } catch (error) {
         setError('Failed to load the chat history. Please try again.');
@@ -117,11 +109,11 @@ export const useChat = (selectedUser, currentUser) => {
     };
     fetchChatHistory();
 
-    // Load draft message for this room
-    const draftKey = `draft_${roomId}`;
-    const savedDraft = localStorage.getItem(draftKey);
-    if (savedDraft) {
-      setNewMessage(savedDraft);
+    // Set initial message from global draft state
+    if (userDrafts[selectedUser._id]) {
+      setNewMessage(userDrafts[selectedUser._id]);
+    } else {
+      setNewMessage("");
     }
 
     const handleReceiveMessage = (data) => {
@@ -147,11 +139,9 @@ export const useChat = (selectedUser, currentUser) => {
     // clean up function
     return () => {
       socket.off("receive-message", handleReceiveMessage);
-      // Clear draft when leaving room
-      localStorage.removeItem(draftKey);
       socket.emit('leave-room', roomId);
     };
-  }, [selectedUser, currentUser, getRoomId]);
+  }, [selectedUser, currentUser, getRoomId, userDrafts]);
 
 
   useEffect(() => {
@@ -190,37 +180,6 @@ export const useChat = (selectedUser, currentUser) => {
         return updatedMessages;
       });
     }
-
-    //   const handleMessageStatus = (data) => {
-    //     console.log('Received message status update:', data);
-    //     setMessages((prevMessages) => {
-    //       const updateMessages = prevMessages.map((msg) =>
-    //         data.messageIds?.includes(msg._id)
-    //           ? { ...msg, status: data.status }
-    //           : data.messageId === msg._id
-    //             ? { ...msg, status: data.status }
-    //             : msg
-    //       );
-    //       console.log('Updated Messages:', updateMessages.map(m => ({ id: m._id, status: m.status })));
-    //       return updateMessages;
-    //     });
-
-    //   // if (data.messageIds) {
-    //   //   // Handle bulk message status update
-    //   //   setMessages((prevMessages) =>
-    //   //     prevMessages.map((msg) =>
-    //   //       data.messageIds.includes(msg._id) ? { ...msg, status: data.status } : msg
-    //   //     )
-    //   //   );
-    //   // } else if (data.messageId) {
-    //   //   // Handle single message status update
-    //   //   setMessages((prevMessages) =>
-    //   //     prevMessages.map((msg) =>
-    //   //       msg._id === data.messageId ? { ...msg, status: data.status } : msg
-    //   //     )
-    //   //   );
-    //   // }
-    // };
 
     socket.on('message-sent', handleMessageStatus);
     socket.on('message-seen', handleMessageStatus);
@@ -280,9 +239,8 @@ export const useChat = (selectedUser, currentUser) => {
     const roomId = getRoomId();
     if (!roomId || !currentUser) return;
 
-    // Save draft to localStorage (debounced)
-    const draftKey = `draft_${roomId}`;
-    localStorage.setItem(draftKey, value);
+    // Save draft via centralized context
+    updateDraft(roomId, value);
 
     if (!isTyping) {
       socket.emit('typing', { roomId, isTyping: true, username: currentUser.username });
@@ -294,7 +252,7 @@ export const useChat = (selectedUser, currentUser) => {
       socket.emit('typing', { roomId, isTyping: false, username: currentUser.username });
       setIsTyping(false);
     }, 1000);
-  }, [isTyping, getRoomId, currentUser]);
+  }, [isTyping, getRoomId, currentUser, updateDraft]);
 
   // Trigger file input when an icon is clicked
   const handleMediaClick = (type) => {
@@ -338,7 +296,6 @@ export const useChat = (selectedUser, currentUser) => {
       };
 
       recorder.onstop = () => {
-        // Use the stored MIME type instead of hardcoded 'audio/wav'
         setAudioChunks((latestChunks) => {
           const blob = new Blob(latestChunks, { type: mimeType || recorder.mimeType });
           setAudioBlob(blob);
@@ -439,7 +396,7 @@ export const useChat = (selectedUser, currentUser) => {
     cancelAudioRecording();
   };
 
-  // Legacy function for backward compatibility (can be removed later)
+  // Legacy function for backward compatibility
   const handleAudioRecording = async () => {
     if (audioRecordingState === 'idle') {
       await startAudioRecording();
@@ -478,15 +435,13 @@ export const useChat = (selectedUser, currentUser) => {
       messageType,
       ...(fileToSend && {
         fileUrl: fileToSend instanceof Blob ? URL.createObjectURL(fileToSend) : null,
-        // Generate fileName for Blobs (like audio recordings) that don't have .name
         fileName: fileToSend.name || `recording_${Date.now()}.${messageType === 'audio' ? 'webm' : 'mp4'}`,
         fileSize: fileToSend.size,
         fileType: fileToSend.type,
       }),
-      // Add duration for audio/video messages
       ...((messageType === 'audio' || messageType === 'video') && { duration }),
       status: "sent",
-      replyTo: replyingTo ? replyingTo._id : null, // Add replyTo ID
+      replyTo: replyingTo ? replyingTo._id : null,
     };
 
     try {
@@ -541,29 +496,24 @@ export const useChat = (selectedUser, currentUser) => {
   const handleSendMessage = async () => {
     setIsUploading(true);
     try {
-      // 1. Send text if present
       if (newMessage.trim()) {
         await sendSingleMessage(newMessage.trim(), null);
         setNewMessage("");
 
-        // Clear draft from localStorage
         const roomId = getRoomId();
         if (roomId) {
-          localStorage.removeItem(`draft_${roomId}`);
+          clearDraft(roomId);
         }
       }
 
       // 2. Send all staged files
       if (selectedFiles.length > 0) {
-        // Processing sequentially to maintain order roughly, or parallel?
-        // Parallel is better for speed, but sequential ensures order in chat roughly.
-        // Let's do sequential for now to avoid overwhelming socket/server 
         for (const file of selectedFiles) {
           await sendSingleMessage(null, file);
         }
         setSelectedFiles([]);
       }
-      setReplyingTo(null); // Clear reply state after sending
+      setReplyingTo(null);
     } catch (err) {
       console.error("Error in batch send:", err);
     } finally {
@@ -576,7 +526,6 @@ export const useChat = (selectedUser, currentUser) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // hande file input change
   // hande file input change
   const handleFileInputChange = (e) => {
     const files = Array.from(e.target.files);
@@ -661,18 +610,15 @@ export const useChat = (selectedUser, currentUser) => {
       );
 
       if (existingReaction) {
-        // Remove the reaction
         await api.delete(`/api/messages/${messageId}/reactions`, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
       } else {
-        // Add or update reaction
         await api.post(`/api/messages/${messageId}/reactions`, { emoji }, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
       }
 
-      // Close picker after reacting
       setActiveEmojiPicker(null);
     } catch (error) {
       console.error("Failed to handle reaction", error);
@@ -695,8 +641,6 @@ export const useChat = (selectedUser, currentUser) => {
     setMessages,
     newMessage,
     setNewMessage,
-    newMessage,
-    setNewMessage,
     selectedFiles,
     removeSelectedFile,
     isUploading,
@@ -705,11 +649,6 @@ export const useChat = (selectedUser, currentUser) => {
     showProfileInfo,
     isTyping,
     isOtherUserTyping,
-    // isCalling,
-    // incomingCall,
-    // caller,
-    // callState,
-    // callRoomId,
     messageEndRef,
     fileInputRef,
     handleSendMessage,
@@ -718,14 +657,7 @@ export const useChat = (selectedUser, currentUser) => {
     handleAudioRecording,
     handleTypingEvent,
     handleInitiateCallLocal,
-    // handleInitiateCall: initiateCall,
-    // handleAcceptCall: acceptCall,
-    // handleRejectCall: rejectCall,
-    // handleEndCall: endCall,
-    // localStream,
-    // remoteStream,
     toggleProfileInfo,
-    // Instagram-style audio recording
     audioRecordingState,
     audioDuration,
     audioCurrentTime,
@@ -746,4 +678,3 @@ export const useChat = (selectedUser, currentUser) => {
     typingUsername,
   }
 }
-

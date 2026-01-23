@@ -1,0 +1,86 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext';
+
+const DraftContext = createContext();
+
+export const useDrafts = () => {
+    const context = useContext(DraftContext);
+    if (!context) {
+        throw new Error('useDrafts must be used within a DraftProvider');
+    }
+    return context;
+};
+
+export const DraftProvider = ({ children }) => {
+    const { currentUser } = useAuth();
+    const [userDrafts, setUserDrafts] = useState({});
+
+    const loadDrafts = useCallback(() => {
+        if (!currentUser) {
+            setUserDrafts({});
+            return;
+        }
+
+        const drafts = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('draft_')) {
+                const roomId = key.replace('draft_', '');
+                const [user1, user2] = roomId.split('-');
+
+                // Determine which user is the other person
+                const otherUserId = user1 === currentUser._id ? user2 : user1;
+                const draftMessage = localStorage.getItem(key);
+
+                if (draftMessage && draftMessage.trim()) {
+                    drafts[otherUserId] = draftMessage;
+                }
+            }
+        }
+        setUserDrafts(drafts);
+    }, [currentUser]);
+
+    // Update specific draft and sync storage
+    const updateDraft = useCallback((roomId, content) => {
+        const draftKey = `draft_${roomId}`;
+        if (content && content.trim()) {
+            localStorage.setItem(draftKey, content);
+        } else {
+            localStorage.removeItem(draftKey);
+        }
+        loadDrafts();
+    }, [loadDrafts]);
+
+    // Clear specific draft
+    const clearDraft = useCallback((roomId) => {
+        const draftKey = `draft_${roomId}`;
+        localStorage.removeItem(draftKey);
+        loadDrafts();
+    }, [loadDrafts]);
+
+    useEffect(() => {
+        loadDrafts();
+
+        const handleStorageChange = (e) => {
+            if (e.key && e.key.startsWith('draft_')) {
+                loadDrafts();
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+
+        // Polling as fallback for same-tab updates if events don't fire consistently
+        const interval = setInterval(loadDrafts, 1000);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            clearInterval(interval);
+        };
+    }, [loadDrafts]);
+
+    return (
+        <DraftContext.Provider value={{ userDrafts, updateDraft, clearDraft, reloadDrafts: loadDrafts }}>
+            {children}
+        </DraftContext.Provider>
+    );
+};

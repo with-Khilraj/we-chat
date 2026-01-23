@@ -237,6 +237,20 @@
   /* flex: 1; */
 }
 
+.user-draft {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.draft-label {
+  color: #25d366;
+  font-weight: 600;
+}
+
 .sidebar-message-timestamp {
   font-size: 0.8rem;
   color: #7e7e7e;

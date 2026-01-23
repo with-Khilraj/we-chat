@@ -68,7 +68,7 @@ export const useChat = (selectedUser, currentUser) => {
       : null;
   }, [currentUser, selectedUser]);
 
-  // Fetch chat history and join room
+  // 1. Fetch chat history and join room (Stable dependencies)
   useEffect(() => {
     if (!selectedUser || !currentUser) return;
 
@@ -91,9 +91,7 @@ export const useChat = (selectedUser, currentUser) => {
         console.log("Fetched chat history:", response.data);
         setMessages(response.data.messages || []);
 
-
-        // Mark all unread messages as 'seen'
-        const unreadMessages = response.data.messages.filter(
+        const unreadMessages = (response.data.messages || []).filter(
           (msg) => msg.receiverId === currentUser._id && msg.status === 'sent' && isValidUUID(msg._id)
         );
         if (unreadMessages.length > 0) {
@@ -108,13 +106,6 @@ export const useChat = (selectedUser, currentUser) => {
       }
     };
     fetchChatHistory();
-
-    // Set initial message from global draft state
-    if (userDrafts[selectedUser._id]) {
-      setNewMessage(userDrafts[selectedUser._id]);
-    } else {
-      setNewMessage("");
-    }
 
     const handleReceiveMessage = (data) => {
       setMessages((prevMessages) => {
@@ -141,7 +132,16 @@ export const useChat = (selectedUser, currentUser) => {
       socket.off("receive-message", handleReceiveMessage);
       socket.emit('leave-room', roomId);
     };
-  }, [selectedUser, currentUser, getRoomId, userDrafts]);
+  }, [selectedUser?._id, currentUser?._id, getRoomId]); // Removed userDrafts
+
+  // 2. Sync initial draft when switching users
+  useEffect(() => {
+    if (!selectedUser) return;
+
+    const draft = userDrafts[selectedUser._id];
+    setNewMessage(draft || "");
+  }, [selectedUser?._id, userDrafts]);
+
 
 
   useEffect(() => {

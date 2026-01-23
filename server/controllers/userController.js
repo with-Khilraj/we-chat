@@ -201,20 +201,29 @@ exports.login = async (req, res) => {
     }
 
     try {
-        // find user by email
-        const user = await User.findOne({ email });
+        const normalizedEmail = email.toLowerCase().trim();
 
-        // check if email is verified
-        if (!user.isEmailVerified) {
-            return res.status(401).json({
-                error: "Please verify your email first"
-            })
+        // find user by email
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return res.status(401).json({ error: "Invalid email or password" });
         }
 
-        // check password
+        // 1. check password first - ALWAYS
         const isMatch = await bcrypt.compare(password, user.password);
+
         if (!isMatch) {
-            return res.status(401).json({ error: "Invalid password" });
+            return res.status(401).json({ error: "Invalid email or password" });
+        }
+
+        // 2. check if email is verified - ONLY if password is correct
+        if (!user.isEmailVerified) {
+            return res.status(401).json({
+                error: "Please verify your email first",
+                isUnverified: true,
+                email: user.email
+            });
         }
 
         // Logic to generate Aceess or Refresh Token
@@ -514,7 +523,13 @@ exports.getProfile = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find({ _id: { $ne: req.user.id } }).select("-password");
+        console.log(`[AUTH] User ${req.user.id} fetching verified users`);
+        const users = await User.find({
+            _id: { $ne: req.user.id },
+            isEmailVerified: true
+        }).select("-password");
+
+        console.log(`[AUTH] Found ${users.length} verified users matching query.`);
         res.status(200).json({ users });
     } catch (error) {
         console.error("Error fetching users:", error);
@@ -531,9 +546,15 @@ exports.getUserById = async (req, res) => {
             return res.status(400).json({ error: "Invalid user ID format" });
         }
 
-        const user = await User.findById(req.params.id).select("-password");
+        // Only allow fetching verified users, or the requester fetching their own profile
+        const query = { _id: req.params.id };
+        if (req.params.id !== req.user.id.toString()) {
+            query.isEmailVerified = true;
+        }
+
+        const user = await User.findOne(query).select("-password");
         if (!user) {
-            return res.status(404).json({ error: "User not found" });
+            return res.status(404).json({ error: "User not found or unverified" });
         }
         res.status(200).json({ user });
     } catch (error) {

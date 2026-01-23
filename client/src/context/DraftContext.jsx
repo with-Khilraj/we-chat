@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 
 const DraftContext = createContext();
@@ -27,8 +27,6 @@ export const DraftProvider = ({ children }) => {
             if (key && key.startsWith('draft_')) {
                 const roomId = key.replace('draft_', '');
                 const [user1, user2] = roomId.split('-');
-
-                // Determine which user is the other person
                 const otherUserId = user1 === currentUser._id ? user2 : user1;
                 const draftMessage = localStorage.getItem(key);
 
@@ -37,10 +35,14 @@ export const DraftProvider = ({ children }) => {
                 }
             }
         }
-        setUserDrafts(drafts);
+
+        // Stabilize state by only updating if content actually changed
+        setUserDrafts(prev => {
+            const isDifferent = JSON.stringify(prev) !== JSON.stringify(drafts);
+            return isDifferent ? drafts : prev;
+        });
     }, [currentUser]);
 
-    // Update specific draft and sync storage
     const updateDraft = useCallback((roomId, content) => {
         const draftKey = `draft_${roomId}`;
         if (content && content.trim()) {
@@ -51,7 +53,6 @@ export const DraftProvider = ({ children }) => {
         loadDrafts();
     }, [loadDrafts]);
 
-    // Clear specific draft
     const clearDraft = useCallback((roomId) => {
         const draftKey = `draft_${roomId}`;
         localStorage.removeItem(draftKey);
@@ -60,7 +61,6 @@ export const DraftProvider = ({ children }) => {
 
     useEffect(() => {
         loadDrafts();
-
         const handleStorageChange = (e) => {
             if (e.key && e.key.startsWith('draft_')) {
                 loadDrafts();
@@ -68,9 +68,7 @@ export const DraftProvider = ({ children }) => {
         };
 
         window.addEventListener('storage', handleStorageChange);
-
-        // Polling as fallback for same-tab updates if events don't fire consistently
-        const interval = setInterval(loadDrafts, 1000);
+        const interval = setInterval(loadDrafts, 2000);
 
         return () => {
             window.removeEventListener('storage', handleStorageChange);
@@ -78,8 +76,15 @@ export const DraftProvider = ({ children }) => {
         };
     }, [loadDrafts]);
 
+    const contextValue = useMemo(() => ({
+        userDrafts,
+        updateDraft,
+        clearDraft,
+        reloadDrafts: loadDrafts
+    }), [userDrafts, updateDraft, clearDraft, loadDrafts]);
+
     return (
-        <DraftContext.Provider value={{ userDrafts, updateDraft, clearDraft, reloadDrafts: loadDrafts }}>
+        <DraftContext.Provider value={contextValue}>
             {children}
         </DraftContext.Provider>
     );

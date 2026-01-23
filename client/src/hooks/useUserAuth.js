@@ -41,8 +41,15 @@ export const useUserAuth = () => {
       showSuccessToast("Welcome to we-chat");
       setShouldNavigate({ path: "/dashboard", state: {} });
     } catch (error) {
-      // alert( error.response?.data.erorr || "Login failed!" );
-      showErrorToast(error.response?.data.error || "Login failed!");
+      if (error.response?.data?.isUnverified) {
+        showErrorToast("Your account is not verified. Redirecting...");
+        setShouldNavigate({
+          path: "/verify-email",
+          state: { state: { email: error.response.data.email } }
+        });
+      } else {
+        showErrorToast(error.response?.data.error || "Login failed!");
+      }
     } finally {
       setLoading(false);
     }

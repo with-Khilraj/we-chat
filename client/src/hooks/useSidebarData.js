@@ -30,7 +30,7 @@ export const useSidebarData = (currentUser, accessToken) => {
 
         return otherUsers
             .filter((user) =>
-                user.username.toLowerCase().includes(search.toLowerCase())
+                user.isEmailVerified && user.username.toLowerCase().includes(search.toLowerCase())
             )
             .sort((a, b) => {
                 const timeA = recentMessages[a._id]?.timestamp || 0;

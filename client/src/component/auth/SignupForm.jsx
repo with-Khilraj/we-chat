@@ -66,7 +66,7 @@ const SingupForm = () => {
 
 
       <InputField
-        type='text'
+        type='number'
         value={userData.phone}
         onChange={handleChange}
         name='phone'

@@ -104,6 +104,11 @@ const getRecentMessagesService = async (userId) => {
       $unwind: "$userInfo", // Flatten the userInfo array
     },
     {
+      $match: {
+        "userInfo.isEmailVerified": true
+      }
+    },
+    {
       $project: {
         _id: '$lastMessage._id',
         senderId: '$lastMessage.senderId',

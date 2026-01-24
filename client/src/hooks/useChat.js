@@ -13,6 +13,7 @@ export const useChat = (selectedUser, currentUser) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const lastMessageIdRef = useRef(null);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const [error, setError] = useState("");
@@ -22,6 +23,8 @@ export const useChat = (selectedUser, currentUser) => {
   const [replyingTo, setReplyingTo] = useState(null); // State for the message being replied to
   const [activeEmojiPicker, setActiveEmojiPicker] = useState(null); // Track which message's picker is open
   const [typingUsername, setTypingUsername] = useState(''); // Store username of typing user
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // audio recording states
   const [audioRecordingState, setAudioRecordingState] = useState('idle'); // 'idle' | 'recording' | 'stopped' | 'playing'
@@ -83,15 +86,17 @@ export const useChat = (selectedUser, currentUser) => {
         const accessToken = localStorage.getItem("accessToken");
         if (!accessToken) throw new Error('No access token found');
 
-        const response = await api.get(`/api/messages/${roomId}`, {
+        const response = await api.get(`/api/messages/${roomId}?limit=20`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
         });
         console.log("Fetched chat history:", response.data);
-        setMessages(response.data.messages || []);
+        const fetchedMessages = response.data.messages || [];
+        setMessages(fetchedMessages);
+        setHasMore(response.data.hasMore ?? fetchedMessages.length === 20);
 
-        const unreadMessages = (response.data.messages || []).filter(
+        const unreadMessages = fetchedMessages.filter(
           (msg) => msg.receiverId === currentUser._id && msg.status === 'sent' && isValidUUID(msg._id)
         );
         if (unreadMessages.length > 0) {
@@ -405,6 +410,43 @@ export const useChat = (selectedUser, currentUser) => {
     }
   };
 
+  // Function to fetch more (older) messages
+  const fetchMoreMessages = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !selectedUser || !currentUser) return;
+
+    const roomId = getRoomId();
+    if (!roomId) return;
+
+    setIsLoadingMore(true);
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const oldestMessage = messages[0];
+      const before = oldestMessage ? oldestMessage.createdAt : null;
+
+      let url = `/api/messages/${roomId}?limit=20`;
+      if (before) {
+        url += `&before=${before}`;
+      }
+
+      const response = await api.get(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const newMessages = response.data.messages || [];
+      if (newMessages.length > 0) {
+        setMessages((prev) => [...newMessages, ...prev]);
+      }
+      setHasMore(response.data.hasMore ?? newMessages.length === 20);
+    } catch (error) {
+      console.error("Error fetching more messages:", error);
+      setError("Failed to load older messages.");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, selectedUser, currentUser, getRoomId, messages]);
+
 
   // Internal function to send a single message (text or file)
   const sendSingleMessage = async (content, fileToSend, duration = 0) => {
@@ -583,12 +625,10 @@ export const useChat = (selectedUser, currentUser) => {
     if (roomId && selectedUser) handleInitiateCall(selectedUser._id, roomId, selectedUser);
   }
 
-  // to go the end/last messages of users
+  // Reset lastMessageIdRef when switching users
   useEffect(() => {
-    if (messages.length) {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, currentUser, selectedUser]);
+    lastMessageIdRef.current = null;
+  }, [selectedUser]);
 
   // handle profile info change
   const toggleProfileInfo = () => {
@@ -649,7 +689,6 @@ export const useChat = (selectedUser, currentUser) => {
     showProfileInfo,
     isTyping,
     isOtherUserTyping,
-    messageEndRef,
     fileInputRef,
     handleSendMessage,
     handleFileInputChange,
@@ -676,5 +715,8 @@ export const useChat = (selectedUser, currentUser) => {
     setActiveEmojiPicker,
     emojiPickerRef,
     typingUsername,
+    hasMore,
+    isLoadingMore,
+    fetchMoreMessages,
   }
 }

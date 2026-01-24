@@ -208,14 +208,26 @@ exports.getRecentMessages = async (req, res) => {
 exports.getMessagesByRoomId = async (req, res) => {
     try {
         const { roomId } = req.params;
+        const { limit = 20, before } = req.query;
 
-        // normal way to get the chats
-        const messages = await Message.find({ roomId }).sort({ createdAt: 1 });
+        const query = { roomId };
 
-        // using caching
-        // const messages = await getChatHistory(roomId);
+        // If 'before' timestamp is provided, fetch messages older than that
+        if (before) {
+            query.createdAt = { $lt: new Date(before) };
+        }
 
-        res.status(200).json({ messages });
+        // Fetch messages, sorted by descending createdAt to get the most recent ones
+        // but we reverse them later to show in chronological order on the UI
+        const messages = await Message.find(query)
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit));
+
+        // Return messages in chronological order (oldest to newest)
+        res.status(200).json({
+            messages: messages.reverse(),
+            hasMore: messages.length === parseInt(limit)
+        });
     } catch (error) {
         console.error("Error fetching messages:", error);
         res.status(500).json({ error: "Internal server error" });

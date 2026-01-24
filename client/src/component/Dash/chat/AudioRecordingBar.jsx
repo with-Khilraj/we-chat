@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Square, Play, Pause, Send } from 'lucide-react';
-import '../../styles/audioRecording.css';
+import '../../../styles/audioRecording.css';
 
 const AudioRecordingBar = ({
     state, // 'recording' | 'stopped' | 'playing'

@@ -523,13 +523,11 @@ exports.getProfile = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
     try {
-        console.log(`[AUTH] User ${req.user.id} fetching verified users`);
         const users = await User.find({
             _id: { $ne: req.user.id },
             isEmailVerified: true
         }).select("-password");
 
-        console.log(`[AUTH] Found ${users.length} verified users matching query.`);
         res.status(200).json({ users });
     } catch (error) {
         console.error("Error fetching users:", error);

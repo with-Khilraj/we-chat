@@ -5,7 +5,7 @@ import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
 import Sidebar from "./component/dash/sidebar/Sidebar";
-import ChatContainer from "./component/dash/chatContainer";
+import ChatContainer from "./component/dash/chat/ChatContainer";
 import { OnlineUsersProvider } from ".//context/onlineUsersContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CallProvider, useCall } from "./context/CallContext";

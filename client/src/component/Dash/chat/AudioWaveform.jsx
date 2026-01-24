@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import { Play, Pause } from 'lucide-react';
-import '../../styles/audioWaveform.css';
+import '../../../styles/audioWaveform.css';
 
 const AudioWaveform = ({ audioUrl, isCurrentUser }) => {
     const waveformRef = useRef(null);
@@ -67,6 +67,7 @@ const AudioWaveform = ({ audioUrl, isCurrentUser }) => {
         });
 
         ws.on('error', (error) => {
+            if (error.name === 'AbortError' || error.message.includes('aborted')) return;
             console.error('WaveSurfer error:', error);
         });
 

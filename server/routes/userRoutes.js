@@ -5,8 +5,11 @@ const passwordResetLimiter = require('../middlewares/passwordResetLimiter');
 const router = express.Router();
 
 
+const validate = require('../middlewares/validate');
+const { signupSchema } = require('../schemas/authSchema');
+
 // Signup Route
-router.post("/signup", userController.signup);
+router.post("/signup", validate(signupSchema), userController.signup);
 
 // verify OTP route
 router.post("/verify-otp", userController.verifyOTP);

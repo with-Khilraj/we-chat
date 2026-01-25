@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import useForgotPasswordReducer from "../../hooks/useForgotPasswordLogic";
 import { FORGOT_STATUS } from "../../constant/ForgotStatus";
 import { useForgotPasswordEffect } from "../../hooks/useForgotPasswordEffect";
@@ -185,10 +185,10 @@ const ForgotPassForm = () => {
 
         {/* Small help / back link */}
         <div className="mt-8 animate-fade-in">
-          <a href="/login" id="backToLoginRateLimit" className="text-blue-400 hover:text-blue-300 transition-colors text-sm flex items-center justify-center gap-2">
+          <Link to="/login" id="backToLoginRateLimit" className="text-blue-400 hover:text-blue-300 transition-colors text-sm flex items-center justify-center gap-2">
             <FontAwesomeIcon icon={faArrowLeft} />
             Back to Login
-          </a>
+          </Link>
         </div>
       </form>
     </div>

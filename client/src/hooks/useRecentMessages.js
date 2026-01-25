@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getRecentMessages } from "../services/chatService";
 import socket from "../utils/useSocket";
 
-export const useRecentMessages = (loggedInUser, accessToken) => {
+export const useRecentMessages = (loggedInUser) => {
   const [recentMessages, setRecentMessages] = useState({});
 
   // helper:: update messages function
@@ -74,7 +74,7 @@ export const useRecentMessages = (loggedInUser, accessToken) => {
     if (loggedInUser) {
       const fetchRecentMessages = async () => {
         try {
-          const messages = await getRecentMessages(accessToken);
+          const messages = await getRecentMessages();
           updateRecentMessages(messages);
           socket.emit("online-user", loggedInUser._id);
         } catch (error) {
@@ -83,7 +83,7 @@ export const useRecentMessages = (loggedInUser, accessToken) => {
       };
       fetchRecentMessages();
     }
-  }, [loggedInUser, accessToken, updateRecentMessages]);
+  }, [loggedInUser, updateRecentMessages]);
 
 
   // Socket listener for new messages

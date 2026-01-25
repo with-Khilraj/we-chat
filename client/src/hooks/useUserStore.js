@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { fetchUserExceptCurrent } from "../services/userService";
 
-export const useUserStore = (accessToken) => {
+export const useUserStore = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!accessToken) return;
-
     const getUsers = async () => {
       try {
-        const data = await fetchUserExceptCurrent(accessToken);
+        const data = await fetchUserExceptCurrent();
         setUsers(data);
       } catch (err) {
         setError(err);
@@ -21,7 +19,7 @@ export const useUserStore = (accessToken) => {
     };
 
     getUsers();
-  }, [accessToken]);
+  }, []);
 
   return { users, loading, error };
 };

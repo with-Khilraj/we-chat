@@ -7,9 +7,9 @@ import { debounce } from "lodash";
 /**
  * Hook to manage sidebar data: users, recent messages, search, and sorting.
  */
-export const useSidebarData = (currentUser, accessToken) => {
-    const { users: otherUsers, loading } = useUserStore(accessToken);
-    const { recentMessages } = useRecentMessages(currentUser, accessToken);
+export const useSidebarData = (currentUser) => {
+    const { users: otherUsers, loading } = useUserStore();
+    const { recentMessages } = useRecentMessages(currentUser);
     const onlineUsers = useOnlineUsers();
 
     const [search, setSearch] = useState("");

@@ -15,7 +15,7 @@ export const fetchUserExceptCurrent = async () => {
     return response.data.users;
   } catch (error) {
     console.error("Error fetching user data:", error);
-    throw error; // You can throw the error to handle it in the component
+    throw error;
   }
 };
 
@@ -27,14 +27,14 @@ export const fetchUserData = async () => {
     return response.data.user;
   } catch (error) {
     console.error("Error fetching user data:", error);
-    throw error; // You can throw the error to handle it in the component
+    throw error;
   }
 };
 
 // Function to check username availability
 export const checkUsernameAvailability = async (username) => {
-  const response = await publicApi.get('/api/users/check-username', { 
-    params: {username},
+  const response = await publicApi.get('/api/users/check-username', {
+    params: { username },
   });
   return response.data.available;
 }

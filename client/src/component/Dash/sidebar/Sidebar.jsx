@@ -14,7 +14,6 @@ import SidebarList from "./SidebarList";
  * Orchestrates data from various hooks and context and passes it to presentation components.
  */
 const Sidebar = () => {
-  const accessToken = localStorage.getItem("accessToken");
   const { currentUser: loggedInUser } = useAuth();
   const { userId } = useParams();
 
@@ -26,7 +25,7 @@ const Sidebar = () => {
     onlineUsers,
     search,
     setSearch
-  } = useSidebarData(loggedInUser, accessToken);
+  } = useSidebarData(loggedInUser);
 
   // Context for global real-time state
   const { typingUsers } = useTyping();

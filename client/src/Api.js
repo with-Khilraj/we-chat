@@ -2,56 +2,52 @@ import axios from "axios";
 
 export const api = axios.create({
   baseURL: "http://localhost:5000",
-  withCredentials: true, // send cookies with requests
+  withCredentials: true,
 });
 
 export const publicApi = axios.create({
   baseURL: "http://localhost:5000",
 });
 
-// Function to clear storage and redirect to login
-
-// Intercept requests to refresh token if access token expires
-api.interceptors.request.use( async (config) => {
+// Request interceptor: Automatically attach the access token
+api.interceptors.request.use((config) => {
   const accessToken = localStorage.getItem("accessToken");
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
-});
+}, (error) => Promise.reject(error));
 
+// Response interceptor: Handle token refresh on 403 Unauthorized
 api.interceptors.response.use(
-  (response) => {
-    console.log("API Response:", response);
-    return response;
-  },
+  (response) => response,
   async (error) => {
-    // const navigate = useNavigate();
-    // console.log("API Error:", error.response);
+    const originalRequest = error.config;
+
     if (
       error.response?.status === 403 &&
-      error.response.data.error === "Unauthorized"
+      error.response.data.error === "Unauthorized" &&
+      !originalRequest._retry
     ) {
+      originalRequest._retry = true;
       try {
         const refreshResponse = await axios.post(
           "http://localhost:5000/api/refresh",
           {},
           { withCredentials: true }
         );
-        const newAccessToken = refreshResponse.data.accessToken;
-        console.log(newAccessToken);
 
+        const newAccessToken = refreshResponse.data.accessToken;
         localStorage.setItem('accessToken', newAccessToken);
 
-        // store the new access token and retry the original request with the new access token
-        error.config.headers["Authorization"] = `Bearer ${newAccessToken}`;
-        // return api.request(error.config);
-        return axios(error.config);  // updated
+        // Retry the original request with the new token
+        originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+        return axios(originalRequest);
       } catch (refreshError) {
-        console.error("Failed to refresh token:",refreshError);
-        // Handle logout or redirect to the login page
-        localStorage.removeItem('accessToken')
-        // navigate('/login');
+        console.error("Session expired. Logging out...");
+        localStorage.removeItem('accessToken');
+        // We can't use navigate() here, so we let the hook handle the redirect or use window.location
+        // window.location.href = '/login'; 
         return Promise.reject(refreshError);
       }
     }

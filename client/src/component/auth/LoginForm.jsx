@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { ToastContainer } from "react-toastify";
 import InputField from "./shared/InputField";
@@ -37,17 +38,17 @@ const LoginForm = () => {
       <div className="flex justify-between items-center text-sm ask">
         <p>
           Don’t have an account?{" "}
-          <a href="/signup" className="no-underline text-indigo-400 hover:text-red">
+          <Link to="/signup" className="no-underline text-indigo-400 hover:text-red">
             Signup
-          </a>
+          </Link>
         </p>
-        <a href="/forgot-password" className="no-underline text-indigo-400 hover:underline">
+        <Link to="/forgot-password" className="no-underline text-indigo-400 hover:underline">
           Forgot password?
-        </a>
+        </Link>
       </div>
 
       <button className="login-btn" type="submit" disabled={loading}>
-        { loading 
+        {loading
           ? <FontAwesomeIcon icon={faSpinner} className="fas fa-spinner animate-spin ml-2" />
           : "Login"
         }

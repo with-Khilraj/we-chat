@@ -1,104 +1,120 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import InputField from "./shared/InputField";
 import { useUserAuth } from "../../hooks/useUserAuth";
 import { ToastContainer } from "react-toastify";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { checkUsernameAvailability } from "../../services/userService";
+import { signupSchema } from "../../schemas/authSchema";
 
-const SingupForm = () => {
+const SignupForm = () => {
+  const { register, handleSubmit, watch, setError, clearErrors, formState: { errors, isValid } } = useForm({
+    resolver: zodResolver(signupSchema),
+    mode: "onChange" // Validate on change for immediate feedback
+  });
 
-  const {
-    loading,
-    handleSignup,
-    userData,
-    checkingUsername,
-    usernameAvailable,
-    handleChange
-  } = useUserAuth();
+  const { loading, handleSignup } = useUserAuth();
+  const [usernameAvailable, setUsernameAvailable] = useState(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
-  const handleSumbit = (e) => {
-    e.preventDefault();
-    if (!usernameAvailable) return; // prevent submission if username is not available
-    handleSignup(userData);
-  }
+  // Watch username for availability check
+  const usernameValue = watch("username");
 
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (usernameValue && usernameValue.length >= 3) {
+        setCheckingUsername(true);
+        try {
+          // Add a small delay for debounce-like effect
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const isAvailable = await checkUsernameAvailability(usernameValue);
+          setUsernameAvailable(isAvailable);
+          if (!isAvailable) {
+            setError("username", {
+              type: "manual",
+              message: "Username is already taken",
+            });
+          } else {
+            clearErrors("username");
+          }
+        } catch (error) {
+          console.error("Failed to check username", error);
+        } finally {
+          setCheckingUsername(false);
+        }
+      } else {
+        setUsernameAvailable(null);
+        clearErrors("username"); // Clear error if username is too short or empty
+      }
+    };
+
+    const timer = setTimeout(checkAvailability, 500);
+    return () => clearTimeout(timer);
+  }, [usernameValue, setError, clearErrors]);
+
+  const onSubmit = async (data) => {
+    if (usernameAvailable === false) return;
+    await handleSignup(data);
+  };
 
   return (
-    <form onSubmit={handleSumbit} >
-      <InputField
-        type='email'
-        value={userData.email}
-        onChange={handleChange}
-        name='email'
-        label="Email"
-      />
+    <div className="form-container sign-up">
+      <ToastContainer />
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <h1>Create Account</h1>
+        <div className="social-icons">
+          <a href="#" className="icon"><i className="fa-brands fa-google-plus-g"></i></a>
+          <a href="#" className="icon"><i className="fa-brands fa-facebook-f"></i></a>
+          <a href="#" className="icon"><i className="fa-brands fa-github"></i></a>
+          <a href="#" className="icon"><i className="fa-brands fa-linkedin-in"></i></a>
+        </div>
+        <span>or use your email for registration</span>
 
-      <div className="relative">
         <InputField
-          type='text'
-          value={userData.username}
-          onChange={handleChange}
-          name='username'
-          label="Username"
+          type="text"
+          placeholder="Username"
+          {...register("username")}
+          error={errors.username?.message}
+        />
+        {checkingUsername && <span className="text-xs text-gray-500 ml-2">Checking availability...</span>}
+        {!checkingUsername && usernameAvailable === true && <span className="text-xs text-green-500 ml-2">Username available!</span>}
+
+        <InputField
+          type="email"
+          placeholder="Email"
+          {...register("email")}
+          error={errors.email?.message}
         />
 
-        {checkingUsername && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-          </div>
-        )}
+        <InputField
+          type="tel"
+          placeholder="Phone Number"
+          {...register("phone")}
+          error={errors.phone?.message}
+        />
 
-         {/* Checkmark */}
-        {!checkingUsername && usernameAvailable && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
-            ✅
-          </div>
-        )}
+        <InputField
+          type="password"
+          placeholder="Password"
+          {...register("password")}
+          error={errors.password?.message}
+        />
 
-        {/* Cross */}
-        {!checkingUsername && usernameAvailable === false && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
-            ❌
-          </div>
-        )}
-
-      </div>
-
-
-      <InputField
-        type='number'
-        value={userData.phone}
-        onChange={handleChange}
-        name='phone'
-        label="Phone"
-      />
-
-      <InputField
-        type='password'
-        value={userData.password}
-        onChange={handleChange}
-        name='password'
-        label="Password"
-      />
-
+        <button className="signup-btn" type="submit" disabled={loading || !isValid || usernameAvailable === false}>
+          {loading ? "Signing up..." : "Sign Up"}
+        </button>
+      </form>
       <div className="ask">
         <p>
           Already have an account?{" "}
-          <a href="/login" className="no-underline text-indigo-400 hover:text-red">
+          <Link to="/login" className="no-underline text-indigo-400 hover:text-red">
             login
-          </a>
+          </Link>
         </p>
       </div>
-      <button className="signup-btn" type="submit" disabled={loading}>
-        { loading 
-          ? <FontAwesomeIcon icon={faSpinner} className="fas fa-spinner animate-spin ml-2" />
-          : "SignUp"
-        }
-      </button>
+    </div>
+  );
+};
 
-      <ToastContainer />
-    </form>
-  )
-}
-
-export default SingupForm;
+export default SignupForm;

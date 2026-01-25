@@ -1,7 +1,8 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const Navbar = () => {
-  return(
+  return (
     <div className="navbar">
       <div className="logo">
 
@@ -9,24 +10,24 @@ const Navbar = () => {
 
       <ul>
         <li>
-          <a href="">Home</a>
+          <Link to="/">Home</Link>
         </li>
         <li>
-          <a href="">About</a>
+          <Link to="/about">About</Link>
         </li>
         <li>
-          <a href="">Features</a>
+          <Link to="/features">Features</Link>
         </li>
       </ul>
 
       <div className="buttons">
-        <a href="/login">
-        <button type="submit" className="login">Login</button>
-        </a>
+        <Link to="/login">
+          <button type="button" className="login">Login</button>
+        </Link>
 
-        <a href="/signup">
-        <button type="submit" className="signup">Signup</button>
-        </a>
+        <Link to="/signup">
+          <button type="button" className="signup">Signup</button>
+        </Link>
       </div>
     </div>
   )

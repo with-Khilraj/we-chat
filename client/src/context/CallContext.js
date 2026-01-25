@@ -409,12 +409,7 @@ export const CallProvider = ({ children, currentUser }) => {
   useEffect(() => {
     const fetchCallerDetails = async (callerId) => {
       try {
-        const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) throw new Error("No access token");
-
-        const response = await api.get(`/api/users/${callerId}`, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        const response = await api.get(`/api/users/${callerId}`);
 
         // Update the remoteUser in state with full caller details
         dispatch({

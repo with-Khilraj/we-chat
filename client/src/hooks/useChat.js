@@ -28,7 +28,7 @@ export const useChat = (selectedUser, currentUser) => {
   const emojiPickerRef = useRef(null);
   const navigate = useNavigate();
   const { handleInitiateCall } = useCall();
-  const { updateDraft, clearDraft, userDrafts } = useDrafts();
+  const { updateDraft, clearDraft, userDrafts } = useDrafts(); // kept userDrafts as it is used in useEffect
 
   // Initialize specialized hooks
   const {
@@ -42,12 +42,12 @@ export const useChat = (selectedUser, currentUser) => {
     cancelAudioRecording,
     playAudioPreview,
     pauseAudioPreview,
-    setAudioBlob
+    setAudioBlob: _setAudioBlob // unused
   } = useAudioRecorder();
 
   const {
     selectedFiles,
-    setSelectedFiles,
+    setSelectedFiles: _setSelectedFiles, // unused
     isUploading,
     setIsUploading,
     fileInputRef,

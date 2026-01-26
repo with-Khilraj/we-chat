@@ -90,7 +90,7 @@ const ResetPassForm = ({ state, onSubmit }) => {
         </div>
         <div>
           <label className="block text-sm font-medium text-white mb-2">Confirm New Password</label>
-          <div className="relative">  
+          <div className="relative">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
               value={confirmPassword}

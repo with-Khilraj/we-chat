@@ -9,13 +9,12 @@ import SidebarMenu from "./SidebarMenu";
 import SidebarSearch from "./SidebarSearch";
 import SidebarList from "./SidebarList";
 
-/**
- * Sidebar Component (Container)
- * Orchestrates data from various hooks and context and passes it to presentation components.
- */
+/* Orchestrates data from various hooks and context and passes it to presentation components. */
+
 const Sidebar = () => {
   const { currentUser: loggedInUser } = useAuth();
   const { userId } = useParams();
+  const [activeTab, setActiveTab] = React.useState("chats");
 
   // Custom Hooks for business logic
   const {
@@ -25,7 +24,7 @@ const Sidebar = () => {
     onlineUsers,
     search,
     setSearch
-  } = useSidebarData(loggedInUser);
+  } = useSidebarData(loggedInUser, activeTab, userId);
 
   // Context for global real-time state
   const { typingUsers } = useTyping();
@@ -37,7 +36,7 @@ const Sidebar = () => {
 
   return (
     <>
-      <SidebarMenu />
+      <SidebarMenu activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <div className="sidebar">
         {/* Search Bar */}
@@ -51,6 +50,8 @@ const Sidebar = () => {
           onlineUsers={onlineUsers}
           typingUsers={typingUsers}
           userDrafts={userDrafts}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
         />
       </div>
     </>

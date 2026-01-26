@@ -70,8 +70,9 @@
   transition: all 0.2s ease;
 }
 
-.menu-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
+.menu-icon:hover,
+.menu-icon.active {
+  background: rgba(255, 255, 255, 0.15);
   color: white;
   transform: translateY(-2px);
 }
@@ -327,4 +328,68 @@
 .dropup-menu li:last-child:hover {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* Empty State Styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #7e7e7e;
+  height: 60%;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.empty-icon-container {
+  margin-bottom: 20px;
+  color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.05);
+  padding: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: floating 3s ease-in-out infinite;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.empty-state p {
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 200px;
+}
+
+@keyframes floating {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-15px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

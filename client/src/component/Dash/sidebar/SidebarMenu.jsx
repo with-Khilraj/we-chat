@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Settings, ShieldAlert, LogOut, MoreVertical, Bell, User, MessageCircleCodeIcon, Phone } from "lucide-react";
+import { Settings, ShieldAlert, LogOut, MoreVertical, Bell, Contact, MessageCircleCodeIcon, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../Api";
 import { toast } from "react-toastify";
 import socket from "../../../utils/useSocket";
 
-const SidebarMenu = () => {
+const SidebarMenu = ({ activeTab, setActiveTab }) => {
     const { currentUser: loggedInUser, logout } = useAuth();
     const navigate = useNavigate();
     const [isDropupOpen, setIsDropupOpen] = useState(false);
@@ -62,11 +62,19 @@ const SidebarMenu = () => {
             </div>
 
             <div className="menu-icons">
-                <div className="menu-icon" onClick={() => toast.info("New Chat feature coming soon!")}>
+                <div
+                    className={`menu-icon ${activeTab === 'chats' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('chats')}
+                    title="Chats"
+                >
                     <MessageCircleCodeIcon size={24} />
                 </div>
-                <div className="menu-icon" onClick={() => navigate('/profile')}>
-                    <User size={24} />
+                <div
+                    className={`menu-icon ${activeTab === 'contacts' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('contacts')}
+                    title="Contacts"
+                >
+                    <Contact size={24} />
                 </div>
                 <div className="menu-icon" onClick={() => toast.info("Call History feature coming soon!")}>
                     <Phone size={24} />

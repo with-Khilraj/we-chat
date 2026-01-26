@@ -7,7 +7,7 @@ import { debounce } from "lodash";
 /**
  * Hook to manage sidebar data: users, recent messages, search, and sorting.
  */
-export const useSidebarData = (currentUser) => {
+export const useSidebarData = (currentUser, activeTab, activeChatId) => {
     const { users: otherUsers, loading } = useUserStore();
     const { recentMessages } = useRecentMessages(currentUser);
     const onlineUsers = useOnlineUsers();
@@ -28,16 +28,31 @@ export const useSidebarData = (currentUser) => {
     const filteredUsers = useMemo(() => {
         if (!otherUsers) return [];
 
-        return otherUsers
+        let filtered = otherUsers.filter((user) => user.isEmailVerified);
+
+        // If in 'chats' tab, show users with messages OR the currently active chat partner
+        if (activeTab === 'chats') {
+            filtered = filtered.filter((user) =>
+                recentMessages[user._id] || user._id === activeChatId
+            );
+        }
+        // If in 'contacts' tab, show only users who haven't messaged yet AND are not current chat partner
+        else if (activeTab === 'contacts') {
+            filtered = filtered.filter((user) =>
+                !recentMessages[user._id] && user._id !== activeChatId
+            );
+        }
+
+        return filtered
             .filter((user) =>
-                user.isEmailVerified && user.username.toLowerCase().includes(search.toLowerCase())
+                user.username.toLowerCase().includes(search.toLowerCase())
             )
             .sort((a, b) => {
                 const timeA = recentMessages[a._id]?.timestamp || 0;
                 const timeB = recentMessages[b._id]?.timestamp || 0;
                 return new Date(timeB) - new Date(timeA);
             });
-    }, [otherUsers, search, recentMessages]);
+    }, [otherUsers, search, recentMessages, activeTab]);
 
     return {
         users: filteredUsers,

@@ -1,10 +1,6 @@
 import React, { memo } from "react";
 import { truncateMessage, formatRelativeTime } from "../../../utils/formatters";
 
-/**
- * SidebarUserItem Component
- * Renders a single row in the user list with profile, name, last message/typing/draft info.
- */
 const SidebarUserItem = memo(({
     user,
     isSelected,

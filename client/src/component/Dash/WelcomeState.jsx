@@ -15,7 +15,7 @@ const WelcomeState = () => {
             </div>
 
             <h1 className="text-4xl font-bold text-gray-500 mb-4 tracking-tight">
-                Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-red-300">ChatWave</span>
+                Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-red-300">weChat</span>
             </h1>
 
             <p className="text-gray-500 text-lg max-w-md mx-auto leading-relaxed">

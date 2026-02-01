@@ -27,7 +27,7 @@
 }
 
 .input-container input {
-  all: unset;  /* reset default input styles */
+  all: unset;
   width: 100%;
   padding: 0.9rem;
   color: #6c5ce7;
@@ -42,6 +42,10 @@
   border: 1px solid var(--primary);
 }
 
+.input-container.has-error input {
+  border-color: #ef4444;
+}
+
 
 .input-container label {
   position: absolute;
@@ -51,17 +55,25 @@
   pointer-events: none;
   background: inherit;
   transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
-  color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-  background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.input-container input:is(:focus, :valid) ~ label {
+.input-container.has-error label {
+  color: #ef4444;
+}
+
+.input-container input:is(:focus, :not(:placeholder-shown))~label {
   transform: translateY(-110%) scale(0.7);
   background-color: white;
   padding-inline: 0.8rem;
   color: var(--primary);
   font-size: 1.1rem;
   text-align: left;
+}
+
+.input-container.has-error input:is(:focus, :not(:placeholder-shown))~label {
+  color: #ef4444;
 }
 
 .signup-form .ask {
@@ -115,13 +127,9 @@
 }
 
 .login-btn:hover::before,
-.signup-btn:hover::before{
+.signup-btn:hover::before {
   top: 0;
   right: 0;
   left: 0;
   bottom: 0;
 }
-
-
-
-

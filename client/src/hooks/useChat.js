@@ -149,8 +149,8 @@ export const useChat = (selectedUser, currentUser) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeEmojiPicker]);
 
-  // --- Message Actions ---
 
+  // --- Message Actions ---
   const sendSingleMessage = async (content, fileToSend, duration = 0) => {
     if (!content && !fileToSend) return;
     const roomId = getRoomId();

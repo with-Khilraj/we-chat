@@ -52,9 +52,6 @@
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  /* flex: 1; Removed to prevent taking up all space */
-  /* justify-content: center; Removed to stop centering */
-  /* padding-top: 20px; Included in margin-bottom of profile or just gap */
 }
 
 /* NEW: Individual Menu Icon */
@@ -169,9 +166,13 @@
 }
 
 .sidebar .user-item.unread {
-  font-size: 15px;
   background-color: #f0f8ff;
+}
+
+.sidebar .user-item.unread .user-name,
+.sidebar .user-item.unread .user-message {
   font-weight: 500;
+  color: #000;
 }
 
 .user-avatar {
@@ -270,12 +271,13 @@
 .blue-dot {
   position: absolute;
   right: 16px;
-  top: 26%;
-  transform: traslateY(-50%);
-  width: 6px;
-  height: 6px;
+  top: 35%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
   background-color: #007bff;
   border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.4);
 }
 
 /* Dropup Menu Redesign */

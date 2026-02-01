@@ -62,23 +62,15 @@ const SignupForm = () => {
     <div className="form-container sign-up">
       <ToastContainer />
       <form onSubmit={handleSubmit(onSubmit)}>
-        <h1>Create Account</h1>
-        <div className="social-icons">
-          <a href="#" className="icon"><i className="fa-brands fa-google-plus-g"></i></a>
-          <a href="#" className="icon"><i className="fa-brands fa-facebook-f"></i></a>
-          <a href="#" className="icon"><i className="fa-brands fa-github"></i></a>
-          <a href="#" className="icon"><i className="fa-brands fa-linkedin-in"></i></a>
-        </div>
-        <span>or use your email for registration</span>
 
         <InputField
           type="text"
           placeholder="Username"
           {...register("username")}
           error={errors.username?.message}
+          helperText={checkingUsername ? "Checking availability..." : (usernameAvailable === true ? "Username available!" : null)}
+          helperClass={checkingUsername ? "text-gray-500" : "text-green-500"}
         />
-        {checkingUsername && <span className="text-xs text-gray-500 ml-2">Checking availability...</span>}
-        {!checkingUsername && usernameAvailable === true && <span className="text-xs text-green-500 ml-2">Username available!</span>}
 
         <InputField
           type="email"

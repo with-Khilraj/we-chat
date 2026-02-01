@@ -3,10 +3,6 @@ const validator = require('validator');
 
 const messageSchema = new mongoose.Schema(
   {
-    _id: {
-      type: String,
-      default: () => require('uuid').v4()
-    },
     roomId: { type: String, required: true },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,

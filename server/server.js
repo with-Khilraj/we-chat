@@ -53,10 +53,6 @@ const onlineUsers = new Map();
 // Store active calls
 const activeCalls = new Map();
 
-const isValidUUID = (id) => {
-  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
-};
-
 // setup socket.io
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
@@ -89,9 +85,9 @@ io.on("connection", (socket) => {
   // listen for a message (useChat.js ==> handleSendMessage function)
   socket.on("send-message", async (data) => {
     try {
-      // Validate Ojbect fields
+      // Validate Object fields
       if (
-        !isValidUUID(data._id) ||
+        !mongoose.Types.ObjectId.isValid(data._id) ||
         !mongoose.Types.ObjectId.isValid(data.senderId) ||
         !mongoose.Types.ObjectId.isValid(data.receiverId)
       ) {
@@ -149,9 +145,9 @@ io.on("connection", (socket) => {
   socket.on("message-seen", async (data) => {
     const { messageIds, roomId } = data;
 
-    // Validate all messageIds are valid UUIDs
-    if (!Array.isArray(messageIds) || messageIds.some((id) => !isValidUUID(id))) {
-      console.error('Invalid UUID in message-seen event:', data);
+    // Validate all messageIds are valid MongoDB ObjectIds
+    if (!Array.isArray(messageIds) || messageIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+      console.error('Invalid ObjectId in message-seen event:', data);
       return;
     }
 

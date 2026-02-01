@@ -2,10 +2,6 @@ const Message = require("../models/Message");
 const mongoose = require("mongoose");
 const chatService = require("../service/chatService");
 
-// Validate UUID instead of ObjectId
-const isValidUUID = (id) => {
-    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(id);
-};
 
 exports.sendMessage = async (req, res) => {
     const {
@@ -118,10 +114,9 @@ exports.sendMessage = async (req, res) => {
 };
 
 exports.updateMessageStatus = async (req, res) => {
-    const { messageId } = req.params;  // messageId is a string here not OjbectId
+    const { messageId } = req.params;
 
-
-    if (!isValidUUID(messageId)) {
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
         return res.status(400).json({ error: "Invalid messageId" });
     }
     const { status } = req.body;
@@ -162,8 +157,8 @@ exports.updateMessageStatus = async (req, res) => {
 exports.updateBulkStatus = async (req, res) => {
     const { messageIds, status } = req.body;
 
-    // Validate all messageIds are valid UUIDs
-    if (!Array.isArray(messageIds) || messageIds.some((id) => !isValidUUID(id))) {
+    // Validate all messageIds are valid MongoDB ObjectIds
+    if (!Array.isArray(messageIds) || messageIds.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
         return res.status(400).json({ error: "Invalid messagesIds" });
     }
 
@@ -239,7 +234,7 @@ exports.addReaction = async (req, res) => {
     const { emoji } = req.body;
     const userId = req.user.id; // From verifyAccessToken
 
-    if (!isValidUUID(messageId)) {
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
         return res.status(400).json({ error: "Invalid messageId" });
     }
 
@@ -283,7 +278,7 @@ exports.removeReaction = async (req, res) => {
     const { messageId } = req.params;
     const userId = req.user.id;
 
-    if (!isValidUUID(messageId)) {
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
         return res.status(400).json({ error: "Invalid messageId" });
     }
 

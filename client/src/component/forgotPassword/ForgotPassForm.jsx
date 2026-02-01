@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from 'react-router-dom';
-import useForgotPasswordReducer from "../../hooks/useForgotPasswordLogic";
+import { Link } from 'react-router-dom';
+import useForgotPassword from "../../hooks/useForgotPassword";
 import { FORGOT_STATUS } from "../../constant/ForgotStatus";
-import { useForgotPasswordEffect } from "../../hooks/useForgotPasswordEffect";
 
 import InputField from "../forgotPassword/shared/InputField";
 import Button from "./shared/Button";
@@ -34,16 +33,15 @@ const formatTime = (sec) => {
 };
 
 const ForgotPassForm = () => {
-  const navigate = useNavigate();
-  const { state, handleForgotPassword, resetForgotPassword } = useForgotPasswordReducer();
-  const { status, error, email: sentEmail, remainingTime } = state;
+  const {
+    state,
+    handleForgotPassword,
+    resetForgotPassword,
+    showToast,
+    initialCountdownRef
+  } = useForgotPassword();
 
-  // all side effects are wired up
-  const { initialCountdownRef, showToast } = useForgotPasswordEffect({
-    status,
-    navigate,
-    remainingTime,
-  });
+  const { status, error, email: sentEmail, remainingTime } = state;
 
   const [email, setEmail] = useState("");
   const [fieldError, setFieldError] = useState("");

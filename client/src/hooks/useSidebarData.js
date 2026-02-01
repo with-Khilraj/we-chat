@@ -4,9 +4,6 @@ import { useRecentMessages } from "./useRecentMessages";
 import { useOnlineUsers } from "../context/onlineUsersContext";
 import { debounce } from "lodash";
 
-/**
- * Hook to manage sidebar data: users, recent messages, search, and sorting.
- */
 export const useSidebarData = (currentUser, activeTab, activeChatId) => {
     const { users: otherUsers, loading } = useUserStore();
     const { recentMessages } = useRecentMessages(currentUser);

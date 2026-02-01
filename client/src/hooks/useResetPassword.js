@@ -29,8 +29,8 @@ const reducer = (state, action) => {
         invalid: reason === 'INVALID_TOKEN',
         expired: reason === 'TOKEN_EXPIRED',
         success: false,
-         error: reason === 'TOKEN_EXPIRED' 
-          ? RESET_PASSWORD_MESSAGES.TOKEN_EXPIRED 
+        error: reason === 'TOKEN_EXPIRED'
+          ? RESET_PASSWORD_MESSAGES.TOKEN_EXPIRED
           : RESET_PASSWORD_MESSAGES.INVALID_TOKEN
       }
     case RESET_PASSWORD_ACTIONS.RESET_START:
@@ -128,7 +128,6 @@ export const useResetPassword = (token) => {
       return;
     }
 
-    dispatch({ type: RESET_PASSWORD_ACTIONS.RESET_START });
     dispatch({ type: RESET_PASSWORD_ACTIONS.RESET_START });
     try {
       await resetPasswordRequest(currentToken, password, confirmPassword);

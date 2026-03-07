@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Settings, ShieldAlert, LogOut, MoreVertical, Bell, Contact, MessageCircleCodeIcon, Phone } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../Api";
 import { toast } from "react-toastify";
 import socket from "../../../utils/useSocket";
 
-const SidebarMenu = ({ activeTab, setActiveTab }) => {
+const SidebarMenu = () => {
     const { currentUser: loggedInUser, logout } = useAuth();
     const navigate = useNavigate();
     const [isDropupOpen, setIsDropupOpen] = useState(false);
@@ -62,20 +62,20 @@ const SidebarMenu = ({ activeTab, setActiveTab }) => {
             </div>
 
             <div className="menu-icons">
-                <div
-                    className={`menu-icon ${activeTab === 'chats' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('chats')}
+                <NavLink
+                    to="/dashboard/chats"
+                    className={({ isActive }) => `menu-icon ${isActive ? 'active' : ''}`}
                     title="Chats"
                 >
                     <MessageCircleCodeIcon size={24} />
-                </div>
-                <div
-                    className={`menu-icon ${activeTab === 'contacts' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('contacts')}
+                </NavLink>
+                <NavLink
+                    to="/dashboard/contacts"
+                    className={({ isActive }) => `menu-icon ${isActive ? 'active' : ''}`}
                     title="Contacts"
                 >
                     <Contact size={24} />
-                </div>
+                </NavLink>
                 <div className="menu-icon" onClick={() => toast.info("Call History feature coming soon!")}>
                     <Phone size={24} />
                 </div>

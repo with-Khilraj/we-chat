@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CallProvider, useCall } from "./context/CallContext";
 import { TypingProvider } from "./context/TypingContext";
 import { DraftProvider } from "./context/DraftContext";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import EmailVerification from "./pages/EmailVerification";
 import FloatingCallWindow from "./component/FloatingCallWindow";
 import ActiveCall from "./component/ActiveCall";
@@ -74,8 +74,12 @@ const AppContent = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<Dashboard />}>
-              <Route index element={<WelcomeState />} />
               <Route path="chat/:userId" element={<ChatContainer />} />
+              <Route index element={<Navigate to="chats" replace />} />
+              <Route path="chats" element={<WelcomeState />} />
+              <Route path="contacts" element={<WelcomeState />} />
+              <Route path="calls" element={<WelcomeState />} />
+              <Route path="notifications" element={<WelcomeState />} />
             </Route>
             <Route path="/profile" element={<Profile />} />
             <Route path="/sidebar" element={<Sidebar />} />

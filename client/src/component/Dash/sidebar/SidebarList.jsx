@@ -12,14 +12,12 @@ const SidebarList = ({
     onlineUsers,
     typingUsers = new Map(),
     userDrafts = {},
-    activeTab,
-    setActiveTab
+    activeTab
 }) => {
     const navigate = useNavigate();
 
     const handleUserClick = (targetUserId) => {
-        setActiveTab('chats');
-        navigate(`chat/${targetUserId}`);
+        navigate(`/dashboard/chat/${targetUserId}`);
     };
 
     const renderEmptyState = () => {

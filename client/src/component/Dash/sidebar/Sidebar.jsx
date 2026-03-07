@@ -4,7 +4,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useTyping } from "../../../context/TypingContext";
 import { useDrafts } from "../../../context/DraftContext";
 import { useSidebarData } from "../../../hooks/useSidebarData";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import SidebarMenu from "./SidebarMenu";
 import SidebarSearch from "./SidebarSearch";
 import SidebarList from "./SidebarList";
@@ -14,7 +14,8 @@ import SidebarList from "./SidebarList";
 const Sidebar = () => {
   const { currentUser: loggedInUser } = useAuth();
   const { userId } = useParams();
-  const [activeTab, setActiveTab] = React.useState("chats");
+  const location = useLocation();
+  const activeTab = location.pathname.includes('/contacts') ? 'contacts' : 'chats';
 
   // Custom Hooks for business logic
   const {
@@ -36,7 +37,7 @@ const Sidebar = () => {
 
   return (
     <>
-      <SidebarMenu activeTab={activeTab} setActiveTab={setActiveTab} />
+      <SidebarMenu />
 
       <div className="sidebar">
         {/* Search Bar */}
@@ -51,7 +52,6 @@ const Sidebar = () => {
           typingUsers={typingUsers}
           userDrafts={userDrafts}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
         />
       </div>
     </>

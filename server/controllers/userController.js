@@ -3,8 +3,10 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const RefreshToken = require("../models/refreshTokens");
 const { sendVerificationOTP, sendResetPasswordEmail } = require('../service/emailConfig')
-const config = require('../config');
+const config = require('../config/config');
 const crypto = require('crypto');
+const redisClient = require('../config/redisClient');
+
 
 // Generate Access and Refresh Token - For Authentication
 const generateToken = (user) => {
@@ -20,10 +22,16 @@ const generateToken = (user) => {
     return { accessToken, refreshToken };
 };
 
+// OTP TTL
+const OTP_TTL_SECONDS = 2 * 60; // 2 minutes
+
 // Generate  6 digits OTP 
 const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
+
+// Redis key helper - keeps key naming consistent across all functions
+const otpKey = (userId) => `otp:${userId}`;
 
 // helper function to validate reset token
 const validateResetToken = async (token) => {
@@ -78,21 +86,25 @@ exports.signup = async (req, res) => {
         // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Generate email verification token for Email Verification only
-        const otp = generateOTP();
-
         // Create a new user
         const newUser = new User({
             email,
             username,
             phone,
             password: hashedPassword,
-            emailverificationOTP: otp,
-            OTPExprires: Date.now() + 2 * 60 * 1000, // valid for 2 minutes
+            // emailverificationOTP: otp,
+            // OTPExprires: Date.now() + 2 * 60 * 1000, // valid for 2 minutes
             isEmailVerified: false,
         });
 
         await newUser.save();
+
+        // Generate OTP and store in Redis with TTL
+        const otp = generateOTP();
+        await redisClient.set(otpKey(newUser._id), otp, 'EX', OTP_TTL_SECONDS);
+
+        // ADD THIS
+        console.log('Saved Redis key:', otpKey(newUser._id), '| OTP:', otp);
 
         try {
             await sendVerificationOTP(email, otp);
@@ -101,7 +113,7 @@ exports.signup = async (req, res) => {
                 email: email
             });
         } catch (error) {
-            // email failed -> delete the created user
+            // email failed -> delete the created user and clean up Redis key
             await User.findByIdAndDelete(newUser._id);
             console.error("Email send failed:", error);
             res.status(500).json({ error: "Failed to send verification email." });
@@ -132,32 +144,32 @@ exports.verifyOTP = async (req, res) => {
     const { email, otp } = req.body;
 
     try {
-        const user = await User.findOne({
-            email,
-            // emailverificationOTP: otp,
-            // OTPExprires: { $gt: Date.now() }
-        });
+        const user = await User.findOne({ email });
 
-        // Find the user by email only
+        // ADD THESE TWO LINES
+        console.log('Looking up Redis key:', otpKey(user._id));
+        console.log('Stored OTP:', await redisClient.get(otpKey(user._id)));
+
         if (!user) {
             return res.status(400).json({ error: "User not found to verify OTP" });
         }
 
-        // Check if OTP is expired
-        if (!user.OTPExprires || user.OTPExprires < Date.now()) {
+        // fetch OTP from Redis - Return null if expired or never set
+        const storedOTP = await redisClient.get(otpKey(user._id));
+
+        if (!storedOTP) {
             return res.status(400).json({ error: "OTP has expired. Please request a new one." });
         }
 
-        // Check if OTP is incorrect
-        if (user.emailverificationOTP !== otp) {
+        if (storedOTP !== otp) {
             return res.status(400).json({ error: "Invalid verification code. Please try again." });
         }
 
+        // OPT is valid - delete automatically (one-time-use)
+        await redisClient.del(otpKey(user._id));
+
         // update user verification status
         user.isEmailVerified = true;
-        user.emailverificationOTP = undefined;
-        user.OTPExprires = undefined;
-
         await user.save();
 
         // Generate tokens for automatic login
@@ -169,6 +181,7 @@ exports.verifyOTP = async (req, res) => {
             token: refreshToken,
             expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // which is basically 7 days expiry
         });
+        await refreshTokenEntry.save();
 
         // set refresh token as an HTTP-only cookie
         res.cookie('refreshToken', refreshToken, {
@@ -270,12 +283,14 @@ exports.resendOTP = async (req, res) => {
             return res.status(404).json({ error: "User not found or already verified" });
         }
 
+        // generate new OTP and overwrite existing Redis key (resets TTL too)
         const otp = generateOTP();
+        await redisClient.set(otpKey(user._id), otp, 'EX', OTP_TTL_SECONDS);
 
         // update user with new OTP
-        user.emailverificationOTP = otp;
-        user.OTPExprires = Date.now() + 2 * 60 * 1000; // valid for 10 minutes
-        await user.save();
+        // user.emailverificationOTP = otp;
+        // user.OTPExprires = Date.now() + 2 * 60 * 1000; // valid for 10 minutes
+        // await user.save();
 
         // send new OTP
         await sendVerificationOTP(email, otp);

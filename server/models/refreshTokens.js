@@ -5,6 +5,9 @@ const RefreshTokensSchema = new mongoose.Schema({
   token: { type: String, required: true },
   expiry: { type: Date, required: true },
   revoked: { type: Boolean, default: false },
-});
+}, { timestamps: true });
+
+RefreshTokensSchema.index({ expiry: 1 });  // For $lt queries
+RefreshTokensSchema.index({ revoked: 1 }); // For boolean filter
 
 module.exports = mongoose.model("RefreshToken", RefreshTokensSchema);

@@ -22,6 +22,9 @@ const generateToken = (user) => {
     return { accessToken, refreshToken };
 };
 
+// blaclist refresh token key helper
+const blacklistKey = (token) => `blacklist:${token}`;
+
 // OTP TTL
 const OTP_TTL_SECONDS = 2 * 60; // 2 minutes
 
@@ -445,13 +448,19 @@ exports.refreshToken = async (req, res) => {
 
     try {
 
+        // check if the token is blacklisted (revoked)
+        const isBlacklisted = await redisClient.get(blacklistKey(refreshToken));
+        if (isBlacklisted) {
+            return res.status(403).json({ error: "Invalid or expired refresh token" });
+        }
+
         // Verify the refresh token
         const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
-        // Find the refresh token in the database
-        const tokenEntry = await RefreshToken.findOne({ token: refreshToken });
+        // / DB is used only to fetch expiry for TTL calculation
+        const tokenEntry = await RefreshToken.findOne({ token: refreshToken }).select('expiry');
 
-        if (!tokenEntry || tokenEntry.revoked) {
+        if (!tokenEntry) {
             return res.status(403).json({ error: "Invalid or expired refresh token" });
         }
 
@@ -462,21 +471,20 @@ exports.refreshToken = async (req, res) => {
         // Generate a new refresh token and access token
         const { accessToken, refreshToken: newRefreshToken } = generateToken({ _id: decoded.id });
 
+        // Blacklist the old refresh token in Redis with an expiry matching the original token's remaining time
+        const remainingTTL = Math.floor((new Date(tokenEntry.expiry) - new Date()) / 1000);
+        if (remainingTTL > 0) {
+            await redisClient.set(blacklistKey(refreshToken), "1", 'EX', remainingTTL);
+        }
 
-        // Revoke the old refresh token and save the new one
-        tokenEntry.revoked = true;
-        await tokenEntry.save();
 
-        // Save the new refresh token in the database
+        // Delete the old refresh token from DB and save the new one
+        await RefreshToken.findByIdAndDelete(tokenEntry._id);
         await RefreshToken.create({
+            userId: decoded.id,
             token: newRefreshToken,
             expiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
         });
-
-        // // Generate a new access token
-        // const accessToken = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, {
-        //   expiresIn: "20m", // Short lifespan for access token
-        // });
 
         // Set the new refresh token as an HTTP-only secure cookie
         res.cookie("refreshToken", newRefreshToken, {
@@ -487,6 +495,7 @@ exports.refreshToken = async (req, res) => {
 
         // Send the new access token
         res.status(200).json({ accessToken });
+
     } catch (error) {
         console.error("Error in refresh token route:", error.message);
         return res.status(500).json({ error: "Internal server error" });
@@ -494,7 +503,6 @@ exports.refreshToken = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-    console.log("Cookkies:::::", req.cookies)
     const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
@@ -502,76 +510,84 @@ exports.logout = async (req, res) => {
     }
 
     try {
-        // mark the token as revoked
-        await RefreshToken.findOneAndUpdate(
-            { token: refreshToken },
-            { revoked: true }
-        );
+        const tokenEntry = await RefreshToken.findOne({ token: refreshToken })
+            .select('expiry');
 
-        // clear the refresh token cookie
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        });
+        if (tokenEntry) {
+            // Blacklist in Redis — Redis owns revocation, not MongoDB
+            const remainingTTL = Math.floor((new Date(tokenEntry.expiry) - Date.now()) / 1000);
+            if (remainingTTL > 0) {
+                await redisClient.set(blacklistKey(refreshToken), '1', 'EX', remainingTTL);
+            }
 
-        res.status(200).json({ message: "Logout successfully" });
-    } catch (error) {
-        console.error("Error during logout:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
-exports.getProfile = async (req, res) => {
-    // console.log("USER ID::::: ", req.user.id);
-    try {
-        const user = await User.findById(req.user.id).select("-password");
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-        res.status(200).json({ user });
-    } catch (error) {
-        console.error("Error fetching user profile:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
-exports.getAllUsers = async (req, res) => {
-    try {
-        const users = await User.find({
-            _id: { $ne: req.user.id },
-            isEmailVerified: true
-        }).select("-password");
-
-        res.status(200).json({ users });
-    } catch (error) {
-        console.error("Error fetching users:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
-exports.getUserById = async (req, res) => {
-    try {
-        const mongoose = require('mongoose');
-
-        // Validate that the ID is a valid ObjectId
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            return res.status(400).json({ error: "Invalid user ID format" });
+            // mark the token as revoked
+            await RefreshToken.findByIdAndUpdate(tokenEntry._id, { revoked: true });
         }
 
-        // Only allow fetching verified users, or the requester fetching their own profile
-        const query = { _id: req.params.id };
-        if (req.params.id !== req.user.id.toString()) {
-            query.isEmailVerified = true;
-        }
+            // clear the refresh token cookie
+            res.clearCookie("refreshToken", {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+            });
 
-        const user = await User.findOne(query).select("-password");
-        if (!user) {
-            return res.status(404).json({ error: "User not found or unverified" });
+            res.status(200).json({ message: "Logout successfully" });
+        } catch (error) {
+            console.error("Error during logout:", error);
+            res.status(500).json({ error: "Internal server error" });
         }
-        res.status(200).json({ user });
-    } catch (error) {
-        console.error("Error fetching user information:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
+    };
+
+    exports.getProfile = async (req, res) => {
+        // console.log("USER ID::::: ", req.user.id);
+        try {
+            const user = await User.findById(req.user.id).select("-password");
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            res.status(200).json({ user });
+        } catch (error) {
+            console.error("Error fetching user profile:", error);
+            res.status(500).json({ error: "Internal server error" });
+        }
+    };
+
+    exports.getAllUsers = async (req, res) => {
+        try {
+            const users = await User.find({
+                _id: { $ne: req.user.id },
+                isEmailVerified: true
+            }).select("-password");
+
+            res.status(200).json({ users });
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            res.status(500).json({ error: "Internal server error" });
+        }
+    };
+
+    exports.getUserById = async (req, res) => {
+        try {
+            const mongoose = require('mongoose');
+
+            // Validate that the ID is a valid ObjectId
+            if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+                return res.status(400).json({ error: "Invalid user ID format" });
+            }
+
+            // Only allow fetching verified users, or the requester fetching their own profile
+            const query = { _id: req.params.id };
+            if (req.params.id !== req.user.id.toString()) {
+                query.isEmailVerified = true;
+            }
+
+            const user = await User.findOne(query).select("-password");
+            if (!user) {
+                return res.status(404).json({ error: "User not found or unverified" });
+            }
+            res.status(200).json({ user });
+        } catch (error) {
+            console.error("Error fetching user information:", error);
+            res.status(500).json({ error: "Internal server error" });
+        }
+    };

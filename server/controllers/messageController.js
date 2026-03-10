@@ -2,7 +2,6 @@ const Message = require("../models/Message");
 const mongoose = require("mongoose");
 const chatService = require("../service/chatService");
 
-
 exports.sendMessage = async (req, res) => {
     const {
         // _id, ---- old way

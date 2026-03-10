@@ -1,7 +1,7 @@
 const Message = require("../models/Message");
 const mongoose = require("mongoose");
-const redisClient = require("./redisClient");
 
+/*
 const getChatHistory = async (roomId, limit = 40, skip = 0) => {
 
   try {
@@ -50,6 +50,7 @@ const invalidateChatCache = async (roomId) => {
     console.error('Error invalidating cache:', err);
   }
 };
+*/
 
 const getRecentMessagesService = async (userId) => {
   // Ensure userId is an objectId
@@ -131,4 +132,4 @@ const getRecentMessagesService = async (userId) => {
   return recentMessages;
 };
 
-module.exports = { getChatHistory, invalidateChatCache, getRecentMessagesService };
+module.exports = { getRecentMessagesService };

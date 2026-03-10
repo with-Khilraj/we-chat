@@ -9,6 +9,7 @@ const messageRoutes = require("./routes/messageRoutes");
 const chatRoutes = require('./routes/charRoutes')
 const User = require("./models/User");
 const Message = require("./models/Message");
+const startTokenCleanup = require("./service/tokenCleanup");
 
 const app = express();
 require("dotenv").config();
@@ -305,6 +306,9 @@ mongoose
   .connect(process.env.MONGO_URI, { maxPoolSize: 10 })
   .then(() => {
     console.log(`MongoDB connected`);
+
+    startTokenCleanup(); // Start the token cleanup cron job
+    
     server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

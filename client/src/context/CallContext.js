@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useReducer, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useReducer, useCallback, useMemo, useRef } from "react";
 import socket from "../utils/useSocket";
 import { api } from "../Api";
 
@@ -27,9 +27,6 @@ const callStates = {
 const initialState = {
   status: callStates.IDLE,
   error: null,
-  localStream: null,
-  remoteStream: null,
-  peerConnection: null,
   roomId: null,
   remoteUser: null
 };
@@ -61,16 +58,6 @@ function callReducer(state, action) {
     case ACTIONS.REJECT_CALL:
     case ACTIONS.END_CALL:
       return initialState;
-
-    case ACTIONS.SET_MEDIA_STREAMS:
-      return {
-        ...state,
-        localStream: action.localStream,
-        remoteStream: action.remoteStream
-      };
-
-    case ACTIONS.SET_PEER_CONNECTION:
-      return { ...state, peerConnection: action.peerConnection };
 
     case ACTIONS.ERROR:
       return { ...initialState, error: action.error };
@@ -108,9 +95,19 @@ const CallContext = createContext(defaultCallContextValue);
 export const CallProvider = ({ children, currentUser }) => {
   const [state, dispatch] = useReducer(callReducer, initialState);
 
-  // ======================
+  const peerConnectionRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
+
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  // triggers re-render when ref values change (refs alone don't cause re-renders)
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
+
   // WebRTC Setup
-  // ======================
   const setupWebRTC = useCallback(async (roomId) => {
     try {
       const config = {
@@ -124,41 +121,33 @@ export const CallProvider = ({ children, currentUser }) => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: true
-      }).catch(err => {
+      }).catch(() => {
         throw new Error('Media access denied');
       });
 
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-      pc.ontrack = (e) => dispatch({
-        type: ACTIONS.SET_MEDIA_STREAMS,
-        localStream: stream,
-        remoteStream: e.streams[0]
-      });
+      localStreamRef.current = stream;
+      peerConnectionRef.current = pc;
+      forceUpdate();
+
+      pc.ontrack = (e) => {
+        remoteStreamRef.current = e.streams[0];
+        forceUpdate();
+      };
 
       pc.onicecandidate = (e) => {
         if (e.candidate) {
-          socket.emit("ice-candidate", {
-            roomId,
-            candidate: e.candidate
-          });
+          socket.emit("ice-candidate", { roomId, candidate: e.candidate });
         }
       };
 
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "failed") {
-          dispatch({
-            type: ACTIONS.ERROR,
-            error: "Call disconnected"
-          });
-          cleanupResources(pc, stream);
+          dispatch({ type: ACTIONS.ERROR, error: "Call disconnected" });
+          cleanupResources();
         }
       };
-
-      dispatch({
-        type: ACTIONS.SET_PEER_CONNECTION,
-        peerConnection: pc
-      });
 
       return pc;
 
@@ -169,19 +158,25 @@ export const CallProvider = ({ children, currentUser }) => {
       });
       return null;
     }
-  }, []);
+  }, [forceUpdate, cleanupResources]);
+
 
   // ======================
   // Resource Cleanup
   // ======================
-  const cleanupResources = useCallback((pc, stream) => {
-    if (pc) pc.close();
-    if (stream) stream.getTracks().forEach(track => track.stop());
+  const cleanupResources = useCallback(() => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    remoteStreamRef.current = null;
   }, []);
 
-  // ======================
   // Call Actions
-  // ======================
   const initiateCall = useCallback(async (remoteUser, roomId) => {
     try {
       socket.emit('initiate-call', {
@@ -215,17 +210,7 @@ export const CallProvider = ({ children, currentUser }) => {
       const pc = await setupWebRTC(state.roomId);
       if (!pc) return;
 
-      const offer = await pc.createOffer()
-        .catch(err => {
-          throw new Error('Failed to create offer');
-        });
-
-      await pc.setLocalDescription(offer);
-      socket.emit('offer', {
-        roomId: state.roomId,
-        offer
-      });
-
+      // tell the caller we've accepted and are ready to connect - they will respond by creating an offer
       socket.emit('accept-call', {
         callerId: state.remoteUser._id,
         receiverId: currentUser._id,
@@ -252,110 +237,87 @@ export const CallProvider = ({ children, currentUser }) => {
       roomId: state.roomId
     });
 
-    cleanupResources(state.peerConnection, state.localStream);
+    cleanupResources();
     dispatch({ type: ACTIONS.REJECT_CALL });
-  }, [state.remoteUser, state.roomId, state.peerConnection, state.localStream, currentUser, cleanupResources]);
+  }, [state.remoteUser, state.roomId, currentUser, cleanupResources]);
 
   const endCall = useCallback(() => {
     socket.emit('end-call', { roomId: state.roomId });
-    cleanupResources(state.peerConnection, state.localStream);
+    cleanupResources();
     dispatch({ type: ACTIONS.END_CALL });
-  }, [state.roomId, state.peerConnection, state.localStream]);
+  }, [state.roomId, cleanupResources]);
 
-  // ======================
-  // Socket Listeners
-  // ======================
+
   useEffect(() => {
-    const handleIncomingCall = async ({ callerId, roomId }) => {
-      try {
-        // const accessToken = localStorage.get('accessToken');
-        // if(!accessToken) throw new Error('No access token!');
-
-        // // Dipatch initial state with partial remoteUser
-        // dispatch({
-        //   type: ACTIONS.RECEIVE_CALL,
-        //   roomId,
-        //   remoteUser: { _Id: callerId }
-        // });
-
-        // fetch full caller details
-        const res = await api.get(`api/users/${callerId}`);
-
-        // update with full remoteUser details
-        // dispatch({
-        //   type: ACTIONS.RECEIVE_CALL,
-        //   roomId,
-        //   remoteUser: res.data
-        // });
-      } catch (err) {
-        dispatch({
-          type: ACTIONS.ERROR,
-          error: 'Failed to load caller details'
-        });
-        endCall();
-      }
-    };
-
+    // handleIceCandidate uses stateRef to avoid stale closures
     const handleIceCandidate = ({ roomId, candidate }) => {
-      if (state.peerConnection && state.roomId === roomId) {
-        state.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      if (peerConnectionRef.current && stateRef.current.roomId === roomId) {
+        peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
       }
     };
 
+    // callee handles offer → creates answer → emits 'answer' (not 'offer')
     const handleOffer = async ({ roomId, offer }) => {
-      if (state.roomId === roomId && state.status === callStates.RINGING_INCOMING) {
+      if (stateRef.current.roomId === roomId && stateRef.current.status === callStates.RINGING_INCOMING) {
         try {
-          const pc = state.peerConnection || (await setupWebRTC(roomId));
+          const pc = peerConnectionRef.current || (await setupWebRTC(roomId));
           if (!pc) throw new Error("Failed to setup WebRTC");
 
           await pc.setRemoteDescription(new RTCSessionDescription(offer));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
 
-          socket.emit('offer', {
-            roomId,
-            answer,
-          })
+          // FIX: was wrongly emitting 'offer' here — must be 'answer'
+          socket.emit('answer', { roomId, answer });
         } catch (error) {
-          dispatch({
-            type: ACTIONS.ERROR,
-            error: error.message || "Failed to handle offer"
-          });
+          dispatch({ type: ACTIONS.ERROR, error: error.message || "Failed to handle offer" });
           endCall();
         }
       }
-    }
+    };
 
     const handleAnswer = ({ roomId, answer }) => {
-      if (state.peerConnection && state.roomId === roomId && state.status === callStates.RINGING_OUTGOING) {
-        state.peerConnection.setRemoteDescription(new RTCSessionDescription(answer)).catch(err => {
-          dispatch({
-            type: ACTIONS.ERROR,
-            error: "Failed to set remote description "
+      if (peerConnectionRef.current && stateRef.current.roomId === roomId) {
+        peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer))
+          .catch(() => {
+            dispatch({ type: ACTIONS.ERROR, error: "Failed to set remote description" });
+            endCall();
           });
-          endCall();
-        });
       }
     };
 
-    socket.on('incoming-call', handleIncomingCall);
+    // caller creates the offer HERE, after callee accepts the call and is ready to connect
+    const handleCallAccepted = async ({ roomId }) => {
+      if (stateRef.current.status === callStates.RINGING_OUTGOING) {
+        try {
+          const pc = await setupWebRTC(stateRef.current.roomId);
+          if (!pc) return;
+
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.emit('offer', { roomId: stateRef.current.roomId, offer });
+
+          dispatch({ type: ACTIONS.ACCEPT_CALL });
+        } catch (err) {
+          dispatch({ type: ACTIONS.ERROR, error: 'Failed to create offer' });
+          endCall();
+        }
+      }
+    };
+
     socket.on('ice-candidate', handleIceCandidate);
     socket.on('offer', handleOffer);
     socket.on('answer', handleAnswer);
-    socket.on('call-accepted', () => {
-      if (state.status === callStates.RINGING_OUTGOING) {
-        dispatch({ type: ACTIONS.ACCEPT_CALL });
-      }
-    });
+    socket.on('call-accepted', handleCallAccepted);
     socket.on('call-rejected', () => {
-      if (state.status === callStates.RINGING_OUTGOING) {
+      if (stateRef.current.status === callStates.RINGING_OUTGOING) {
         dispatch({ type: ACTIONS.ERROR, error: 'Call rejected' });
         endCall();
       }
     });
     socket.on('call-ended', ({ roomId }) => {
-      if (state.roomId === roomId) {
-        cleanupResources(state.peerConnection, state.localStream);
+      if (stateRef.current.roomId === roomId) {
+        cleanupResources();
         dispatch({ type: ACTIONS.END_CALL });
       }
     });
@@ -365,16 +327,15 @@ export const CallProvider = ({ children, currentUser }) => {
     });
 
     return () => {
-      socket.off('incoming-call', handleIncomingCall);
       socket.off('ice-candidate', handleIceCandidate);
       socket.off('offer', handleOffer);
       socket.off('answer', handleAnswer);
-      socket.off('call-accepted');
+      socket.off('call-accepted', handleCallAccepted);
       socket.off('call-rejected');
       socket.off('call-ended');
       socket.off('call-busy');
     };
-  }, [state.status, endCall, state.peerConnection, state.roomId]);
+  }, [setupWebRTC, endCall, cleanupResources]);
 
 
   // ======================
@@ -387,7 +348,6 @@ export const CallProvider = ({ children, currentUser }) => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [state.peerConnection, state.localStream, cleanupResources]);
-
 
 
   // ======================
@@ -407,14 +367,14 @@ export const CallProvider = ({ children, currentUser }) => {
 
   // fetching caller details
   useEffect(() => {
-    const fetchCallerDetails = async (callerId) => {
+    const fetchCallerDetails = async (callerId, roomId) => {
       try {
         const response = await api.get(`/api/users/${callerId}`);
 
         // Update the remoteUser in state with full caller details
         dispatch({
           type: ACTIONS.RECEIVE_CALL,
-          roomId: state.roomId,
+          roomId,
           remoteUser: response.data
         });
 
@@ -427,19 +387,20 @@ export const CallProvider = ({ children, currentUser }) => {
       }
     };
 
-    // Trigger when incoming call arrives
     const handleIncomingCall = ({ callerId, roomId }) => {
-      fetchCallerDetails(callerId);
+      // dispatch imediately with partial user so UI shows without dealy
       dispatch({
         type: ACTIONS.RECEIVE_CALL,
         roomId,
         remoteUser: { _id: callerId } // Temporary partial user
       });
+      // then fetch full details and update state
+      fetchCallerDetails(callerId, roomId)
     };
 
     socket.on('incoming-call', handleIncomingCall);
     return () => socket.off('incoming-call', handleIncomingCall);
-  }, [endCall, state.roomId]);
+  }, [endCall]);
 
   // ======================
   // Context Value
@@ -448,26 +409,14 @@ export const CallProvider = ({ children, currentUser }) => {
 
   const contextValue = useMemo(() => ({
     callState: state.status,
-    localStream: state.localStream,
-    remoteStream: state.remoteStream,
+    localStream: localStreamRef.current,
+    remoteStream: remoteStreamRef.current,
     remoteUser: state.remoteUser,
     error: state.error,
-    initiateCall,
-    acceptCall,
-    rejectCall,
-    endCall,
+    initiateCall, acceptCall, rejectCall, endCall,
     isCalling: state.status !== callStates.IDLE
-  }), [
-    state.status,
-    state.localStream,
-    state.remoteStream,
-    state.remoteUser,
-    state.error,
-    initiateCall,
-    acceptCall,
-    rejectCall,
-    endCall
-  ]);
+  }), [state.status, state.remoteUser, state.error,
+    initiateCall, acceptCall, rejectCall, endCall]);
 
   return (
     <CallContext.Provider value={contextValue}>

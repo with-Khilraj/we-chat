@@ -92,6 +92,42 @@
   object-fit: cover;
 }
 
+/* Minimized state for the whole call container */
+.active-call--minimized .video-controls {
+  display: none; /* AnimatePresence handles this, but good as a fallback */
+}
+
+/* Minimize toggle button in the header */
+.minimize-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  padding: 4px 8px;
+}
+
+/* Placeholder shown when local video is turned off */
+.local-video--off {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2a2a2a;
+  border-radius: 8px;
+  /* match the dimensions of .local-video in your existing CSS */
+}
+
+.local-video--off span {
+  font-size: 1.5rem;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* Active state for mute/video buttons (when turned off) */
+.control-button--active {
+  background: rgba(220, 50, 50, 0.2);
+  color: #e55;
+}
+
 .active-call .call-timer {
   font-size: 1.2rem;
   color: #666;

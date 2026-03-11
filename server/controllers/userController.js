@@ -28,6 +28,9 @@ const blacklistKey = (token) => `blacklist:${token}`;
 // OTP TTL
 const OTP_TTL_SECONDS = 2 * 60; // 2 minutes
 
+// Reset Password Token TTL
+const RESET_PASSWORD_TOKEN_TTL_SECONDS = 10 * 60; // 10 minutes
+
 // Generate  6 digits OTP 
 const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -36,36 +39,37 @@ const generateOTP = () => {
 // Redis key helper - keeps key naming consistent across all functions
 const otpKey = (userId) => `otp:${userId}`;
 
-// helper function to validate reset token
+// Redis key helper for password reset tokens
+const resetTokenKey = (hashedToken) => `reset:${hashedToken}`;
+
+// helper function: validate reset token
 const validateResetToken = async (token) => {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    const user = await User.findOne({ resetPasswordToken: hashedToken });
+
+    // fetch userId from Redis using hashed token
+    const userId = await redisClient.get(resetTokenKey(hashedToken));
+
+    if (!userId) {
+        return { status: "Invalid" };
+    }
+
+    const user = await User.findById(userId);
 
     if (!user) {
         return { status: "Invalid" };
     }
 
-    if (user.resetPasswordExpires < Date.now()) {
-        return { status: "Expired" };
-    }
-
-    return { status: "Valid", user };
-};
+    return { status: "Valid", user, hashedToken };
+}
 
 // helper function: finalize password reset token
-const finalizePasswordResetToken = async (token) => {
+const finalizePasswordResetToken = async (hashedToken) => {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    const user = await User.findOne({ resetPasswordToken: hashedToken });
+    // just delete the Redis key — no need to hit MongoDB since we don't store anything there
+    await redisClient.del(resetTokenKey(hashedToken));
+}
 
-    if (!user) {
-        return; // silently return if user not found
-    }
-
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-    await user.save();
-};
 
 exports.signup = async (req, res) => {
     const { email, username, phone, password } = req.body;
@@ -312,55 +316,48 @@ exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
 
-        // Validate email
         if (!email || !email.trim()) {
-            return res.status(400).json({ error: 'Email is required' });
+            return res.status(400).json({ error: "Email is required" });
         }
 
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return res.status(400).json({ error: 'Invalid email format' });
+            return res.status(400).json({ error: "Invalid email format" });
         }
 
-        // apply anti-timing base delay 300-600ms
+        // apply anti-timing base delay 300-600ms - prevents user enumeration
         await new Promise(resolve => {
-            setTimeout(resolve, 300 + Math.random() * 300)
+            setTimeout(resolve, 300 + Math.random() * 300);
         });
 
         const normalizedEmail = email.toLowerCase().trim();
         const user = await User.findOne({ email: normalizedEmail });
 
-        // generate token only if user exist
         if (user) {
             // generate one time (unique) password reset token
             const resetToken = crypto.randomBytes(32).toString('hex');
-
-            // hash token before saving to database
             const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-            user.resetPasswordToken = hashedToken;
-            user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // token valid for 10 minutes
-            await user.save();
+            // store hashed token -> userId in Redis with TTL (no need to save in MongoDB)
+            await redisClient.set(resetTokenKey(hashedToken), user._id.toString(), 'EX', RESET_PASSWORD_TOKEN_TTL_SECONDS);
 
             const resetURL = `${config.frontendUrl}/reset-password/${resetToken}`;
 
             try {
                 await sendResetPasswordEmail(email, resetURL);
             } catch (emailError) {
-                user.resetPasswordToken = undefined;
-                user.resetPasswordExpires = undefined;
-                await user.save();
+                // email failed - delete the Redis key imediately
+                await redisClient.del(resetTokenKey(hashedToken));
                 return res.status(500).json({ error: "Failed to send password reset email" });
             }
         }
 
-        res.status(200).json({
-            message: 'If a user with this email exists, you will receive a password reset link shortly.'
-        });
+        // always return success response to prevent email enumeration
+        res.status(200).json({ message: "If a user with this account exits, you will receive a password reset link shortly." });
     } catch (error) {
-        console.error('Forgot password error:', error);
-        res.status(500).json({ error: "Error processing your request" });
+        console.error("Error in forgot password route:", error.message);
+        return res.status(500).json({ error: "Error processing forgot password request" });
     }
-};
+}
 
 exports.validateResetTokenRoute = async (req, res) => {
     try {
@@ -368,35 +365,33 @@ exports.validateResetTokenRoute = async (req, res) => {
         const result = await validateResetToken(token);
 
         if (result.status === 'Valid') {
-            return res.status(200).json({ valid: true });
+            res.status(200).json({ valid: true, message: "Reset token is valid" });
         }
 
-
-        return res.status(200).json({
+        return res.status(400).json({
             valid: false,
-            error: result.status === 'Expired'
-                ? "TOKEN_EXPIRED"
-                : "INVALID_TOKEN"
+            error: result.status === 'Expired' ? "TOKEN_EXPIRED" : "INVALID_TOKEN",
         });
+
     } catch (error) {
-        console.error('Error validating reset token:', error);
-        res.status(500).json({ error: "Internal server error" });
+        console.error("Error validating reset token route:", error.message);
+        return res.status(500).json({ error: "Internal server error" });
     }
-};
+}
 
 exports.finalizeResetTokenRoute = async (req, res) => {
     try {
         const { token } = req.body;
 
         if (!token) {
-            return res.status(200).json({ success: true }); // still return true to prevent token fishing
+            return res.status(200).json({ success: true }); // treat missing token as already finalized to prevent enumeration
         }
 
         await finalizePasswordResetToken(token);
-        return res.status(200).json({ success: true });
+        return res.status(200).json({ success: true, message: "Reset token finalized successfully" });
     } catch (error) {
-        console.error('Error finalizing reset token:', error);
-        res.status(200).json({ success: true }); // still return true to prevent token fishing
+        console.error("Error finalizing reset token route:", error.message);
+        return res.status(200).json({ success: true }); // still return success to prevent token fishing
     }
 };
 
@@ -423,21 +418,22 @@ exports.resetPassword = async (req, res) => {
             return res.status(400).json({ error: "TOKEN_EXPIRED" });
         }
 
-        const user = result.user;
+        const { user, hashedToken } = result;
 
-        // udate password and clear token
-        const hashedPassword = await bcrypt.hash(password, 10);
-        user.password = hashedPassword;
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
+        // Update password
+        user.password = await bcrypt.hash(password, 10);
         await user.save();
 
+        // Delete reset token from Redis — one-time use
+        await redisClient.del(resetTokenKey(hashedToken));
+
         res.status(200).json({ message: "Password reset successful. You can now log in with your new password." });
+
     } catch (error) {
         console.error('Reset password error:', error);
         res.status(500).json({ error: "Error resetting your password" });
     }
-};
+}
 
 exports.refreshToken = async (req, res) => {
     const refreshToken = req.cookies.refreshToken; // Retrieve refresh token from cookies
@@ -524,70 +520,70 @@ exports.logout = async (req, res) => {
             await RefreshToken.findByIdAndUpdate(tokenEntry._id, { revoked: true });
         }
 
-            // clear the refresh token cookie
-            res.clearCookie("refreshToken", {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
-            });
+        // clear the refresh token cookie
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
 
-            res.status(200).json({ message: "Logout successfully" });
-        } catch (error) {
-            console.error("Error during logout:", error);
-            res.status(500).json({ error: "Internal server error" });
+        res.status(200).json({ message: "Logout successfully" });
+    } catch (error) {
+        console.error("Error during logout:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.getProfile = async (req, res) => {
+    // console.log("USER ID::::: ", req.user.id);
+    try {
+        const user = await User.findById(req.user.id).select("-password");
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
-    };
+        res.status(200).json({ user });
+    } catch (error) {
+        console.error("Error fetching user profile:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
 
-    exports.getProfile = async (req, res) => {
-        // console.log("USER ID::::: ", req.user.id);
-        try {
-            const user = await User.findById(req.user.id).select("-password");
-            if (!user) {
-                return res.status(404).json({ message: "User not found" });
-            }
-            res.status(200).json({ user });
-        } catch (error) {
-            console.error("Error fetching user profile:", error);
-            res.status(500).json({ error: "Internal server error" });
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({
+            _id: { $ne: req.user.id },
+            isEmailVerified: true
+        }).select("-password");
+
+        res.status(200).json({ users });
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.getUserById = async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+
+        // Validate that the ID is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ error: "Invalid user ID format" });
         }
-    };
 
-    exports.getAllUsers = async (req, res) => {
-        try {
-            const users = await User.find({
-                _id: { $ne: req.user.id },
-                isEmailVerified: true
-            }).select("-password");
-
-            res.status(200).json({ users });
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            res.status(500).json({ error: "Internal server error" });
+        // Only allow fetching verified users, or the requester fetching their own profile
+        const query = { _id: req.params.id };
+        if (req.params.id !== req.user.id.toString()) {
+            query.isEmailVerified = true;
         }
-    };
 
-    exports.getUserById = async (req, res) => {
-        try {
-            const mongoose = require('mongoose');
-
-            // Validate that the ID is a valid ObjectId
-            if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-                return res.status(400).json({ error: "Invalid user ID format" });
-            }
-
-            // Only allow fetching verified users, or the requester fetching their own profile
-            const query = { _id: req.params.id };
-            if (req.params.id !== req.user.id.toString()) {
-                query.isEmailVerified = true;
-            }
-
-            const user = await User.findOne(query).select("-password");
-            if (!user) {
-                return res.status(404).json({ error: "User not found or unverified" });
-            }
-            res.status(200).json({ user });
-        } catch (error) {
-            console.error("Error fetching user information:", error);
-            res.status(500).json({ error: "Internal server error" });
+        const user = await User.findOne(query).select("-password");
+        if (!user) {
+            return res.status(404).json({ error: "User not found or unverified" });
         }
-    };
+        res.status(200).json({ user });
+    } catch (error) {
+        console.error("Error fetching user information:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};

@@ -1,6 +1,8 @@
 const express = require("express");
 const userController = require("../controllers/userController");
 const verifyAccessToken = require("../middlewares/authMiddleware");
+const loginLimiter = require('../middlewares/loginLimiter');
+const registerLimiter = require('../middlewares/registerLimiter');
 const passwordResetLimiter = require('../middlewares/passwordResetLimiter');
 const router = express.Router();
 
@@ -9,13 +11,13 @@ const validate = require('../middlewares/validate');
 const { signupSchema } = require('../schemas/authSchema');
 
 // Signup Route
-router.post("/signup", validate(signupSchema), userController.signup);
+router.post("/signup", registerLimiter, validate(signupSchema), userController.signup);
 
 // verify OTP route
 router.post("/verify-otp", userController.verifyOTP);
 
 // Login Route
-router.post("/login", userController.login);
+router.post("/login", loginLimiter, userController.login);
 
 // Resend OTP Route
 router.post("/resend-otp", userController.resendOTP);

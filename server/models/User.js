@@ -12,10 +12,10 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    emailverificationOTP: String,
-    OTPExprires: Date,
-    resetPasswordToken: String,
-    resetPasswordExpires: Date,
+    // emailverificationOTP: String,
+    // OTPExprires: Date,
+    // resetPasswordToken: String,
+    // resetPasswordExpires: Date,
   },
   { timestamps: true }
 );

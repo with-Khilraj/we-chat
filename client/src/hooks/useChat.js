@@ -4,7 +4,6 @@ import { api } from '../Api';
 import socket from '../utils/useSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidObjectId } from '../utils/chatUtils';
-import { useCall } from '../context/CallContext';
 import { useDrafts } from '../context/DraftContext';
 
 // Import specialized hooks
@@ -27,7 +26,7 @@ export const useChat = (selectedUser, currentUser) => {
   const lastMessageIdRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const navigate = useNavigate();
-  const { handleInitiateCall } = useCall();
+  // const { handleInitiateCall } = useCall();
   const { updateDraft, clearDraft, userDrafts } = useDrafts(); // kept userDrafts as it is used in useEffect
 
   // Initialize specialized hooks
@@ -42,12 +41,10 @@ export const useChat = (selectedUser, currentUser) => {
     cancelAudioRecording,
     playAudioPreview,
     pauseAudioPreview,
-    setAudioBlob: _setAudioBlob // unused
   } = useAudioRecorder();
 
   const {
     selectedFiles,
-    setSelectedFiles: _setSelectedFiles, // unused
     isUploading,
     setIsUploading,
     fileInputRef,
@@ -271,6 +268,10 @@ export const useChat = (selectedUser, currentUser) => {
     }
   }, [isLoadingMore, hasMore, selectedUser, currentUser, getRoomId, messages]);
 
+  const handleSetReplyingTo = useCallback((msg) => {
+    setReplyingTo(msg);
+  }, [setReplyingTo]);
+
   const handleReaction = async (messageId, emoji) => {
     try {
       const targetMessage = messages.find(m => m._id === messageId);
@@ -297,10 +298,10 @@ export const useChat = (selectedUser, currentUser) => {
     }
   };
 
-  const handleInitiateCallLocal = () => {
-    const roomId = getRoomId();
-    if (roomId && selectedUser) handleInitiateCall(selectedUser._id, roomId, selectedUser);
-  };
+  // const handleInitiateCallLocal = () => {
+  //   const roomId = getRoomId();
+  //   if (roomId && selectedUser) handleInitiateCall(selectedUser._id, roomId, selectedUser);
+  // };
 
   const toggleProfileInfo = () => setShowProfileInfo(!showProfileInfo);
   const cancelReply = () => setReplyingTo(null);
@@ -330,7 +331,7 @@ export const useChat = (selectedUser, currentUser) => {
     handleMediaClick,
     handleAudioRecording,
     handleTypingEvent,
-    handleInitiateCallLocal,
+    // handleInitiateCallLocal,
     toggleProfileInfo,
     audioRecordingState,
     audioDuration,
@@ -342,7 +343,7 @@ export const useChat = (selectedUser, currentUser) => {
     pauseAudioPreview,
     sendAudioMessage,
     replyingTo,
-    setReplyingTo,
+    handleSetReplyingTo,
     cancelReply,
     handleReaction,
     removeReaction,

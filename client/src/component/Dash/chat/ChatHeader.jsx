@@ -1,7 +1,8 @@
 import React from "react";
-import { Video, Phone, Info } from "lucide-react";
+import { Info } from "lucide-react";
+import CallButton from "../../call/CallButton";
 
-const ChatHeader = ({ selectedUser, onlineUsers, isCalling, initiateCall, toggleProfileInfo, localStream, remoteStream }) => {
+const ChatHeader = ({ selectedUser, onlineUsers, toggleProfileInfo }) => {
     return (
         <div className="chat-header">
             <div className="user-profile-name">
@@ -25,20 +26,8 @@ const ChatHeader = ({ selectedUser, onlineUsers, isCalling, initiateCall, toggle
             </div>
 
             <div className="flex items-center gap-2">
-                <button className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
-                    <Video size={20} />
-                </button>
-
-                <button
-                    onClick={() => initiateCall(selectedUser)}
-                    disabled={isCalling}
-                    className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600 disabled:opacity-50"
-                >
-                    <Phone size={20} />
-                </button>
-
-                {localStream && <audio ref={(ref) => ref && (ref.srcObject = localStream)} muted autoPlay />}
-                {remoteStream && <audio ref={(ref) => ref && (ref.srcObject = remoteStream)} autoPlay />}
+                <CallButton targetUser={selectedUser} type="video" />
+                <CallButton targetUser={selectedUser} type="audio" />
 
                 <button className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600" onClick={toggleProfileInfo}>
                     <Info size={20} />

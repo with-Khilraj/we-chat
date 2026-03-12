@@ -6,64 +6,48 @@ import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
 import Sidebar from "./component/dash/sidebar/Sidebar";
 import ChatContainer from "./component/dash/chat/ChatContainer";
-import { OnlineUsersProvider } from ".//context/onlineUsersContext";
+import { OnlineUsersProvider } from "./context/onlineUsersContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { CallProvider, useCall } from "./context/CallContext";
+// import { CallProvider, useCall } from "./context/CallContext";  // old method
+import { CallProvider } from "./context/NewCallContext"; // new method
 import { TypingProvider } from "./context/TypingContext";
 import { DraftProvider } from "./context/DraftContext";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import EmailVerification from "./pages/EmailVerification";
-import FloatingCallWindow from "./component/FloatingCallWindow";
-import ActiveCall from "./component/ActiveCall";
-import IncomingCall from "./component/Incoming_call";
-import CallInitiation from "./component/CallInitiation";
-import { AnimatePresence } from "framer-motion";
 import "./global.css"
 import ForgotPasswordPage from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import WelcomeState from "./component/dash/WelcomeState";
 
-const CallComponents = () => {
-  const {
-    isCalling,
-    callState,
-    remoteUser,
-    acceptCall,
-    rejectCall,
-    endCall,
-  } = useCall();
+import CallManager from "./component/call/CallManager";
 
-  return (
-    <AnimatePresence>
-      {/* Outgoing call UI */}
-      {callState === "ringing_outgoing" && remoteUser && (
-        <FloatingCallWindow>
-          <CallInitiation />
-        </FloatingCallWindow>
-      )}
+// const CallComponents = () => {
+//   const { callState, remoteUser } = useCall();
 
-      {/* Incoming call UI */}
-      {callState === "ringing_incoming" && remoteUser && (
-        <FloatingCallWindow>
-          <IncomingCall />
-        </FloatingCallWindow>
-      )}
+//    return (
+//     <AnimatePresence mode="wait">
+//       {/* Outgoing call — waiting for answer */}
+//       {callState === CALL_STATE.OUTGOING && remoteUser && (
+//         <OutgoingCallScreen key="outgoing" />
+//       )}
 
-      {/* Active call UI */}
-      {callState === "active" && remoteUser && (
-        <FloatingCallWindow>
-          <ActiveCall onEndCall={endCall} />
-        </FloatingCallWindow>
-      )}
-    </AnimatePresence>
-  );
-};
+//       {/* Incoming call — modal overlay */}
+//       {callState === CALL_STATE.INCOMING && remoteUser && (
+//         <IncomingCallModal key="incoming" />
+//       )}
+
+//       {/* Active call — full screen */}
+//       {callState === CALL_STATE.ACTIVE && remoteUser && (
+//         <ActiveCallScreen key="active" />
+//       )}
+//     </AnimatePresence>
+//   );
+// };
 
 const AppContent = () => {
   const { currentUser, loading } = useAuth();
 
   if (loading) return <div>Loading...</div>;
-  // if (!currentUser) return <div>Please log in to continue.</div>;
 
   return (
     <CallProvider currentUser={currentUser}>
@@ -87,7 +71,7 @@ const AppContent = () => {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
           </Routes>
-          <CallComponents />
+          <CallManager />
         </main>
       </Router>
     </CallProvider>

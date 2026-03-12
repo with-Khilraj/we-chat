@@ -3,8 +3,8 @@ import { useParams, useOutletContext } from "react-router-dom";
 import { api } from "../../../Api";
 import { useOnlineUsers } from "../../../context/onlineUsersContext";
 import { useChat } from "../../../hooks/useChat";
-import { useCall } from "../../../context/CallContext";
-import { renderStatusIndicator } from "../../../utils/chatUtils";
+// import { useCall } from "../../../context/CallContext";
+import { renderStatusIndicator, shouldStartNewGroup } from "../../../utils/chatUtils";
 
 // New specialized components
 import ChatHeader from "./ChatHeader";
@@ -60,7 +60,7 @@ const ChatContainer = () => {
     pauseAudioPreview,
     sendAudioMessage,
     replyingTo,
-    setReplyingTo,
+    handleSetReplyingTo,
     cancelReply,
     handleReaction,
     activeEmojiPicker,
@@ -72,7 +72,7 @@ const ChatContainer = () => {
     fetchMoreMessages,
   } = useChat(selectedUser, currentUser);
 
-  const { isCalling, localStream, remoteStream, initiateCall } = useCall();
+  // const { isCalling, initiateCall } = useCall();
   const onlineUsers = useOnlineUsers();
 
   const virtuosoRef = useRef(null);
@@ -94,7 +94,6 @@ const ChatContainer = () => {
   const messageGroups = useMemo(() => {
     const timeBasedGroups = [];
     let currentGroup = null;
-    const { shouldStartNewGroup } = require("../../../utils/chatUtils");
 
     messages.forEach((msg) => {
       if (!currentGroup || shouldStartNewGroup(msg, currentGroup.messages[currentGroup.messages.length - 1])) {
@@ -138,11 +137,9 @@ const ChatContainer = () => {
       <ChatHeader
         selectedUser={selectedUser}
         onlineUsers={onlineUsers}
-        isCalling={isCalling}
-        initiateCall={initiateCall}
+        // isCalling={isCalling}
+        // initiateCall={initiateCall}
         toggleProfileInfo={toggleProfileInfo}
-        localStream={localStream}
-        remoteStream={remoteStream}
       />
 
       <MessageList
@@ -163,7 +160,7 @@ const ChatContainer = () => {
         activeEmojiPicker={activeEmojiPicker}
         setActiveEmojiPicker={setActiveEmojiPicker}
         emojiPickerRef={emojiPickerRef}
-        setReplyingTo={setReplyingTo}
+        setReplyingTo={handleSetReplyingTo}
         renderStatusIndicator={renderStatusIndicator}
       />
 

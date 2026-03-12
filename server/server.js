@@ -54,6 +54,9 @@ const onlineUsers = new Map();
 // Store active calls
 const activeCalls = new Map();
 
+// Store pending call timeouts
+const pendingCallTimeouts = new Map();
+
 // setup socket.io
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
@@ -167,8 +170,15 @@ io.on("connection", (socket) => {
   });
 
   // Handle call initiation
-  socket.on('initiate-call', (data) => {
-    const { callerId, receiverId, roomId } = data;
+  socket.on('initiate-call', async (data) => {
+    const { callerId, receiverId, roomId, callType } = data;
+
+    // protect calling yourself
+    if (callerId === receiverId) {
+      socket.emit('call-failed', { message: 'Cannot call yourself.' });
+      return;
+    }
+
     if (
       !mongoose.Types.ObjectId.isValid(callerId) ||
       !mongoose.Types.ObjectId.isValid(receiverId)
@@ -177,8 +187,15 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (activeCalls.has(roomId) || [...activeCalls.values()].some(call => call.receiverId === receiverId)) {
+    const isCallerBusy = [...activeCalls.values()].some(
+      call => call.callerId === callerId || call.receiverId === callerId
+    );
+    const isReceiverBusy = [...activeCalls.values()].some(
+      call => call.callerId === receiverId || call.receiverId === receiverId
+    );
+    if (activeCalls.has(roomId) || isCallerBusy || isReceiverBusy) {
       socket.emit('call-busy', { receiverId });
+      return;
     }
 
     const receiverSocketId = onlineUsers.get(receiverId);
@@ -189,8 +206,41 @@ io.on("connection", (socket) => {
 
     console.log(`Call initiated by ${callerId} to ${receiverId}`);
 
-    // notifying the receiver
-    socket.to(receiverSocketId).emit("incoming-call", { callerId, roomId });
+    socket.join(roomId); // Join the caller to the room immediately
+
+    // Fetch caller details to send username and avatar
+    try {
+      const caller = await User.findById(callerId).select('username avatar');
+      if (caller) {
+        // notifying the receiver with caller details
+        socket.to(receiverSocketId).emit("incoming-call", {
+          callerId,
+          roomId,
+          callerUsername: caller.username,
+          callerAvatar: caller.avatar,
+          callType,
+        });
+      } else {
+        socket.to(receiverSocketId).emit("incoming-call", { callerId, roomId });
+      }
+    } catch (err) {
+      console.error('Error fetching caller details:', err);
+      // Fallback: send just the callerId if fetch fails
+      socket.to(receiverSocketId).emit("incoming-call", { callerId, roomId });
+    }
+
+    // Set up call timeout
+    const callTimeout = setTimeout(() => {
+      if (!activeCalls.has(roomId)) {
+        socket.emit('call-timeout', { roomId });
+        io.to(receiverSocketId).emit('call-cancelled', { roomId });
+        // Clean up the timeout
+        pendingCallTimeouts.delete(roomId);
+      }
+    }, 30000); // 30 seconds
+
+    // Store timeout so you can cancel it on accept/reject
+    pendingCallTimeouts.set(roomId, callTimeout);
   })
 
   // Handle call acceptance
@@ -206,8 +256,25 @@ io.on("connection", (socket) => {
 
     console.log(`Call accepted by ${receiverId} from ${callerId}`);
 
+    // Clear the pending call timeout
+    const callTimeout = pendingCallTimeouts.get(roomId);
+    if (callTimeout) {
+      clearTimeout(callTimeout);
+      pendingCallTimeouts.delete(roomId);
+    }
+
+    // Both users must be in the roomId for WebRTC signaling to work
+    socket.join(roomId);
+
+    // Also make the caller join — find their socket and join too
+    const callerSocketId = onlineUsers.get(callerId);
+    if (callerSocketId) {
+      const callerSocket = io.sockets.sockets.get(callerSocketId);
+      if (callerSocket) callerSocket.join(roomId);
+    }
+
     // notify the caller
-    socket.to(callerId).emit('call-accepted', { receiverId, roomId });
+    io.to(callerId).emit('call-accepted', { receiverId, roomId });
 
     // store the call in activeCalls
     activeCalls.set(roomId, { callerId, receiverId });
@@ -215,7 +282,7 @@ io.on("connection", (socket) => {
 
   // Handle call rejection
   socket.on('reject-call', (data) => {
-    const { callerId, receiverId } = data;
+    const { callerId, receiverId, roomId } = data;
     if (
       !mongoose.Types.ObjectId.isValid(callerId) ||
       !mongoose.Types.ObjectId.isValid(receiverId)
@@ -226,8 +293,23 @@ io.on("connection", (socket) => {
 
     console.log(`Call rejected by ${receiverId} from ${callerId}`);
 
+    // Clear the pending call timeout
+    const callTimeout = pendingCallTimeouts.get(roomId);
+    if (callTimeout) {
+      clearTimeout(callTimeout);
+      pendingCallTimeouts.delete(roomId);
+    }
+
     // notify the caller
     socket.to(callerId).emit("call-rejected", { receiverId });
+
+    // leave the call room
+    socket.leave(roomId);
+    const callerSocketId = onlineUsers.get(callerId);
+    if (callerSocketId) {
+      const callerSocket = io.sockets.sockets.get(callerSocketId);
+      if (callerSocket) callerSocket.leave(roomId);
+    }
   })
 
   // Handle call end
@@ -235,28 +317,49 @@ io.on("connection", (socket) => {
     const { roomId } = data;
     console.log(`Call ended in room ${roomId}`);
 
-    // Remove the call from activeCalls
     activeCalls.delete(roomId);
+
+    // Clear the pending call timeout
+    const callTimeout = pendingCallTimeouts.get(roomId);
+    if (callTimeout) {
+      clearTimeout(callTimeout);
+      pendingCallTimeouts.delete(roomId);
+    }
 
     // Notify the both users
     io.to(roomId).emit("call-ended", { roomId });
+    io.socketsLeave(roomId);
   })
+
+  // Handle call cancellation
+socket.on('cancel-call', ({ callerId, receiverId, roomId }) => {
+  const receiverSocketId = onlineUsers.get(receiverId);
+  if (receiverSocketId) {
+    io.to(receiverSocketId).emit('call-cancelled', { roomId });
+  }
+  const timeout = pendingCallTimeouts.get(roomId);
+  if (timeout) { clearTimeout(timeout); pendingCallTimeouts.delete(roomId); }
+  socket.leave(roomId);
+});
 
   // Handle WebRTC offer
   socket.on('offer', (data) => {
     const { roomId, offer } = data;
+    if (!socket.rooms.has(roomId)) reutrn; // Ensure the sender is in the room
     socket.to(roomId).emit('offer', { roomId, offer });
   });
 
   // Handle WebRTC answer
   socket.on('answer', (data) => {
     const { roomId, answer } = data;
+    if (!socket.rooms.has(roomId)) return;
     socket.to(roomId).emit('answer', { roomId, answer });
   });
 
   // Handle ICE candidates
   socket.on('ice-candidate', (data) => {
     const { roomId, candidate } = data;
+    if (!socket.rooms.has(roomId)) return;
     socket.to(roomId).emit('ice-candidate', { roomId, candidate });
   });
 
@@ -286,6 +389,17 @@ io.on("connection", (socket) => {
         // Remove the association from memory
         onlineUsers.delete(userId);
 
+        // check if disconnected user was in an active call
+        for (const [roomId, call] of activeCalls.entries()) {
+          if (call.callerId === userId || call.receiverId === userId) {
+            activeCalls.delete(roomId);
+            // notify the other user in the call about the disconnection
+            io.to(roomId).emit('call-ended', { roomId });
+            console.log(`Call ended due to user disconnection.`);
+            break;
+          }
+        }
+
         //Emit the updated online users list to all the connected users
         io.emit('onlineUsers', Array.from(onlineUsers.keys()));
       }
@@ -308,7 +422,7 @@ mongoose
     console.log(`MongoDB connected`);
 
     startTokenCleanup(); // Start the token cleanup cron job
-    
+
     server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

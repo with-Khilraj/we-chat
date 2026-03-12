@@ -63,7 +63,7 @@ const validateResetToken = async (token) => {
 }
 
 // helper function: finalize password reset token
-const finalizePasswordResetToken = async (hashedToken) => {
+const finalizePasswordResetToken = async (token) => {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // just delete the Redis key — no need to hit MongoDB since we don't store anything there

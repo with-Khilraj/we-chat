@@ -7,6 +7,10 @@ const config = require('../config/config');
 const crypto = require('crypto');
 const redisClient = require('../config/redisClient');
 
+// Account lockout constants
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
 
 // Generate Access and Refresh Token - For Authentication
 const generateToken = (user) => {
@@ -99,8 +103,6 @@ exports.signup = async (req, res) => {
             username,
             phone,
             password: hashedPassword,
-            // emailverificationOTP: otp,
-            // OTPExprires: Date.now() + 2 * 60 * 1000, // valid for 2 minutes
             isEmailVerified: false,
         });
 
@@ -109,9 +111,6 @@ exports.signup = async (req, res) => {
         // Generate OTP and store in Redis with TTL
         const otp = generateOTP();
         await redisClient.set(otpKey(newUser._id), otp, 'EX', OTP_TTL_SECONDS);
-
-        // ADD THIS
-        console.log('Saved Redis key:', otpKey(newUser._id), '| OTP:', otp);
 
         try {
             await sendVerificationOTP(email, otp);
@@ -215,7 +214,7 @@ exports.verifyOTP = async (req, res) => {
 
 exports.login = async (req, res) => {
     const { email, password } = req.body;
-    // validate email and password
+
     if (!email || !password) {
         return res.status(400).json({ error: "Please fill the required field" });
     }
@@ -223,21 +222,51 @@ exports.login = async (req, res) => {
     try {
         const normalizedEmail = email.toLowerCase().trim();
 
-        // find user by email
         const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
             return res.status(401).json({ error: "Invalid email or password" });
         }
 
-        // 1. check password first - ALWAYS
+        // 1. check if account is locked
+        if (user.lockedUntil && user.lockedUntil > Date.now()) {
+            const minutesLeft = Math.ceil((user.lockedUntil - Date.now()) / 1000 / 60);
+            return res.status(423).json({
+                error: `Account is temporarily locked due to too many failed attempts.`,
+                retryAfter: minutesLeft,
+                message: `Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`
+            })
+        }
+
+        // 2. check password first - ALWAYS
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
-            return res.status(401).json({ error: "Invalid email or password" });
+            // increment failed attempts
+            user.failedLoginAttempts += 1;
+
+            // lock account after 5 failed attempts
+            if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+                user.lockedUntil = new Date(Date.now() + LOCK_DURATION_MS);
+
+                await user.save();
+                return res.status(423).json({
+                    error: "Account locked due to too many failed attempts.",
+                    retryAfter: 15,
+                    message: "Too many failed attempts. Please try again in 15 minutes.",
+                });
+            }
+
+            await user.save();
+            const attemptsLeft = MAX_FAILED_ATTEMPTS - user.failedLoginAttempts;
+            return res.status(401).json({
+                error: "Invalid email or password",
+                attemptsLeft,
+                message: `${attemptsLeft} attempt${attemptsLeft > 1 ? 's' : ''} remaining before your account is locked.`
+            });
         }
 
-        // 2. check if email is verified - ONLY if password is correct
+        // 3. check if email is verified - ONLY if password is correct
         if (!user.isEmailVerified) {
             return res.status(401).json({
                 error: "Please verify your email first",
@@ -246,7 +275,12 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Logic to generate Aceess or Refresh Token
+        // 4. successfull login - reset lockout state
+        user.failedLoginAttempts = 0;
+        user.lockedUntil = null;
+        await user.save();
+
+        // 5. Logic to generate Aceess or Refresh Token
         const { accessToken, refreshToken } = generateToken(user);
 
         // save refresh token to database

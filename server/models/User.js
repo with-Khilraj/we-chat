@@ -12,10 +12,8 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    // emailverificationOTP: String,
-    // OTPExprires: Date,
-    // resetPasswordToken: String,
-    // resetPasswordExpires: Date,
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockedUntil: { type: Date, default: null },
   },
   { timestamps: true }
 );

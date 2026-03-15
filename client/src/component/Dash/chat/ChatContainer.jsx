@@ -137,8 +137,6 @@ const ChatContainer = () => {
       <ChatHeader
         selectedUser={selectedUser}
         onlineUsers={onlineUsers}
-        // isCalling={isCalling}
-        // initiateCall={initiateCall}
         toggleProfileInfo={toggleProfileInfo}
       />
 

@@ -1,0 +1,426 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&family=DM+Mono:wght@300;400&display=swap');
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes waveBar {
+  0%, 100% { height: 4px;  opacity: 0.25; }
+  50%       { height: 22px; opacity: 0.85; }
+}
+
+@keyframes expandRing {
+  0%   { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(1.4); }
+}
+
+@keyframes blinkDot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── Screen ── */
+.activeCallScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9980;
+  background: #08080f;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease;
+}
+
+/* ── Remote area ── */
+.remoteArea {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #08080f;
+}
+
+.remoteVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+
+.remoteCamOffFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.fallbackAvatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fallbackAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fallbackAvatar span {
+  font-family: 'Syne', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+.fallbackLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: #475569;
+  letter-spacing: 0.05em;
+}
+
+/* ── Audio only ── */
+.audioOnlyWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.audioOnlyWrap::before {
+  content: '';
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(110, 231, 183, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.audioAvatarStage {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aRing {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(110, 231, 183, 0.2);
+  animation: expandRing 3s ease-out infinite;
+}
+
+.aRing1 { inset: -10px; animation-delay: 0s; }
+.aRing2 { inset: -22px; animation-delay: 1s; }
+.aRing3 { inset: -34px; animation-delay: 2s; }
+
+.audioAvatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  border: 2px solid rgba(110, 231, 183, 0.2);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.audioAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.audioAvatar span {
+  font-family: 'Syne', sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+.audioName {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+}
+
+.waveBars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+}
+
+.wBar {
+  width: 3px;
+  border-radius: 3px;
+  background: #6ee7b7;
+  animation: waveBar 1.3s ease-in-out infinite;
+}
+
+.audioConn {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #6ee7b7;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* ── Top bar ── */
+.callTopbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(8, 8, 15, 0.85) 0%, transparent 100%);
+}
+
+.topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.topbarAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbarAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.topbarAvatar span {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+.topbarMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.topbarName {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.topbarTimer {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: #6ee7b7;
+  letter-spacing: 0.08em;
+}
+
+.topbarBadge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 13px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 100px;
+  backdrop-filter: blur(8px);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+
+.badgeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6ee7b7;
+  box-shadow: 0 0 6px #6ee7b7;
+  animation: blinkDot 2.5s ease-in-out infinite;
+}
+
+/* ── Local PiP ── */
+.localPip {
+  position: absolute;
+  bottom: 108px;
+  right: 18px;
+  width: 130px;
+  height: 180px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  background: #1a1a2e;
+  z-index: 10;
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.localPip:hover {
+  transform: scale(1.04);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65);
+}
+
+.pipVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.pipOff {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 28px;
+}
+
+.pipOffLabel {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.pipLabel {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 7px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Controls bar ── */
+.controlsBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 18px 0 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(to top, rgba(8, 8, 15, 0.9) 0%, transparent 100%);
+}
+
+/* ── Ctrl buttons ── */
+.ctrlBtn {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #f1f5f9;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ctrlBtn:hover {
+  background: rgba(255, 255, 255, 0.11);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.ctrlBtn.danger {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.25);
+  color: #f87171;
+}
+
+.ctrlBtn.accent {
+  background: rgba(129, 140, 248, 0.12);
+  border-color: rgba(129, 140, 248, 0.25);
+  color: #818cf8;
+}
+
+.ctrlBtn.endCall {
+  width: 58px;
+  height: 58px;
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.4);
+}
+
+.ctrlBtn.endCall:hover {
+  background: #dc2626;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 28px rgba(239, 68, 68, 0.5);
+}
+
+.ctrlTooltip {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  letter-spacing: 0.05em;
+}
+
+.ctrlBtn:hover .ctrlTooltip {
+  opacity: 1;
+}

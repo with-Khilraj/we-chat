@@ -1,0 +1,25 @@
+.callBtn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.callBtn:hover:not(.disabled) {
+  background: rgba(110, 231, 183, 0.1);
+  border-color: rgba(110, 231, 183, 0.25);
+  color: #6ee7b7;
+  transform: scale(1.06);
+}
+
+.callBtn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

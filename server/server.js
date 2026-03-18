@@ -10,11 +10,16 @@ const chatRoutes = require('./routes/charRoutes')
 const User = require("./models/User");
 const Message = require("./models/Message");
 const startTokenCleanup = require("./service/tokenCleanup");
+const redisClient = require("./config/redisClient");
 
 const app = express();
 require("dotenv").config();
 
 const PORT = process.env.PORT || 5000;
+
+// Presence Key helper
+const presenceKey = (userId) => `presence:${userId}`;
+const presence_TTL = 24 * 60 * 60; // 24 hours in seconds
 
 // create http server
 const server = http.createServer(app);
@@ -31,8 +36,8 @@ const io = new Server(server, {
 // Apply CORS middleware for the regular http requests
 app.use(
   cors({
-    origin: "http://localhost:3000", // allows request from this origin/domain ---> frontend url
-    credentials: true, // allow cookies to be sent
+    origin: "http://localhost:3000",
+    credentials: true,
   })
 );
 
@@ -48,14 +53,17 @@ app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/chat", chatRoutes);
 
-// using Map to store online users
-const onlineUsers = new Map();
-
 // Store active calls
 const activeCalls = new Map();
 
 // Store pending call timeouts
 const pendingCallTimeouts = new Map();
+
+// Helper: get all online userIds from redis
+const getOnlineUserIds = async () => {
+  const keys = await redisClient.keys('presence:*');
+  return keys.map((key) => key.replace('presence:', ''));
+}
 
 // setup socket.io
 io.on("connection", (socket) => {
@@ -100,9 +108,6 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // update the message status to 'sent' in the database
-      // await Message.findByIdAndUpdate(data._id, { status: "sent" });  ----- old way
-
       // emit the event to the room and individual users
       io.to(data.roomId).emit("receive-message", data);
       io.to(data.senderId).emit("message-sent", {
@@ -120,26 +125,29 @@ io.on("connection", (socket) => {
     }
   });
 
+  // online presence
   socket.on("online-user", async (userId) => {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       console.error('Invalid userId:', userId);
       return;
     }
     socket.join(userId);
+
     try {
-      // Update the user status in the database
-      await User.findByIdAndUpdate(userId, {
-        isOnline: true,
-        lastActive: new Date(),
-        socketId: socket.id,
-      });
+      // Redis: store presence with TTL
+      await redisClient.set(presenceKey(userId), socket.id, 'EX', presence_TTL);
+
+      // MongoDB: update lastActive only
+      await User.findByIdAndUpdate(userId, { lastActive: new Date() });
+
       console.log(`User ${userId} is now online.`);
 
-      // Add the user to the onlineUsers Map
-      onlineUsers.set(userId, socket.id);
+      // emit updated online users to all the connected clients
+      const onlineUserIds = await getOnlineUserIds();
 
       //Emit the updated online users list to all the connected users
-      io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+      io.emit('onlineUsers', onlineUserIds);
+
     } catch (error) {
       console.error("Invalid updating online-user:", error);
     }
@@ -163,7 +171,6 @@ io.on("connection", (socket) => {
       );
       // emite the event to both sender and receiver
       io.to(roomId).emit('message-seen', { messageIds, status: "seen" });
-      console.log(`Message seen event emitted for room ${roomId} with messageIds:`, messageIds);
     } catch (error) {
       console.error("Error updating message status:", error);
     }
@@ -198,7 +205,8 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const receiverSocketId = onlineUsers.get(receiverId);
+    // Redis: get receive socket id
+    const receiverSocketId = await redisClient.get(presenceKey(receiverId));
     if (!receiverSocketId) {
       socket.emit('call-failed', { message: 'Receiver is offline' });
       return;
@@ -206,7 +214,7 @@ io.on("connection", (socket) => {
 
     console.log(`Call initiated by ${callerId} to ${receiverId}`);
 
-    socket.join(roomId); // Join the caller to the room immediately
+    socket.join(roomId);
 
     // Fetch caller details to send username and avatar
     try {
@@ -244,7 +252,7 @@ io.on("connection", (socket) => {
   })
 
   // Handle call acceptance
-  socket.on('accept-call', (data) => {
+  socket.on('accept-call', async (data) => {
     const { callerId, receiverId, roomId } = data;
     if (
       !mongoose.Types.ObjectId.isValid(callerId) ||
@@ -266,8 +274,8 @@ io.on("connection", (socket) => {
     // Both users must be in the roomId for WebRTC signaling to work
     socket.join(roomId);
 
-    // Also make the caller join — find their socket and join too
-    const callerSocketId = onlineUsers.get(callerId);
+    // Redis: get caller socket id
+    const callerSocketId = await redisClient.get(presenceKey(callerId));
     if (callerSocketId) {
       const callerSocket = io.sockets.sockets.get(callerSocketId);
       if (callerSocket) callerSocket.join(roomId);
@@ -281,7 +289,7 @@ io.on("connection", (socket) => {
   })
 
   // Handle call rejection
-  socket.on('reject-call', (data) => {
+  socket.on('reject-call', async (data) => {
     const { callerId, receiverId, roomId } = data;
     if (
       !mongoose.Types.ObjectId.isValid(callerId) ||
@@ -302,10 +310,10 @@ io.on("connection", (socket) => {
 
     // notify the caller
     socket.to(callerId).emit("call-rejected", { receiverId });
-
-    // leave the call room
     socket.leave(roomId);
-    const callerSocketId = onlineUsers.get(callerId);
+
+    // Redis: get caller socket id
+    const callerSocketId = await redisClient.get(presenceKey(callerId));
     if (callerSocketId) {
       const callerSocket = io.sockets.sockets.get(callerSocketId);
       if (callerSocket) callerSocket.leave(roomId);
@@ -332,15 +340,15 @@ io.on("connection", (socket) => {
   })
 
   // Handle call cancellation
-socket.on('cancel-call', ({ callerId, receiverId, roomId }) => {
-  const receiverSocketId = onlineUsers.get(receiverId);
-  if (receiverSocketId) {
-    io.to(receiverSocketId).emit('call-cancelled', { roomId });
-  }
-  const timeout = pendingCallTimeouts.get(roomId);
-  if (timeout) { clearTimeout(timeout); pendingCallTimeouts.delete(roomId); }
-  socket.leave(roomId);
-});
+  socket.on('cancel-call', async ({ callerId, receiverId, roomId }) => {
+    const receiverSocketId = await redisClient.get(presenceKey(receiverId));
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('call-cancelled', { roomId });
+    }
+    const timeout = pendingCallTimeouts.get(roomId);
+    if (timeout) { clearTimeout(timeout); pendingCallTimeouts.delete(roomId); }
+    socket.leave(roomId);
+  });
 
   // Handle WebRTC offer
   socket.on('offer', (data) => {
@@ -369,29 +377,35 @@ socket.on('cancel-call', ({ callerId, receiverId, roomId }) => {
     });
 
     try {
-      // const userId = onlineUsers.get(socket.id);
-      const userId = [...onlineUsers.entries()].find(([_, sid]) => sid === socket.id)?.[0];
+      // find userId by matching socketId in Redis
+      const keys = await redisClient.keys('presence:*');
+      let disconnectedUserId = null;
 
-      if (userId) {
-        // Mark the user as offline when they disconnect
-        await User.findByIdAndUpdate(userId, {
-          isOnline: false,
-          lastActive: new Date(),
-        });
+      for (const key of keys) {
+        const storedSocketId = await redisClient.get(key);
+        if (storedSocketId === socket.id) {
+          disconnectedUserId = key.replace('presence:', '');
+          break;
+        }
+      }
+
+      if (disconnectedUserId) {
+        // remove presence key
+        await redisClient.del(presenceKey(disconnectedUserId));
+
+        // MongoDB: update lastActive only
+        await User.findByIdAndUpdate(disconnectedUserId, { lastActive: new Date() });
 
         // update the user status of undelivered messages to 'sent'
         await Message.updateMany(
-          { receiverId: userId, status: "delivered" },
+          { receiverId: disconnectedUserId, status: "delivered" },
           { status: "sent" }
         );
-        console.log(`User disconnected: ${userId}`);
-
-        // Remove the association from memory
-        onlineUsers.delete(userId);
+        console.log(`User disconnected: ${disconnectedUserId}`);
 
         // check if disconnected user was in an active call
         for (const [roomId, call] of activeCalls.entries()) {
-          if (call.callerId === userId || call.receiverId === userId) {
+          if (call.callerId === disconnectedUserId || call.receiverId === disconnectedUserId) {
             activeCalls.delete(roomId);
             // notify the other user in the call about the disconnection
             io.to(roomId).emit('call-ended', { roomId });
@@ -401,7 +415,8 @@ socket.on('cancel-call', ({ callerId, receiverId, roomId }) => {
         }
 
         //Emit the updated online users list to all the connected users
-        io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+        const onlineUserIds = await getOnlineUserIds();
+        io.emit('onlineUsers', onlineUserIds);
       }
     } catch (error) {
       console.error("Error updating user status on disconnect:", error);
@@ -409,10 +424,10 @@ socket.on('cancel-call', ({ callerId, receiverId, roomId }) => {
   });
 
   // Emit the list of online users to the newly connected user
-  socket.emit(
-    "onlineUsers",
-    Array.from(onlineUsers.keys()).filter((key) => key.length === 24)
-  );
+  (async () => {
+    const onlineUserIds = await getOnlineUserIds();
+    socket.emit("onlineUsers", onlineUserIds.filter((id) => id.length === 24));
+  })();
 });
 
 // Connect to MongoDB
@@ -420,9 +435,7 @@ mongoose
   .connect(process.env.MONGO_URI, { maxPoolSize: 10 })
   .then(() => {
     console.log(`MongoDB connected`);
-
-    startTokenCleanup(); // Start the token cleanup cron job
-
+    startTokenCleanup();
     server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

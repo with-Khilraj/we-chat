@@ -6,3 +6,6 @@
 .env.local
 .env.production
 .env
+
+// ignore oldCallMethod folder
+client/src/component/oldCallMethod

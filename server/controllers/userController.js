@@ -238,7 +238,7 @@ exports.login = async (req, res) => {
             })
         }
 
-        // 2. check password first - ALWAYS
+        // 2. check password
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {

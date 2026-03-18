@@ -2,6 +2,8 @@ const Message = require("../models/Message");
 const mongoose = require("mongoose");
 const chatService = require("../service/chatService");
 const redisClient = require("../config/redisClient");
+const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
 
 // Cache constants
 const CHAT_TTL = 24 * 60 * 60; // 24 hours in seconds
@@ -69,6 +71,34 @@ const invalidateRoomCache = async (roomId) => {
     await redisClient.del(key);
 };
 
+// Helper: Uplaod buffer to Cloudinary
+const uploadToCloudinary = (buffer, options) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+        });
+        streamifier.createReadStream(buffer).pipe(uploadStream);
+    });
+};
+
+// Helper: Determine Cloudinary resource type + folder from mimetype
+const getUploadOptions = (mimetype) => {
+  if (mimetype.startsWith('image/')) {
+    return { resource_type: 'image', folder: 'chat-app/images' };
+  }
+  if (mimetype.startsWith('video/')) {
+    return { resource_type: 'video', folder: 'chat-app/videos' };
+  }
+  if (mimetype.startsWith('audio/')) {
+    return { resource_type: 'video', folder: 'chat-app/audio' }; // Cloudinary uses 'video' for audio
+  }
+  if (mimetype === 'application/pdf') {
+    return { resource_type: 'raw', folder: 'chat-app/files' };
+  }
+  throw new Error(`Unsupported file type: ${mimetype}`);
+};
+
 exports.sendMessage = async (req, res) => {
     const {
         roomId,
@@ -81,7 +111,7 @@ exports.sendMessage = async (req, res) => {
         duration,
         caption,
         status,
-        replyTo, // Get replyTo from body
+        replyTo,
     } = req.body;
 
     console.log("Request Body:", req.body);
@@ -91,8 +121,6 @@ exports.sendMessage = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(receiverId)) {
         return res.status(400).json({ error: "Invalid receiverId" });
     }
-
-    const fileUrl = req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}` : null;
 
     if (!roomId || !receiverId || !messageType) {
         return res
@@ -105,10 +133,15 @@ exports.sendMessage = async (req, res) => {
     }
 
     if (messageType !== "text") {
-        if (!fileUrl || !fileSize || !fileType) {
+        if (!req.file) {
             return res
                 .status(400)
-                .json({ error: "fileUrl, fileSize, and fileType are required for non-text messages" });
+                .json({ error: "A file is required for non-text messages" });
+        }
+        if (!fileSize || !fileType) {
+            return res
+                .status(400)
+                .json({ error: "fileSize and fileType are required for non-text messages" });
         }
 
         if ((messageType === "file" || messageType === "photo") && !fileName) {
@@ -118,30 +151,32 @@ exports.sendMessage = async (req, res) => {
         if ((messageType === "audio" || messageType === "video") && !duration) {
             return res.status(400).json({ error: "duration is required for audio and video messages" });
         }
-
     }
 
     try {
-        const messageData = new Message({
+        let fileUrl = null;
+
+        if (req.file) {
+            const uploadOptions = getUploadOptions(req.file.mimetype);
+            const result = await uploadToCloudinary(req.file.buffer, uploadOptions);
+            fileUrl = result.secure_url;
+        }
+
+        const savedMessage = await Message.create({
             roomId,
             senderId: req.user.id,
             receiverId,
-            content: messageType === "text" ? content : null,
             messageType,
-            messageType,
-            ...(messageType === 'text' ? { content } : {}), // Only include content for text
+            ...(messageType === 'text' ? { content } : {}),
             ...(messageType !== 'text' && fileUrl
                 ? { fileUrl, fileName, fileSize, fileType, duration }
-                : {}), // Only include file fields for non-text
+                : {}),
             caption,
-            status: status || 'sent', // Default status to 'sent'
+            status: status || 'sent',
             replyTo: replyTo || null,
             lastMessageTimestamp: new Date(),
             createdAt: new Date(),
         });
-
-        const newMessage = new Message(messageData);
-        const savedMessage = await newMessage.save();
 
         // append new message to Redis cache (if room cache exists)
         await appendMessageToCache(roomId, savedMessage.toObject());

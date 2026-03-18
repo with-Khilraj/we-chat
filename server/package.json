@@ -13,6 +13,7 @@
   "description": "",
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -24,6 +25,7 @@
     "mongoose": "^8.8.3",
     "node-cron": "^4.2.1",
     "socket.io": "^4.8.1",
+    "streamifier": "^0.1.1",
     "uuid": "^11.0.3",
     "zod": "^4.3.6"
   },

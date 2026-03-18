@@ -2,13 +2,17 @@ const express = require("express");
 const router = express.Router();
 const messageController = require("../controllers/messageController");
 const verifyAccessToken = require("../middlewares/authMiddleware");
-const multer = require("multer");
+const {upload, uploadErrorHandler} = require('../middlewares/upload')
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 // send message
-router.post("/", verifyAccessToken, upload.single('file'), messageController.sendMessage);
+router.post(
+    "/", 
+    verifyAccessToken, 
+    upload.single('file'), 
+    messageController.sendMessage,
+    uploadErrorHandler
+);
 
 // get the recent message of all users
 router.get("/recent-messages", verifyAccessToken, messageController.getRecentMessages);

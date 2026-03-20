@@ -1,5 +1,5 @@
 import { createContext, useContext, useRef, useState, useEffect, useCallback } from "react";
-import socket from "../utils/useSocket";
+import { socket } from "../utils/useSocket";
 
 
 const CallContexts = createContext(null);
@@ -12,53 +12,63 @@ export const useCall = () => {
 
 // Call states
 export const CALL_STATE = {
-  IDLE:     "idle",
+  IDLE: "idle",
   OUTGOING: "outgoing",   // we initiated, waiting for answer
   INCOMING: "incoming",   // someone is calling us
-  ACTIVE:   "active",     // call in progress
+  ACTIVE: "active",     // call in progress
 };
 
 export function CallProvider({ children, currentUser }) {
 
   // ── State ──
-  const [callState, setCallState]   = useState(CALL_STATE.IDLE);
-  const [callType, setCallType]     = useState(null);       // 'audio' | 'video'
+  const [callState, setCallState] = useState(CALL_STATE.IDLE);
+  const [callType, setCallType] = useState(null);       // 'audio' | 'video'
   const [remoteUser, setRemoteUser] = useState(null);       // { _id, username, avatar }
-  const [roomId, setRoomId]         = useState(null);
-  const [isMuted, setIsMuted]       = useState(false);
-  const [isCamOff, setIsCamOff]     = useState(false);
-  const [isSharing, setIsSharing]   = useState(false);
-  const [callError, setCallError]   = useState(null);
+  const [roomId, setRoomId] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCamOff, setIsCamOff] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [callError, setCallError] = useState(null);
 
   // ── Refs ──
-  const localVideoRef  = useRef(null);   // <video> element for local stream
-  const remoteVideoRef = useRef(null);   // <video> element for remote stream
-  const pcRef          = useRef(null);   // RTCPeerConnection
-  const localStreamRef = useRef(null);   // local MediaStream
-  const screenStreamRef = useRef(null);  // screen share stream
-  const isOfferCreatorRef = useRef(false); // tracks who creates the WebRTC offer
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const pcRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const screenStreamRef = useRef(null);
+  const isOfferCreatorRef = useRef(false);
+  const iceRestarTimerRef = useRef(null);
+  const roomIdRef = useRef(null);
 
   // ── Cleanup helper ──
   const cleanupCall = useCallback(() => {
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     screenStreamRef.current?.getTracks().forEach(t => t.stop());
-    localStreamRef.current  = null;
+    localStreamRef.current = null;
     screenStreamRef.current = null;
 
     // Close peer connection
     if (pcRef.current) {
-      pcRef.current.onicecandidate    = null;
-      pcRef.current.ontrack           = null;
+      pcRef.current.onicecandidate = null;
+      pcRef.current.ontrack = null;
       pcRef.current.onconnectionstatechange = null;
+      pcRef.current.oniceconnectionstatechange = null;  // clean up Ice handlers
       pcRef.current.close();
       pcRef.current = null;
     }
 
+    // clear any pending ICE restart timer
+    if (iceRestarTimerRef.current) {
+      clearTimeout(iceRestarTimerRef.current);
+      iceRestarTimerRef.current = null;
+    }
+
     // Clear video elements
-    if (localVideoRef.current)  localVideoRef.current.srcObject  = null;
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
 
     isOfferCreatorRef.current = false;
+    roomIdRef.current = null;
 
     setCallState(CALL_STATE.IDLE);
     setCallType(null);
@@ -69,6 +79,29 @@ export function CallProvider({ children, currentUser }) {
     setIsSharing(false);
     setCallError(null);
   }, []);
+
+  // =========== ICE Restart ===========
+  const triggerIceRestart = useCallback(async () => {
+    const pc = pcRef.current;
+    const currentRoomId = roomIdRef.current;
+
+    if (!pc || !currentRoomId || !isOfferCreatorRef.current) return;
+
+    try {
+      console.log("[ICE] Triggering ICE restart...");
+
+      // createOffer with iceRestart: true forces new ICE credentials
+      const offer = await pc.createOffer({ iceRestart: true });
+      await pc.setLocalDescription(offer);
+
+      socket.emit('offer', { roomId: currentRoomId, offer });
+      console.log("[ICE] ICE restart offer sent");
+    } catch (error) {
+      console.error("[ICE] Failed to trigger ICE restart:", error);
+      setCallError("Failed to restart connection. Please try again.");
+      cleanupCall();
+    }
+  }, [cleanupCall]);
 
   // ── Build RTCPeerConnection ──
   const createPeerConnection = useCallback((targetRoomId) => {
@@ -104,9 +137,50 @@ export function CallProvider({ children, currentUser }) {
       }
     };
 
+    // ICE connection state - handle network drop recovery
+    pc.oniceconnectionstatechange = () => {
+      const iceState = pc.iceConnectionState;
+      console.log("[ICE] Connectio state:", iceState);
+
+      switch (iceState) {
+        case "disconnected":
+          // Network blip - give ti 3 sec before restarting ICE
+          console.log("[ICE] Disconnected - starting 3s grace period...");
+          iceRestarTimerRef.current = setTimeout(() => {
+            if (pcRef.current?.iceConnectionState === "disconnected") {
+              console.log("[ICE] Grace period ended - triggering ICE restart...");
+              triggerIceRestart();
+            }
+          }, 3000);
+          break;
+
+        case "failed":
+          console.error("[ICE] Failed - restarting ICE immediately.");
+          if (iceRestarTimerRef.current) {
+            clearTimeout(iceRestarTimerRef.current);
+            iceRestarTimerRef.current = null;
+          }
+          triggerIceRestart();
+          break;
+
+        case "connected":
+        case "completed":
+          // Network restored - clear any pending restart timer
+          if (iceRestarTimerRef.current) {
+            console.log("[ICE] Network restored - clearing restart timer...");
+            clearTimeout(iceRestarTimerRef.current);
+            iceRestarTimerRef.current = null;
+          }
+          break;
+
+        default:
+          break;
+      }
+    };
+
     pcRef.current = pc;
     return pc;
-  }, [cleanupCall]);
+  }, [cleanupCall, triggerIceRestart]);
 
   // ── Get local media stream ──
   const getLocalStream = useCallback(async (type) => {
@@ -157,10 +231,6 @@ export function CallProvider({ children, currentUser }) {
 
   // ── ACCEPT incoming call ──
   const acceptCall = useCallback(async () => {
-    console.log("[acceptCall] State:", {
-      callState,
-      roomId,
-    });
     if (callState !== CALL_STATE.INCOMING || !roomId) return;
 
     try {
@@ -274,7 +344,6 @@ export function CallProvider({ children, currentUser }) {
   // ── WebRTC: create and send OFFER (caller side) ──
   const startWebRTCAsOffer = useCallback(async (stream, targetRoomId) => {
     const pc = createPeerConnection(targetRoomId);
-
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     const offer = await pc.createOffer();
@@ -337,7 +406,6 @@ export function CallProvider({ children, currentUser }) {
     };
 
     // ── WebRTC Signaling ──
-
     // Receiver gets offer → creates answer
     const onOffer = async ({ roomId: offerRoomId, offer }) => {
       if (!pcRef.current) {
@@ -368,30 +436,30 @@ export function CallProvider({ children, currentUser }) {
       }
     };
 
-    socket.on("incoming-call",  onIncomingCall);
-    socket.on("call-accepted",  onCallAccepted);
-    socket.on("call-rejected",  onCallRejected);
+    socket.on("incoming-call", onIncomingCall);
+    socket.on("call-accepted", onCallAccepted);
+    socket.on("call-rejected", onCallRejected);
     socket.on("call-cancelled", onCallCancelled);
-    socket.on("call-ended",     onCallEnded);
-    socket.on("call-busy",      onCallBusy);
-    socket.on("call-failed",    onCallFailed);
-    socket.on("call-timeout",   onCallTimeout);
-    socket.on("offer",          onOffer);
-    socket.on("answer",         onAnswer);
-    socket.on("ice-candidate",  onIceCandidate);
+    socket.on("call-ended", onCallEnded);
+    socket.on("call-busy", onCallBusy);
+    socket.on("call-failed", onCallFailed);
+    socket.on("call-timeout", onCallTimeout);
+    socket.on("offer", onOffer);
+    socket.on("answer", onAnswer);
+    socket.on("ice-candidate", onIceCandidate);
 
     return () => {
-      socket.off("incoming-call",  onIncomingCall);
-      socket.off("call-accepted",  onCallAccepted);
-      socket.off("call-rejected",  onCallRejected);
+      socket.off("incoming-call", onIncomingCall);
+      socket.off("call-accepted", onCallAccepted);
+      socket.off("call-rejected", onCallRejected);
       socket.off("call-cancelled", onCallCancelled);
-      socket.off("call-ended",     onCallEnded);
-      socket.off("call-busy",      onCallBusy);
-      socket.off("call-failed",    onCallFailed);
-      socket.off("call-timeout",   onCallTimeout);
-      socket.off("offer",          onOffer);
-      socket.off("answer",         onAnswer);
-      socket.off("ice-candidate",  onIceCandidate);
+      socket.off("call-ended", onCallEnded);
+      socket.off("call-busy", onCallBusy);
+      socket.off("call-failed", onCallFailed);
+      socket.off("call-timeout", onCallTimeout);
+      socket.off("offer", onOffer);
+      socket.off("answer", onAnswer);
+      socket.off("ice-candidate", onIceCandidate);
     };
   }, [callState, createPeerConnection, startWebRTCAsOffer, cleanupCall]);
 

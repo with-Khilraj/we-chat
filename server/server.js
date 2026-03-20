@@ -21,6 +21,10 @@ const PORT = process.env.PORT || 5000;
 const presenceKey = (userId) => `presence:${userId}`;
 const presence_TTL = 24 * 60 * 60; // 24 hours in seconds
 
+// Active tab key helper
+const activeTabKey = (userId) => `active-tab:${userId}`;
+const ACTIVE_TAB_TTL = 24 * 60 * 60; // 24 hours in seconds
+
 // create http server
 const server = http.createServer(app);
 
@@ -134,18 +138,34 @@ io.on("connection", (socket) => {
     socket.join(userId);
 
     try {
+      // Mutli-tab deduplication - check if another tab is already active for this user
+      const existingSocketId = await redisClient.get(activeTabKey(userId));
+
+      if (existingSocketId && existingSocketId !== socket.id) {
+        // Notify old tab that it has been demoted
+        const oldSocket = io.sockets.sockets.get(existingSocketId);
+        if (oldSocket) {
+          oldSocket.emit('tab-demoted', {
+            message: 'Another tab took over the active session.',
+            activesocketId: socket.id,
+          });
+          console.log(`[Tab Deduplication] Demoted old tab ${existingSocketId} for user ${userId}`);
+        }
+      }
+
+      // Most recent tab becomes active - overwrite active tab in Reds
+      await redisClient.set(activeTabKey(userId), socket.id, 'EX', ACTIVE_TAB_TTL);
+
       // Redis: store presence with TTL
       await redisClient.set(presenceKey(userId), socket.id, 'EX', presence_TTL);
 
       // MongoDB: update lastActive only
       await User.findByIdAndUpdate(userId, { lastActive: new Date() });
 
-      console.log(`User ${userId} is now online.`);
+      console.log(`[Presence] User ${userId} is now online. Active tab: ${socket.id}`);
 
       // emit updated online users to all the connected clients
       const onlineUserIds = await getOnlineUserIds();
-
-      //Emit the updated online users list to all the connected users
       io.emit('onlineUsers', onlineUserIds);
 
     } catch (error) {
@@ -371,6 +391,7 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit('ice-candidate', { roomId, candidate });
   });
 
+  // Handle disconnect (with multi-tab support)
   socket.on("disconnect", async () => {
     socket.rooms.forEach((roomId) => {
       if (roomId !== socket.id) socket.leave(roomId);
@@ -390,8 +411,18 @@ io.on("connection", (socket) => {
       }
 
       if (disconnectedUserId) {
-        // remove presence key
+        // Only process disconnect if this socket is the ACTIVE tab
+        const activesocketId = await redisClient.get(activeTabKey(disconnectedUserId));
+
+        if (activesocketId && activesocketId !== socket.id) {
+          // this was a tab switch, ignore its disconnect
+          console.log(`[Tab Dedup] Demoted tab ${socket.id} disconnected - ignoring...`);
+          return;
+        }
+
+        // Active tab disconnected - clean up presence
         await redisClient.del(presenceKey(disconnectedUserId));
+        await redisClient.del(activeTabKey(disconnectedUserId));
 
         // MongoDB: update lastActive only
         await User.findByIdAndUpdate(disconnectedUserId, { lastActive: new Date() });
@@ -401,7 +432,7 @@ io.on("connection", (socket) => {
           { receiverId: disconnectedUserId, status: "delivered" },
           { status: "sent" }
         );
-        console.log(`User disconnected: ${disconnectedUserId}`);
+        console.log(`[Presence] User ${disconnectedUserId} is now offline.`);
 
         // check if disconnected user was in an active call
         for (const [roomId, call] of activeCalls.entries()) {
@@ -409,7 +440,7 @@ io.on("connection", (socket) => {
             activeCalls.delete(roomId);
             // notify the other user in the call about the disconnection
             io.to(roomId).emit('call-ended', { roomId });
-            console.log(`Call ended due to user disconnection.`);
+            console.log(`[Call] Call ${roomId} ended due to user ${disconnectedUserId} disconnection.`);
             break;
           }
         }

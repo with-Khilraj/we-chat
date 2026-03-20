@@ -18,34 +18,13 @@ import "./global.css"
 import ForgotPasswordPage from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import WelcomeState from "./component/dash/WelcomeState";
+import { useSocket } from "./utils/useSocket";
 
 import CallManager from "./component/call/CallManager";
 
-// const CallComponents = () => {
-//   const { callState, remoteUser } = useCall();
-
-//    return (
-//     <AnimatePresence mode="wait">
-//       {/* Outgoing call — waiting for answer */}
-//       {callState === CALL_STATE.OUTGOING && remoteUser && (
-//         <OutgoingCallScreen key="outgoing" />
-//       )}
-
-//       {/* Incoming call — modal overlay */}
-//       {callState === CALL_STATE.INCOMING && remoteUser && (
-//         <IncomingCallModal key="incoming" />
-//       )}
-
-//       {/* Active call — full screen */}
-//       {callState === CALL_STATE.ACTIVE && remoteUser && (
-//         <ActiveCallScreen key="active" />
-//       )}
-//     </AnimatePresence>
-//   );
-// };
-
 const AppContent = () => {
   const { currentUser, loading } = useAuth();
+  useSocket(); // manages connect/disconnect/reconnect lifecycle
 
   if (loading) return <div>Loading...</div>;
 

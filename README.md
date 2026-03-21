@@ -11,9 +11,20 @@ A real-time chat application built with the MERN stack (MongoDB, Express.js, Rea
   
 - 💬 Real-time Messaging
   - One-on-one chat functionality
-  - Online/offline status indicators
-  - Message timestamps
-  - Recent messages preview
+  - Media sharing (Images, Video, Audio, PDF) via Cloudinary
+  - Online/offline status indicators with Redis caching
+  - Read receipts & message delivery status
+  - Message timestamps and recent preview
+  
+- 📞 WebRTC Audio/Video Calling
+  - Peer-to-peer encrypted audio and video calls
+  - Screen sharing capabilities
+  - Automatic ICE restart & network drop recovery
+
+- ⚡ Advanced Session & Connection Management
+  - Tab-focus reconnect and state sync
+  - Concurrent multi-tab session deduplication
+  - Offline message queueing & delivery
   
 - 🎨 User Interface
   - Clean and responsive design
@@ -34,7 +45,9 @@ A real-time chat application built with the MERN stack (MongoDB, Express.js, Rea
   - Node.js
   - Express.js
   - MongoDB with Mongoose
+  - Redis for memory caching and multi-tab synchronization
   - Socket.io for real-time events
+  - Cloudinary for media storage
   - JWT for authentication
   - Nodemailer for email services
   - Bcrypt for password hashing
@@ -62,10 +75,11 @@ bash
 - MONGO_URI=your_mongodb_connection_string
 - JWT_SECRET=your_jwt_secret
 - REFRESH_TOKEN_SECRET=your_refresh_token_secret
-
-### create a .env.local file in the server folder and add the following
 - EMAIL_USER=your_gmail@gmail.com
 - EMAIL_PASSWORD=your_gmail_app_password (never use your real pass, use generated app pass)
+- CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+- CLOUDINARY_API_KEY=your_cloudinary_api_key
+- CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
 
 ### Set up Gmail App Password
@@ -117,6 +131,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - Socket.io for real-time communication
+- WebRTC for peer-to-peer calling
+- Redis for session management
+- Cloudinary for media handling
 - MongoDB Atlas for database hosting
 - React Toastify for notifications
 - Nodemailer for email services

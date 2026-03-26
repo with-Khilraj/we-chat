@@ -3,7 +3,6 @@ import { useParams, useOutletContext } from "react-router-dom";
 import { api } from "../../../Api";
 import { useOnlineUsers } from "../../../context/onlineUsersContext";
 import { useChat } from "../../../hooks/useChat";
-// import { useCall } from "../../../context/CallContext";
 import { renderStatusIndicator, shouldStartNewGroup } from "../../../utils/chatUtils";
 
 // New specialized components
@@ -112,6 +111,36 @@ const ChatContainer = () => {
     return timeBasedGroups;
   }, [messages]);
 
+  // Extract shared data for ProfileSidebar
+  const sharedMedia = useMemo(() => {
+    return messages.filter(msg => msg.messageType === 'photo' || msg.messageType === 'video');
+  }, [messages]);
+
+  const sharedFiles = useMemo(() => {
+    return messages.filter(msg => msg.messageType === 'file');
+  }, [messages]);
+
+  const sharedLinks = useMemo(() => {
+    const links = [];
+    messages.forEach(msg => {
+      if (msg.messageType === 'text' && msg.content) {
+        // Simple regex to find URLs
+        const matches = msg.content.match(/(https?:\/\/[^\s]+)/g);
+        if (matches) {
+          matches.forEach(url => {
+            links.push({
+              url,
+              domain: url.split('/')[2] || 'Link',
+              createdAt: msg.createdAt
+            });
+          });
+        }
+      }
+    });
+    return links;
+  }, [messages]);
+
+
   const handleStartReached = async () => {
     if (hasMore && !isLoadingMore) {
       await fetchMoreMessages();
@@ -189,6 +218,11 @@ const ChatContainer = () => {
       <ProfileSidebar
         selectedUser={selectedUser}
         showProfileInfo={showProfileInfo}
+        toggleProfileInfo={toggleProfileInfo}
+        isOnline={onlineUsers.includes(selectedUser._id)}
+        sharedMedia={sharedMedia}
+        sharedFiles={sharedFiles}
+        sharedLinks={sharedLinks}
       />
     </div>
   );

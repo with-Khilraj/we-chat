@@ -299,17 +299,22 @@
 
 /* Media Messages */
 .media-message {
-  width: 100%;
-  max-width: 300px;
-  height: auto;
+  width: auto;
+  max-width: 100%;
+  max-height: 350px;
+  min-height: 100px;
   display: block;
   border-radius: 12px;
+  object-fit: contain;
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 video.video-message {
-  width: 100%;
-  max-width: 300px;
+  width: auto;
+  max-width: 100%;
+  max-height: 350px;
   border-radius: 12px;
+  background-color: #000;
 }
 
 audio.audio-message {
@@ -320,6 +325,25 @@ audio.audio-message {
   display: block;
   margin: 5px 0;
 }
+
+.empty-section {
+  color: #8e8e8e;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px 0;
+  background: #f9f9f9;
+  border-radius: 12px;
+  border: 1px dashed #e1e1e1;
+}
+
+.profile-status.online {
+  color: #10b981;
+}
+
+.profile-status.offline {
+  color: #8e8e8e;
+}
+
 
 /* For files (e.g., PDFs, documents) */
 .file-message {
@@ -426,52 +450,275 @@ audio.audio-message {
 }
 
 
-/* profile infromation */
 /* profile information */
 .profile-info {
-  flex: 0 0 18.7%;
-  background-color: white;
-  /* Very light gray */
-  padding: 15px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 350px;
+  background-color: #fff;
+  z-index: 50;
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  margin-top: 20px;
-  margin-right: 10px;
-  margin-bottom: 5px;
-  border-radius: 10px;
+  scrollbar-width: none;
+}
+
+.profile-info::-webkit-scrollbar {
   display: none;
-  transition: flex 0.3s ease;
 }
 
 .profile-info.show {
-  display: block;
+  transform: translateX(0);
 }
 
-.profile-info .profile-pic {
+.profile-header {
   display: flex;
-  justify-content: center;
-  margin-top: 2rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
 }
 
-.profile-info .profile-pic .user-profile-pic {
-  width: 10rch;
-  height: 10rch;
-  background-color: rgb(180, 180, 180);
-  border-radius: 50%;
+.profile-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  color: #666;
   display: flex;
-  justify-content: center;
+}
+
+.profile-content {
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
-.profile-pic .user-profile-pic .user-initial-char {
-  font-size: 19px;
-  color: #fff;
-  font-weight: bold;
+.profile-avatar-section {
+  text-align: center;
+  margin-bottom: 25px;
 }
 
-.profile-info .profile-user-name h3 {
+.profile-avatar-large {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 auto 15px;
+  overflow: hidden;
+}
+
+.profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 5px;
+  color: #111;
+}
+
+.profile-status {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+  width: 100%;
+  justify-content: center;
+}
+
+.action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f0f2f5;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   color: #333;
-  text-align: center;
-  margin-top: 10px;
+  transition: background 0.2s;
+}
+
+.action-btn:hover {
+  background: #e4e6eb;
+}
+
+.action-btn.danger {
+  color: #ef4444;
+}
+
+/* Sections */
+.sidebar-section {
+  width: 100%;
+  margin-bottom: 25px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: #111;
+}
+
+.section-header h3 span {
+  font-weight: 400;
+  color: #8e8e8e;
+  margin-left: 8px;
+}
+
+.see-all {
+  font-size: 13px;
+  color: #8e8e8e;
+  text-decoration: none;
+}
+
+/* Media Grid */
+.media-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.media-item {
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16/10;
+  position: relative;
+  background: #f0f2f5;
+}
+
+.media-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+/* List Items (Files/Links) */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #111;
+}
+
+.item-desc {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-link {
+  font-size: 12px;
+  color: #0084ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.favicon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.favicon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .new-messages-pill {
   position: absolute;
@@ -484,7 +731,7 @@ audio.audio-message {
   border: none;
   border-radius: 20px;
   display: flex;
-  items-center: center;
+  align-items: center;
   gap: 8px;
   font-size: 14px;
   font-weight: 500;

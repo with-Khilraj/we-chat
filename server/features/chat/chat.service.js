@@ -118,10 +118,16 @@ class ChatService {
 
     if (!before) {
       const cached = await getCachedMessages(roomId);
-      if (cached) return { messages: cached, hasMore: cached.length === parsedLimit, source: "cache" };
+      if (cached) {
+        console.log(`Cache [Hit]: ${roomId}`);
+        return { messages: cached, hasMore: cached.length === parsedLimit, source: "cache" };
+      }
 
+      console.log(`[Cache MISS] room: ${roomId} - fetching from MongoDB`);
       const messages = await Message.find({ roomId }).sort({ createdAt: -1 }).limit(parsedLimit);
       const ordered = messages.reverse();
+
+      // populate cache for next queue
       if (ordered.length > 0) await cacheMessages(roomId, ordered.map((m) => m.toObject()));
       return { messages: ordered, hasMore: messages.length === parsedLimit, source: "db" };
     }
@@ -129,8 +135,13 @@ class ChatService {
     const cached = await getCachedMessages(roomId);
     if (cached && cached.length > 0) {
       const beforeDate = new Date(before);
+
+      // filter cache message older than 'before' cursor
       const olderFromCache = cached.filter((msg) => new Date(msg.createdAt) < beforeDate);
+
+      // if we have enough messages, return them
       if (olderFromCache.length > 0) {
+        console.log(`Cache HIT - pagination: ${roomId}`);
         return {
           messages: olderFromCache.slice(-parsedLimit),
           hasMore: olderFromCache.length > parsedLimit,
@@ -138,6 +149,9 @@ class ChatService {
         };
       }
     }
+
+    // Cache doesn't have older messages — fall through to MongoDB
+    console.log(`[Cache MISS - pagination] room: ${roomId} — fetching from MongoDB`);
 
     const messages = await Message.find({
       roomId,
@@ -195,11 +209,26 @@ class ChatService {
       { $sort: { lastMessageTimestamp: -1 } },
       {
         $group: {
-          _id: { $cond: [{ $eq: ["$senderId", loggedInUserId] }, "$receiverId", "$senderId"] },
+          _id: {
+            $cond: [
+              { $eq: [{ $toString: "$senderId" }, { $toString: loggedInUserId }] },
+              "$receiverId",
+              "$senderId",
+            ],
+          },
           lastMessage: { $first: "$$ROOT" },
           unreadCount: {
             $sum: {
-              $cond: [{ $and: [{ $eq: ["$receiverId", loggedInUserId] }, { $eq: ["$status", "sent"] }] }, 1, 0],
+              $cond: [
+                {
+                  $and: [
+                    { $eq: [{ $toString: "$receiverId" }, { $toString: loggedInUserId }] },
+                    { $eq: ["$status", "sent"] },
+                  ],
+                },
+                1,
+                0,
+              ],
             },
           },
         },
@@ -225,7 +254,7 @@ class ChatService {
           status: "$lastMessage.status",
           unreadCount: 1,
           user: {
-            id: "$userInfo._id",
+            _id: "$userInfo._id",
             username: "$userInfo.username",
             email: "$userInfo.email",
           },

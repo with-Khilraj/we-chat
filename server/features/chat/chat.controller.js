@@ -90,7 +90,6 @@ const removeReaction = asyncHandler(async (req, res) => {
 
 const getRecentConversations = asyncHandler(async (req, res) => {
   const recentMessages = await chatService.getRecentMessages(req.user.id);
-  res.set("Cache-Control", "no-store");
   res.status(200).json({ success: true, recentMessages });
 });
 

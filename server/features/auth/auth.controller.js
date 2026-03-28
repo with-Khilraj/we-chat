@@ -50,7 +50,7 @@ const verifyOTP = asyncHandler(async (req, res) => {
     success: true,
     message: "Email verified successfully",
     accessToken,
-    user: { id: user._id, email: user.email, username: user.username },
+    user: { _id: user._id, email: user.email, username: user.username, avatar: user.avatar },
   });
 });
 
@@ -60,13 +60,13 @@ const login = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Login Successful",
-    user: { id: user._id, email: user.email, username: user.username },
+    user: { _id: user._id, email: user.email, username: user.username, avatar: user.avatar },
   });
 });
 
 const refreshToken = asyncHandler(async (req, res) => {
   const oldToken = req.cookies.refreshToken;
-  const { accessToken, newRefreshToken } = await authService.refreshToken(oldToken);
+  const { accessToken, refreshToken: newRefreshToken } = await authService.refreshToken(oldToken);
   setAuthCookies(res, accessToken, newRefreshToken);
   res.status(200).json({ success: true, accessToken });
 });

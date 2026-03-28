@@ -136,14 +136,23 @@ class AuthService {
   }
 
   async refreshToken(oldRefreshToken) {
+    if (!oldRefreshToken) {
+      throw new ApiError(401, "No refresh token provided");
+    }
+
     const isBlacklisted = await redisClient.get(blacklistKey(oldRefreshToken));
     if (isBlacklisted) throw new ApiError(403, "Token revoked");
 
-    const decoded = jwt.verify(oldRefreshToken, process.env.REFRESH_TOKEN_SECRET);
-    const tokenEntry = await RefreshToken.findOne({ token: oldRefreshToken });
+    let decoded;
+    try {
+      decoded = jwt.verify(oldRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (error) {
+      throw new ApiError(401, "Invalid or expired refresh token");
+    }
 
+    const tokenEntry = await RefreshToken.findOne({ token: oldRefreshToken });
     if (!tokenEntry || new Date(tokenEntry.expiry) <= new Date()) {
-      throw new ApiError(403, "Invalid or expired refresh token");
+      throw new ApiError(403, "Invalid or expired session");
     }
 
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.id);
@@ -160,7 +169,7 @@ class AuthService {
       expiry: new Date(Date.now() + AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
     });
 
-    return { accessToken, newRefreshToken };
+    return { accessToken, refreshToken: newRefreshToken };
   }
 
   async forgotPassword(email) {

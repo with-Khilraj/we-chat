@@ -6,6 +6,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const authRoutes = require("./features/auth/auth.routes");
 const chatRoutes = require("./features/chat/chat.routes");
+const userRoutes = require("./features/user/user.routes");
 const Message = require("./features/chat/message.model");
 const User = require("./features/user/user.model");
 const RefreshToken = require("./features/auth/auth.token.model");
@@ -53,9 +54,17 @@ app.use(cookiePaser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Global Cache Prevention for API routes
+app.use("/api", (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
+
 // routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 
 // Store active calls

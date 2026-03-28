@@ -1,6 +1,6 @@
 const cron = require("node-cron");
-const RefreshToken = require("../models/refreshTokens");
-const ArchivedToken = require("../models/ArchivedTokens");
+const RefreshToken = require("../features/auth/auth.token.model");
+const ArchivedToken = require("../features/auth/auth.archived.model");
 
 const ARCHIVE_AFTER_DAYS = 90;          // move to archive after 90 days
 const PURGE_ARCHIVED_AFTER_DAYS = 365;  // delete from archive after 1 year

@@ -1,6 +1,6 @@
 const express = require('express');
-const verifyAccessToken = require('../middlewares/authMiddleware');
-const Message = require('../models/Message');
+const verifyAccessToken = require('../common/middlewares/authMiddleware');
+const Message = require('../features/chat/message.model');
 const router = express.Router();
 
 

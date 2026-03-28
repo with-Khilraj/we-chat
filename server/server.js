@@ -4,11 +4,12 @@ const express = require("express");
 const cookiePaser = require("cookie-parser");
 const http = require("http");
 const { Server } = require("socket.io");
-const userRoutes = require("./routes/userRoutes");
+const authRoutes = require("./features/auth/auth.routes");
 const messageRoutes = require("./routes/messageRoutes");
-const chatRoutes = require('./routes/charRoutes')
-const User = require("./models/User");
-const Message = require("./models/Message");
+const chatRoutes = require('./routes/charRoutes');
+const Message = require("./features/chat/message.model");
+const User = require("./features/user/user.model");
+const RefreshToken = require("./features/auth/auth.token.model");
 const startTokenCleanup = require("./service/tokenCleanup");
 const redisClient = require("./common/config/redisClient");
 const errorHandler = require("./common/middlewares/errorHandler");
@@ -54,7 +55,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // routes
-app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", require("./routes/userRoutes")); // Temporary until User module is refactored
 app.use("/api/messages", messageRoutes);
 app.use("/api/chat", chatRoutes);
 

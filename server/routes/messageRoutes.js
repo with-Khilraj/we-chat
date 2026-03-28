@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const messageController = require("../controllers/messageController");
-const verifyAccessToken = require("../middlewares/authMiddleware");
-const {upload, uploadErrorHandler} = require('../middlewares/upload')
+const verifyAccessToken = require("../common/middlewares/authMiddleware");
+const {upload, uploadErrorHandler} = require('../common/middlewares/upload')
 
 
 // send message

@@ -13,10 +13,13 @@ export const useRecentMessages = (loggedInUser) => {
         newMessages.forEach((message) => {
           const senderID = message.senderId?.toString();
           const receiverID = message.receiverId?.toString();
-          const loggedInUserID = loggedInUser?._id?.toString();
+          const loggedInUserID = (loggedInUser?._id || loggedInUser?.id)?.toString();
 
           // Guard: skip if user or message IDs are not yet available
-          if (!loggedInUserID || !senderID || !receiverID) return;
+          if (!loggedInUserID || !senderID || !receiverID) {
+              console.log("[useRecentMessages] Missing ID:", { loggedInUserID, senderID, receiverID });
+              return;
+          }
 
           const otherUserID = senderID === loggedInUserID ? receiverID : senderID;
           // const isSeen = message.seen || false;

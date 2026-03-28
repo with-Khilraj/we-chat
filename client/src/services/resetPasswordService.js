@@ -2,7 +2,7 @@ import { api } from "../api/apiClient";
 
 export const validateResetToken = async (token) => {
   try {
-    const res = await api.get(`/api/users/reset-password/${token}/validate`);
+    const res = await api.get(`/api/auth/reset-password/${token}/validate`);
     
     // console.log("Service Response from validateResetToken:", res.data);
 
@@ -34,7 +34,7 @@ export const validateResetToken = async (token) => {
 };
 
 export const resetPasswordRequest = async (token, password, confirmPassword) => {
-  const response = await api.post(`/api/users/reset-password/${token}`,
+  const response = await api.post(`/api/auth/reset-password/${token}`,
     { password, confirmPassword }
   );
   return response.data;

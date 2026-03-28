@@ -1,8 +1,8 @@
-import api from "../Api";
+import { api } from "../api/apiClient";
 
 export const logout = async () => {
   try {
-    const response = api.post('/api/users/logout');
+    const response = await api.post('/api/auth/logout');
     localStorage.removeItem("accessToken");
     localStorage.removeItem('userInfo')
     return response.data;

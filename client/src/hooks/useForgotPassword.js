@@ -125,7 +125,7 @@ const useForgotPassword = () => {
         dispatch({ type: 'SUBMIT_START' });
 
         try {
-            const response = await publicApi.post('/api/users/forgot-password', { email });
+            const response = await publicApi.post('/api/auth/forgot-password', { email });
             dispatch({
                 type: 'SUBMIT_SUCCESS',
                 payload: {

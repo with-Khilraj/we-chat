@@ -3,7 +3,7 @@ import {publicApi} from '../api/apiClient';
 // Verify OTP API call
 export const verifyOTP = async (email, otp) => {
   try {
-     const response = await publicApi.post("/api/users/verify-otp", { email, otp });
+     const response = await publicApi.post("/api/auth/verify-otp", { email, otp });
     return { success: true, message: response.data.message, user: response.data.user };
   } catch (error) {
 
@@ -24,7 +24,7 @@ export const verifyOTP = async (email, otp) => {
 // Resend OTP API call
 export const resendOTP = async (email) => {
   try {
-    const res = await publicApi.post('/api/users/resend-otp', { email }, { withCredentials: true });
+    const res = await publicApi.post('/api/auth/resend-otp', { email }, { withCredentials: true });
     return res.data;
   } catch (err) {
     const data = err.response?.data;

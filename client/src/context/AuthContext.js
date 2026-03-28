@@ -14,7 +14,14 @@ export const AuthProvider = ({ children }) => {
       const savedUser = localStorage.getItem('userInfo');
       if (savedUser) {
         try {
-          setCurrentUser(JSON.parse(savedUser));
+          const parsed = JSON.parse(savedUser);
+          // Guard: discard old-shape objects that use 'id' instead of '_id'
+          // (caused by the old login response format — now fixed on server)
+          if (parsed && parsed._id) {
+            setCurrentUser(parsed);
+          } else {
+            localStorage.removeItem('userInfo');
+          }
         } catch (e) {
           localStorage.removeItem('userInfo');
         }
@@ -45,7 +52,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/api/users/logout');
+      await api.post('/api/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

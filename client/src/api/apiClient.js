@@ -35,7 +35,7 @@ api.interceptors.response.use(
       try {
         // Silent refresh: the browser automatically sends the refreshToken cookie
         await axios.post(
-          "http://localhost:5000/api/users/refresh",
+          "http://localhost:5000/api/auth/refresh",
           {},
           { withCredentials: true }
         );

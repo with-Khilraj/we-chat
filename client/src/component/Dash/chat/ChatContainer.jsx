@@ -19,20 +19,31 @@ const ChatContainer = () => {
   const { userId } = useParams();
   const [selectedUser, setSelectedUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
-      if (!userId) return;
+      if (!userId) {
+        setSelectedUser(null);
+        return;
+      }
+      
+      // Reset state immediately to force re-fetch and clear stale UI
+      setSelectedUser(null);
       setLoadingUser(true);
+      setError(null);
+
       try {
         const response = await api.get(`/api/users/${userId}`);
         setSelectedUser(response.data.user || response.data);
-      } catch (error) {
-        console.error("Failed to fetch user:", error);
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+        setError("User not found");
       } finally {
         setLoadingUser(false);
       }
     };
+
     fetchUser();
   }, [userId]);
 

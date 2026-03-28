@@ -2,7 +2,7 @@ import { api } from "../api/apiClient";
 
 export const getRecentMessages = async () => {
   try {
-    const response = await api.get('/api/messages/recent-messages');
+    const response = await api.get('/api/chat/recent');
     return response.data.recentMessages;
   } catch (error) {
     console.error("Error fetching recent messages:", error);
@@ -12,7 +12,7 @@ export const getRecentMessages = async () => {
 
 export const getMessagesByRoomId = async (roomId, limit = 20, before = null) => {
   try {
-    let url = `/api/messages/${roomId}?limit=${limit}`;
+    let url = `/api/chat/room/${roomId}?limit=${limit}`;
     if (before) {
       url += `&before=${before}`;
     }

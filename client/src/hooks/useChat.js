@@ -26,8 +26,7 @@ export const useChat = (selectedUser, currentUser) => {
   const lastMessageIdRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const navigate = useNavigate();
-  // const { handleInitiateCall } = useCall();
-  const { updateDraft, clearDraft, userDrafts } = useDrafts(); // kept userDrafts as it is used in useEffect
+  const { updateDraft, clearDraft, userDrafts } = useDrafts();
 
   // Initialize specialized hooks
   const {
@@ -55,10 +54,9 @@ export const useChat = (selectedUser, currentUser) => {
   } = useFileStaging();
 
   const getRoomId = useCallback(() => {
-    return selectedUser && currentUser
-      ? [currentUser._id, selectedUser._id].sort().join('-')
-      : null;
-  }, [currentUser, selectedUser]);
+    if (!selectedUser?._id || !currentUser?._id) return null;
+    return [currentUser._id, selectedUser._id].sort().join('-');
+  }, [currentUser?._id, selectedUser?._id]);
 
   const { isTyping, handleTypingEvent } = useChatSocket({
     selectedUser,
@@ -77,21 +75,29 @@ export const useChat = (selectedUser, currentUser) => {
 
   // 1. Fetch initial chat history
   useEffect(() => {
-    if (!selectedUser || !currentUser) return;
+    const selectedId = selectedUser?._id;
+    const currentId = currentUser?._id;
 
-    const roomId = getRoomId();
-    if (!roomId) return;
+    // Always reset pagination ref when user changes
+    lastMessageIdRef.current = null;
+
+    if (!selectedId || !currentId) {
+      setMessages([]);
+      return;
+    }
+
+    const roomId = [currentId, selectedId].sort().join('-');
 
     const fetchChatHistory = async () => {
       try {
-        const response = await api.get(`/api/messages/${roomId}?limit=20`);
+        const response = await api.get(`/api/chat/room/${roomId}?limit=20`);
         const fetchedMessages = response.data.messages || [];
         setMessages(fetchedMessages);
         setHasMore(response.data.hasMore ?? fetchedMessages.length === 20);
 
         // Mark as seen if viewing
         const unreadMessages = fetchedMessages.filter(
-          (msg) => msg.receiverId === currentUser._id && msg.status === 'sent' && isValidObjectId(msg._id)
+          (msg) => msg.receiverId === currentId && msg.status === 'sent' && isValidObjectId(msg._id)
         );
         if (unreadMessages.length > 0) {
           socket.emit('message-seen', {
@@ -105,14 +111,15 @@ export const useChat = (selectedUser, currentUser) => {
       }
     };
     fetchChatHistory();
-  }, [selectedUser?._id, currentUser?._id, getRoomId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUser?._id, currentUser?._id]);
 
   // 2. Sync initial draft when switching users
   useEffect(() => {
     if (!selectedUser) return;
     const draft = userDrafts[selectedUser._id];
     setNewMessage(draft || "");
-  }, [selectedUser?._id, userDrafts]);
+  }, [selectedUser, userDrafts]);
 
   // 3. Mark unread messages as seen when messages update (e.g. on focus/view)
   useEffect(() => {
@@ -130,12 +137,7 @@ export const useChat = (selectedUser, currentUser) => {
     }
   }, [messages, getRoomId, currentUser]);
 
-  // 4. Reset on user change
-  useEffect(() => {
-    lastMessageIdRef.current = null;
-  }, [selectedUser]);
-
-  // 5. Click outside for emoji picker
+  // 4. Click outside for emoji picker
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
@@ -188,7 +190,7 @@ export const useChat = (selectedUser, currentUser) => {
       });
       if (fileToSend instanceof File || fileToSend instanceof Blob) formData.append('file', fileToSend);
 
-      const response = await api.post("/api/messages/", formData, {
+      const response = await api.post("/api/chat/send", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -253,7 +255,7 @@ export const useChat = (selectedUser, currentUser) => {
     try {
       const oldestMessage = messages[0];
       const before = oldestMessage ? oldestMessage.createdAt : null;
-      let url = `/api/messages/${roomId}?limit=20${before ? `&before=${before}` : ''}`;
+      let url = `/api/chat/room/${roomId}?limit=20${before ? `&before=${before}` : ''}`;
 
       const response = await api.get(url);
 
@@ -280,9 +282,9 @@ export const useChat = (selectedUser, currentUser) => {
       );
 
       if (existingReaction) {
-        await api.delete(`/api/messages/${messageId}/reactions`);
+        await api.delete(`/api/chat/reaction/${messageId}`);
       } else {
-        await api.post(`/api/messages/${messageId}/reactions`, { emoji });
+        await api.post(`/api/chat/reaction/${messageId}`, { emoji });
       }
       setActiveEmojiPicker(null);
     } catch (error) {
@@ -292,7 +294,7 @@ export const useChat = (selectedUser, currentUser) => {
 
   const removeReaction = async (messageId) => {
     try {
-      await api.delete(`/api/messages/${messageId}/reactions`);
+      await api.delete(`/api/chat/reaction/${messageId}`);
     } catch (error) {
       console.error("Failed to remove reaction", error);
     }

@@ -10,7 +10,8 @@ const chatRoutes = require('./routes/charRoutes')
 const User = require("./models/User");
 const Message = require("./models/Message");
 const startTokenCleanup = require("./service/tokenCleanup");
-const redisClient = require("./config/redisClient");
+const redisClient = require("./common/config/redisClient");
+const errorHandler = require("./common/middlewares/errorHandler");
 
 const app = express();
 require("dotenv").config();
@@ -475,3 +476,6 @@ mongoose
     console.error("Error connecting to MongoDB:", err);
     process.exit(1); // Exit process on failure
   });
+
+// Global Error Handler
+app.use(errorHandler);

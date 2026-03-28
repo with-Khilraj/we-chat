@@ -1,8 +1,8 @@
 const Message = require("../models/Message");
 const mongoose = require("mongoose");
 const chatService = require("../service/chatService");
-const redisClient = require("../config/redisClient");
-const cloudinary = require("../config/cloudinary");
+const redisClient = require("../common/config/redisClient");
+const cloudinary = require("../common/config/cloudinary");
 const streamifier = require("streamifier");
 
 // Cache constants

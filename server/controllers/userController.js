@@ -3,9 +3,9 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const RefreshToken = require("../models/refreshTokens");
 const { sendVerificationOTP, sendResetPasswordEmail } = require('../service/emailConfig')
-const config = require('../config/config');
+const config = require('../common/config/config');
 const crypto = require('crypto');
-const redisClient = require('../config/redisClient');
+const redisClient = require('../common/config/redisClient');
 
 // Account lockout constants
 const MAX_FAILED_ATTEMPTS = 5;

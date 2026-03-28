@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { publicApi } from "../Api";
+import { publicApi } from "../api/apiClient";
 import { FORGOT_STATUS } from "../constant/ForgotStatus";
 
 const initialState = {

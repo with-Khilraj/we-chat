@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useOutletContext } from "react-router-dom";
-import { api } from "../../../Api";
+import { api } from "../../../api/apiClient";
 import { useOnlineUsers } from "../../../context/onlineUsersContext";
 import { useChat } from "../../../hooks/useChat";
 import { renderStatusIndicator, shouldStartNewGroup } from "../../../utils/chatUtils";

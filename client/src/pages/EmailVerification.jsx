@@ -4,10 +4,12 @@ import { useOTPVerification } from "../hooks/useOTPVerification";
 import "../styles/emailVerification.css";
 import VerificationForm from "../component/emailVerification/VerificationForm";
 import SuccessCard from "../component/emailVerification/SuccessCard";
+import { useAuth } from "../context/AuthContext";
 
 const EmailVerification = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const email = location.state?.email;
   const {
     otp, enteredOTP, timer, errorMsg, successMsg, loading,
@@ -42,9 +44,14 @@ const EmailVerification = () => {
 
     const result = await handleVerifyOTP(email, enteredOTP);
     if (result?.success) {
+      // If verification returns a user (it should), sync AuthContext state
+      if (result.user) {
+        login(result.user);
+      }
       setIsVerified(true);
     }
   };
+
 
   return (
     <div className="gradient-bg flex items-center justify-center min-h-screen p-4">

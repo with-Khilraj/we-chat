@@ -2,9 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Settings, ShieldAlert, LogOut, MoreVertical, Bell, Contact, MessageCircleCodeIcon, Phone } from "lucide-react";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
-import { api } from "../../../Api";
 import { toast } from "react-toastify";
-import socket from "../../../utils/useSocket";
 
 const SidebarMenu = () => {
     const { currentUser: loggedInUser, logout } = useAuth();
@@ -33,22 +31,6 @@ const SidebarMenu = () => {
         }
     }, [handleClickOutside]);
 
-    const handleLogout = async () => {
-        try {
-            await api.post("/api/users/logout");
-            toast.success("Logout successful!", {
-                position: "top-right",
-                autoClose: 1500,
-            });
-        } catch (error) {
-            console.error("Logout API failed (network or token issue):", error);
-        } finally {
-            // ALWAYS perform these cleanup steps
-            logout(); // Use context logout to update state
-            if (socket.connected) socket.disconnect();
-            navigate("/login");
-        }
-    };
 
     return (
         <div className="sidebar-menu">
@@ -97,7 +79,7 @@ const SidebarMenu = () => {
                         <ShieldAlert size={18} />
                         <span>Report a problem</span>
                     </li>
-                    <li onClick={handleLogout}>
+                    <li onClick={logout}>
                         <LogOut size={18} />
                         <span>Logout</span>
                     </li>

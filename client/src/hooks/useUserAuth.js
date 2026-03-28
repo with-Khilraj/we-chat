@@ -34,8 +34,8 @@ export const useUserAuth = () => {
     setLoading(true);
     try {
       const response = await loginUser(email, password);
-      // localStorage.setItem("accessToken", response.data.accessToken);
-      await login(response.data.accessToken);
+      // login() now expects the user object, not the token
+      login(response.data.user);
 
       // sucess message using toastify
       showSuccessToast("Welcome to we-chat");

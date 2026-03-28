@@ -11,10 +11,14 @@ export const useRecentMessages = (loggedInUser) => {
       setRecentMessages((prevMessages) => {
         const updatedMessages = { ...prevMessages };
         newMessages.forEach((message) => {
-          const senderID = message.senderId.toString();
-          const receiverID = message.receiverId.toString(); // userId = receiverId
-          const otherUserID =
-            senderID === loggedInUser._id.toString() ? receiverID : senderID;
+          const senderID = message.senderId?.toString();
+          const receiverID = message.receiverId?.toString();
+          const loggedInUserID = loggedInUser?._id?.toString();
+
+          // Guard: skip if user or message IDs are not yet available
+          if (!loggedInUserID || !senderID || !receiverID) return;
+
+          const otherUserID = senderID === loggedInUserID ? receiverID : senderID;
           // const isSeen = message.seen || false;
           const isSeen = message.status === 'seen';
 
@@ -27,7 +31,7 @@ export const useRecentMessages = (loggedInUser) => {
             console.log("message::::", message);
             console.log("messageContent::::", messageContent);
             displayMessage =
-              senderID === loggedInUser._id.toString()
+              senderID === loggedInUserID
                 ? `You: ${messageContent}`
                 : messageContent;
           } else {
@@ -39,25 +43,25 @@ export const useRecentMessages = (loggedInUser) => {
             };
             const messageTypeText = messageTypeMap[message.messageType];
             displayMessage =
-              senderID === loggedInUser._id.toString()
+              senderID === loggedInUserID
                 ? `You sent ${messageTypeText}`
                 : `Sent you ${messageTypeText}`;
           }
 
           // Calculate unread count (only for messages received by current user)
           let newUnreadCount = prevMessages[otherUserID]?.unreadCount || 0;
-          if (receiverID === loggedInUser._id.toString() && !isSeen) {
-            newUnreadCount += 1; // Increment for unseen received messages
+          if (receiverID === loggedInUserID && !isSeen) {
+            newUnreadCount += 1;
           } else if (isSeen) {
-            newUnreadCount = 0; // Reset if seen
-          } else if (senderID === loggedInUser._id.toString()) {
-            newUnreadCount = 0; // No unread count for sent messages
+            newUnreadCount = 0;
+          } else if (senderID === loggedInUserID) {
+            newUnreadCount = 0;
           }
 
           updatedMessages[otherUserID] = {
             message: displayMessage,
             timestamp: new Date(message.lastMessageTimestamp).getTime(),
-            seen: senderID === loggedInUser._id.toString() ? true : isSeen,
+            seen: senderID === loggedInUserID ? true : isSeen,
             unreadCount: newUnreadCount,
             lastMessageId: message._id,
           };

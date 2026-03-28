@@ -1,7 +1,7 @@
 import { useReducer, useEffect, useCallback } from 'react';
 import { validateResetToken, resetPasswordRequest } from '../services/resetPasswordService';
 import { RESET_PASSWORD_ACTIONS, RESET_PASSWORD_MESSAGES } from '../constant/ResetActions';
-import { api } from '../Api';
+import { api } from '../api/apiClient';
 import { useNavigate } from 'react-router-dom';
 
 const initialState = {

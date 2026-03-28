@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../Api';
+import { api } from '../api/apiClient';
 import socket from '../utils/useSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidObjectId } from '../utils/chatUtils';

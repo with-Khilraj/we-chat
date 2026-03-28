@@ -1,4 +1,4 @@
-import { api } from "../Api";
+import { api } from "../api/apiClient";
 
 export const getRecentMessages = async () => {
   try {

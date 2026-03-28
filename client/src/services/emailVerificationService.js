@@ -1,11 +1,12 @@
-import {publicApi} from '../Api';
+import {publicApi} from '../api/apiClient';
 
 // Verify OTP API call
 export const verifyOTP = async (email, otp) => {
   try {
      const response = await publicApi.post("/api/users/verify-otp", { email, otp });
-    return { success: true, message: response.data.message };
+    return { success: true, message: response.data.message, user: response.data.user };
   } catch (error) {
+
     if (error.response) {
       const msg = error.response.data?.error;
       if (msg?.includes("expired"))

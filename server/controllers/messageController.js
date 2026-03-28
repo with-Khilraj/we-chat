@@ -382,6 +382,7 @@ exports.updateBulkStatus = async (req, res) => {
 exports.getRecentMessages = async (req, res) => {
     try {
         const recentMessages = await chatService.getRecentMessagesService(req.user.id);
+        res.set('Cache-Control', 'no-store');
         res.status(200).json({ recentMessages });
     } catch (error) {
         console.error("Error fetching recent messages:", error);

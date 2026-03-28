@@ -15,7 +15,7 @@ const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 // Generate Access and Refresh Token - For Authentication
 const generateToken = (user) => {
     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "5h",
+        expiresIn: "15m",
     });
     const refreshToken = jwt.sign(
         { id: user._id },
@@ -296,11 +296,18 @@ exports.login = async (req, res) => {
             httpOnly: true,
             secure: true,
             sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
+
+        res.cookie("accessToken", accessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+            maxAge: 15 * 60 * 1000, // 15 minutes
+        })
 
         res.status(200).json({
             message: "Login Successful",
-            accessToken,
             user: {
                 id: user._id,
                 email: user.email,
@@ -560,7 +567,12 @@ exports.logout = async (req, res) => {
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
         });
-
+        
+        res.clearCookie('accessToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+        });
         res.status(200).json({ message: "Logout successfully" });
     } catch (error) {
         console.error("Error during logout:", error);

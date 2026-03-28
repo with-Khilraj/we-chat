@@ -5,8 +5,7 @@ const cookiePaser = require("cookie-parser");
 const http = require("http");
 const { Server } = require("socket.io");
 const authRoutes = require("./features/auth/auth.routes");
-const messageRoutes = require("./routes/messageRoutes");
-const chatRoutes = require('./routes/charRoutes');
+const chatRoutes = require("./features/chat/chat.routes");
 const Message = require("./features/chat/message.model");
 const User = require("./features/user/user.model");
 const RefreshToken = require("./features/auth/auth.token.model");
@@ -56,8 +55,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users", require("./routes/userRoutes")); // Temporary until User module is refactored
-app.use("/api/messages", messageRoutes);
+app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/chat", chatRoutes);
 
 // Store active calls

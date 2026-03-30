@@ -9,9 +9,7 @@ const ApiError = require("../../common/utils/ApiError");
 const { sendVerificationOTP, sendResetPasswordEmail } = require("../../../server/service/emailConfig"); // Temporary path until email is moved
 const config = require("../../common/config/config");
 
-/**
- * Generate Access and Refresh Tokens
- */
+// Generate Access and Refresh Tokens
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRY,
@@ -23,16 +21,14 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
-/**
- * Redis Key Helpers
- */
+
+// Redis Key Helpers
 const otpKey = (userId) => `otp:${userId}`;
 const resetTokenKey = (hashedToken) => `reset:${hashedToken}`;
 const blacklistKey = (token) => `blacklist:${token}`;
 
-/**
- * Auth Service Logic
- */
+
+// Auth Service Logic
 class AuthService {
   async signup({ email, username, phone, password }) {
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });

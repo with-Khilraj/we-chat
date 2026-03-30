@@ -1,6 +1,6 @@
 const cron = require("node-cron");
-const RefreshToken = require("../features/auth/auth.token.model");
-const ArchivedToken = require("../features/auth/auth.archived.model");
+const RefreshToken = require("../../features/auth/auth.token.model");
+const ArchivedToken = require("../../features/auth/auth.archived.model");
 
 const ARCHIVE_AFTER_DAYS = 90;          // move to archive after 90 days
 const PURGE_ARCHIVED_AFTER_DAYS = 365;  // delete from archive after 1 year
@@ -23,10 +23,10 @@ const startTokenCleanup = () => {
         // Insert into ArchivedTokens first, never delete before insert
         await ArchivedToken.insertMany(
           tokensToArchive.map((t) => ({
-            userId:    t.userId,
-            token:     t.token,
-            expiry:    t.expiry,
-            revoked:   t.revoked,
+            userId: t.userId,
+            token: t.token,
+            expiry: t.expiry,
+            revoked: t.revoked,
             archivedAt: new Date(),
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,

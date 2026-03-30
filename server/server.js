@@ -9,7 +9,7 @@ const authRoutes = require("./features/auth/auth.routes");
 const chatRoutes = require("./features/chat/chat.routes");
 const userRoutes = require("./features/user/user.routes");
 
-const startTokenCleanup = require("./service/tokenCleanup");
+const startTokenCleanup = require("./common/services/tokenCleanup");
 const errorHandler = require("./common/middlewares/errorHandler");
 const registerSocketHandlers = require("./socket/socketHandler");
 
@@ -18,9 +18,7 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ----------------------------------------------------------------
 // HTTP & WebSocket Server
-// ----------------------------------------------------------------
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -31,9 +29,7 @@ const io = new Server(server, {
   },
 });
 
-// ----------------------------------------------------------------
 // Middleware
-// ----------------------------------------------------------------
 app.use(cors({
   origin: "http://localhost:3000",
   credentials: true,
@@ -54,26 +50,18 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-// ----------------------------------------------------------------
 // HTTP Routes
-// ----------------------------------------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 
-// ----------------------------------------------------------------
 // Socket.io — delegate to handler
-// ----------------------------------------------------------------
 registerSocketHandlers(io);
 
-// ----------------------------------------------------------------
 // Global Error Handler (must be last)
-// ----------------------------------------------------------------
 app.use(errorHandler);
 
-// ----------------------------------------------------------------
 // Database & Server Start
-// ----------------------------------------------------------------
 mongoose
   .connect(process.env.MONGO_URI, { maxPoolSize: 10 })
   .then(() => {

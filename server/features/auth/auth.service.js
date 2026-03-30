@@ -6,7 +6,7 @@ const RefreshToken = require("./auth.token.model");
 const redisClient = require("../../common/config/redisClient");
 const { AUTH_CONSTANTS } = require("../../common/config/constants");
 const ApiError = require("../../common/utils/ApiError");
-const { sendVerificationOTP, sendResetPasswordEmail } = require("../../../server/service/emailConfig"); // Temporary path until email is moved
+const { sendVerificationOTP, sendResetPasswordEmail } = require("../../common/services/emailConfig"); // Temporary path until email is moved
 const config = require("../../common/config/config");
 
 // Generate Access and Refresh Tokens

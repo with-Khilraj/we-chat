@@ -61,6 +61,36 @@ class UserService {
     const data = await redisClient.get(`presence:${userId}`);
     return data ? JSON.parse(data) : { status: "offline", lastActive: null };
   }
+
+  // Update user profile information
+  async updateProfile(userId, profileData, file) {
+    const { bio } = profileData;
+    const update = {};
+    if (bio !== undefined) update.bio = bio;
+
+    if (file) {
+      // Use standard cloudinary upload pattern
+      const uploadOptions = { resource_type: "image", folder: "chat-app/avatars" };
+      
+      const uploadStream = (buffer) => {
+        const streamifier = require("streamifier");
+        return new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          });
+          streamifier.createReadStream(buffer).pipe(stream);
+        });
+      };
+
+      const result = await uploadStream(file.buffer);
+      update.avatar = result.secure_url;
+    }
+
+    const user = await User.findByIdAndUpdate(userId, update, { new: true }).select("-password");
+    if (!user) throw new ApiError(404, "User not found");
+    return user;
+  }
 }
 
 module.exports = new UserService();

@@ -37,6 +37,7 @@ const ProfileSidebar = ({
                     <p className={`profile-status ${isOnline ? 'online' : 'offline'}`}>
                         {isOnline ? 'Active now' : 'Offline'}
                     </p>
+                    <h2 className="bio">{selectedUser.bio}</h2>
                 </div>
 
                 {/* Quick Action Icons Row */}

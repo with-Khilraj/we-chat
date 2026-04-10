@@ -31,6 +31,20 @@ export const fetchUserData = async () => {
   }
 };
 
+// Function to update user profile
+export const updateProfile = async (profileData) => {
+  const formData = new FormData();
+  if (profileData.bio !== undefined) formData.append('bio', profileData.bio);
+  if (profileData.avatar) formData.append('avatar', profileData.avatar);
+
+  const response = await api.put('/api/users/profile', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data.user;
+};
+
 // Function to check username availability
 export const checkUsernameAvailability = async (username) => {
   const response = await publicApi.get('/api/users/check-username', {

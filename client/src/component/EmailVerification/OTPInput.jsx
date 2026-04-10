@@ -1,4 +1,4 @@
-const OPTInput = ({ otp, handleChange, handleKeyDown }) => {
+const OTPInput = ({ otp, handleChange, handleKeyDown }) => {
   return (
     <div className="otp-inputs mb-4">
       {otp.map((digit, idx) => (
@@ -17,4 +17,4 @@ const OPTInput = ({ otp, handleChange, handleKeyDown }) => {
   )
 };
 
-export default OPTInput;
+export default OTPInput;

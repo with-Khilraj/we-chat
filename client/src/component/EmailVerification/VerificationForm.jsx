@@ -1,7 +1,7 @@
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope, faSpinner } from "@fortawesome/free-solid-svg-icons";
-import OPTInput from "./OTPInput";
+import OTPInput from "./OTPInput";
 
 const VerificationForm = ({
   email,
@@ -25,7 +25,7 @@ const VerificationForm = ({
       <h2 className="text-3xl font-bold text-white mb-4">Email Verification</h2>
       <p className="text-white text-opacity-70 mb-6">Enter the 6-digit code sent to <span className="text-blue-400 font-medium">{email}</span></p>
 
-      <OPTInput
+      <OTPInput
         otp={otp}
         handleChange={handleChange}
         handleKeyDown={handleKeyDown}

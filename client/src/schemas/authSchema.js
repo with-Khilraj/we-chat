@@ -25,3 +25,7 @@ export const loginSchema = z.object({
     email: z.string().min(1, "Email is required").email("Invalid email address"),
     password: z.string().min(1, "Password is required"),
 });
+
+export const profileSchema = z.object({
+    bio: z.string().max(200, "Bio must be under 200 characters").optional(),
+});

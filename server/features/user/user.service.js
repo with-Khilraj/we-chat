@@ -1,6 +1,7 @@
 const User = require("./user.model");
 const ApiError = require("../../common/utils/ApiError");
 const redisClient = require("../../common/config/redisClient");
+const cloudinary = require("../../common/config/cloudinary");
 const mongoose = require("mongoose");
 
 class UserService {

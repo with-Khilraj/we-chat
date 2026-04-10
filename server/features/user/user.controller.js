@@ -26,9 +26,16 @@ const checkUsername = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, available });
 });
 
+// Update current user profile
+const updateProfile = asyncHandler(async (req, res) => {
+  const user = await userService.updateProfile(req.user.id, req.body, req.file);
+  res.status(200).json({ success: true, user });
+});
+
 module.exports = {
   getProfile,
   getUser,
   getUsers,
   checkUsername,
+  updateProfile,
 };
